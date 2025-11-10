@@ -463,20 +463,25 @@ export default function TitleDefense() {
     loadSchedules();
   }, []);
  
-  // verdict updater
+  // verdict updater - FIXED: Preserve teamDisplay when updating verdict
   const handleChangeVerdict = async (scheduleId, newVerdict) => {
     try {
+      // Update local state immediately for better UX
       setSchedules((prev) =>
         prev.map((s) =>
           s.id === scheduleId ? { ...s, verdict: newVerdict } : s
         )
       );
+ 
+      // Update Firestore
       await updateDoc(doc(db, "titleDefenseSchedules", scheduleId), {
         verdict: newVerdict,
       });
+ 
       showAlert("Success", "Verdict updated successfully.", "success");
     } catch (e) {
       console.error("Failed to update verdict:", e);
+      // Reload schedules to sync with Firestore in case of error
       await loadSchedules();
       showAlert(
         "Error",
@@ -486,7 +491,7 @@ export default function TitleDefense() {
     }
   };
  
-  // Handle inline edit save
+  // Handle inline edit save - FIXED: Preserve teamDisplay when updating schedule
   const handleSaveEdit = async (scheduleId, updatedData) => {
     try {
       // Validate all required fields
@@ -507,8 +512,15 @@ export default function TitleDefense() {
         return;
       }
  
+      // Find the current schedule to preserve teamDisplay
+      const currentSchedule = schedules.find(s => s.id === scheduleId);
+      if (!currentSchedule) {
+        showAlert("Error", "Schedule not found.", "error");
+        return;
+      }
+ 
       const selected = teamOptions.find((t) => t.name === updatedData.teamName);
-      const teamId = selected?.id || null;
+      const teamId = selected?.id || currentSchedule.teamId;
  
       const payload = {
         teamId,
@@ -519,6 +531,19 @@ export default function TitleDefense() {
           ? updatedData.panelists
           : [],
       };
+ 
+      // Update local state immediately for better UX
+      setSchedules((prev) =>
+        prev.map((s) =>
+          s.id === scheduleId 
+            ? { 
+                ...s, 
+                ...payload,
+                teamDisplay: currentSchedule.teamDisplay // Preserve teamDisplay
+              } 
+            : s
+        )
+      );
  
       await updateDoc(doc(db, "titleDefenseSchedules", scheduleId), payload);
  
@@ -532,16 +557,16 @@ export default function TitleDefense() {
       });
  
       setEditingId(null);
-      await loadSchedules();
       showAlert("Success", "Schedule updated successfully.", "success");
     } catch (err) {
       console.error("Failed to update schedule:", err);
-      showAlert("Error", "Operation failed. Please try again.", "error");
+      // Reload schedules to sync with Firestore in case of error
       await loadSchedules();
+      showAlert("Error", "Operation failed. Please try again.", "error");
     }
   };
  
-  // Handle schedule re-presentation
+  // Handle schedule re-presentation - FIXED: Preserve teamDisplay
   const handleScheduleRePresentation = async (originalSchedule) => {
     try {
       const newSchedule = {

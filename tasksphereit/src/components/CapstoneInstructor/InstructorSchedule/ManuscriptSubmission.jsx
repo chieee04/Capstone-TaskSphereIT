@@ -22,7 +22,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import Swal from "sweetalert2";
-
+ 
 /* ===== Firestore ===== */
 import { db } from "../../../config/firebase";
 import {
@@ -36,21 +36,22 @@ import {
   deleteDoc,
   query,
   where,
+  onSnapshot,
 } from "firebase/firestore";
 import { notifyTeamSchedule } from "../../../services/notifications";
-
+ 
 /* ===== PDF ===== */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
+ 
 /* ---- logos for PDF (DCT left, CCS right, TaskSphere footer-left) ---- */
 import DCTLOGO from "../../../assets/imgs/pdf imgs/DCTLOGO.png";
 import CCSLOGO from "../../../assets/imgs/pdf imgs/CCSLOGO.png";
 import TASKSPHERELOGO from "../../../assets/imgs/pdf imgs/TASKSPHERELOGO.png";
-
+ 
 const MAROON = "#6A0F14";
 const COLLECTION = "manuscriptSubmissions";
-
+ 
 /* ---------- small helpers ---------- */
 const MONTHS = [
   "Jan",
@@ -78,7 +79,14 @@ const to12h = (t) => {
   const hh = ((H + 11) % 12) + 1;
   return `${hh}:${String(M).padStart(2, "0")} ${ampm}`;
 };
-
+ 
+// Extract last name from full name
+const getLastName = (fullName) => {
+  if (!fullName) return "";
+  const parts = fullName.trim().split(" ");
+  return parts[parts.length - 1] || "";
+};
+ 
 // Generate time options with 30-minute intervals
 const generateTimeOptions = () => {
   const times = [];
@@ -92,31 +100,31 @@ const generateTimeOptions = () => {
   }
   return times;
 };
-
+ 
 const TIME_OPTIONS = generateTimeOptions();
-
+ 
 // Check if date has passed (including time) - for verdict editing
 const isDatePassed = (dateStr, timeStr) => {
   if (!dateStr) return false;
-
+ 
   const now = new Date();
   const scheduleDateTime = new Date(dateStr);
-
+ 
   if (timeStr) {
     const [hours, minutes] = timeStr.split(":").map(Number);
     scheduleDateTime.setHours(hours, minutes, 0, 0);
   } else {
     scheduleDateTime.setHours(23, 59, 59, 999); // End of day if no time
   }
-
+ 
   return scheduleDateTime < now;
 };
-
+ 
 // Get current date in YYYY-MM-DD format for min date
 const getCurrentDate = () => {
   return new Date().toISOString().split("T")[0];
 };
-
+ 
 // Show SweetAlert for various messages
 const showAlert = (title, text, icon = "info") => {
   Swal.fire({
@@ -126,7 +134,7 @@ const showAlert = (title, text, icon = "info") => {
     confirmButtonColor: MAROON,
   });
 };
-
+ 
 const Breadcrumbs = () => {
   const navigate = useNavigate();
   return (
@@ -144,7 +152,7 @@ const Breadcrumbs = () => {
     </div>
   );
 };
-
+ 
 /* ---------- your button (unchanged style) ---------- */
 const Btn = ({
   children,
@@ -170,39 +178,39 @@ const Btn = ({
     </button>
   );
 };
-
+ 
 export default function ManuscriptSubmission() {
   const navigate = useNavigate();
   const [queryText, setQueryText] = useState("");
   const [filterVerdict, setFilterVerdict] = useState("all");
-
+ 
   const [editingId, setEditingId] = useState(null);
   const [viewSchedule, setViewSchedule] = useState(null);
-
+ 
   /* ===== Firestore-backed options ===== */
-  const [teamOptions, setTeamOptions] = useState([]); // [{id, name}]
+  const [teamOptions, setTeamOptions] = useState([]); // [{id, name, managerLastName}]
   const [loadingTeams, setLoadingTeams] = useState(true);
-
+ 
   /* ===== Submissions list ===== */
   const [submissions, setSubmissions] = useState([]); // [{id, ...}]
   const [loadingSubmissions, setLoadingSubmissions] = useState(true);
-
+ 
   // Row menu
   const [menuOpenId, setMenuOpenId] = useState(null);
-
+ 
   // Filter dropdown state
   const [filterOpen, setFilterOpen] = useState(false);
-
+ 
   // Tooltip state for verdict
   const [showVerdictTooltip, setShowVerdictTooltip] = useState(null);
-
+ 
   /* ===== Files viewer modal ===== */
   const [filesRow, setFilesRow] = useState(null);
-
+ 
   /* ===== Bulk delete state ===== */
   const [bulkMode, setBulkMode] = useState(false);
   const [selected, setSelected] = useState(new Set());
-
+ 
   const exitBulk = () => {
     setBulkMode(false);
     setSelected(new Set());
@@ -214,7 +222,7 @@ export default function ManuscriptSubmission() {
       return next;
     });
   };
-
+ 
   // Show tooltip for 5 seconds
   const showTooltipFor5Sec = (scheduleId) => {
     setShowVerdictTooltip(scheduleId);
@@ -222,38 +230,52 @@ export default function ManuscriptSubmission() {
       setShowVerdictTooltip(null);
     }, 5000);
   };
-
-  // Load Teams that passed title defense
+ 
+  // Load Teams that passed title defense with "Approved" verdict and get project manager info
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        // Load title defense schedules first
+        // Load title defense schedules first to get approved teams
         const titleDefenseSnap = await getDocs(
           collection(db, "titleDefenseSchedules")
         );
         const eligibleTeamIds = new Set();
-
+ 
         titleDefenseSnap.forEach((docX) => {
           const data = docX.data();
           const teamId = data?.teamId;
           const verdict = data?.verdict;
-
-          // Only check for Approved verdict
+ 
+          // Only include teams with "Approved" verdict
           if (teamId && verdict === "Approved") {
             eligibleTeamIds.add(teamId);
           }
         });
-
-        // Now load teams but only include eligible ones
+ 
+        // Now load teams but only include eligible ones (approved teams) and get manager info
         const teamsSnap = await getDocs(collection(db, "teams"));
         const teams = [];
-        teamsSnap.forEach((docX) => {
+ 
+        for (const docX of teamsSnap.docs) {
           const data = docX.data();
           if (data?.name && eligibleTeamIds.has(docX.id)) {
-            teams.push({ id: docX.id, name: data.name });
+            // Get project manager's last name
+            let managerLastName = "etal";
+            if (data.manager && data.manager.fullName) {
+              const lastName = getLastName(data.manager.fullName);
+              managerLastName = lastName || "etal";
+            }
+ 
+            teams.push({ 
+              id: docX.id, 
+              name: data.name,
+              managerLastName: managerLastName + " etal",
+              manager: data.manager // Store full manager object for real-time updates
+            });
           }
-        });
+        }
+ 
         teams.sort((a, b) => a.name.localeCompare(b.name));
         if (alive) setTeamOptions(teams);
       } catch (e) {
@@ -267,32 +289,76 @@ export default function ManuscriptSubmission() {
       alive = false;
     };
   }, []);
-
-  // Load Manuscript Submissions with Title Defense filtering
+ 
+  // Real-time listener for team updates (including manager changes)
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "teams"), (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "modified") {
+          const updatedTeam = { id: change.doc.id, ...change.doc.data() };
+ 
+          // Get updated manager's last name
+          let updatedManagerLastName = "etal";
+          if (updatedTeam.manager && updatedTeam.manager.fullName) {
+            const lastName = getLastName(updatedTeam.manager.fullName);
+            updatedManagerLastName = lastName || "etal";
+          }
+          const updatedTeamName = updatedManagerLastName + " etal";
+ 
+          // Update teamOptions
+          setTeamOptions(prev => 
+            prev.map(team => 
+              team.id === updatedTeam.id 
+                ? { 
+                    ...team, 
+                    name: updatedTeam.name,
+                    managerLastName: updatedTeamName,
+                    manager: updatedTeam.manager
+                  }
+                : team
+            )
+          );
+ 
+          // Update submissions with new team name (manager's last name + etal)
+          setSubmissions(prev =>
+            prev.map(submission =>
+              submission.teamId === updatedTeam.id
+                ? { ...submission, teamName: updatedTeamName }
+                : submission
+            )
+          );
+        }
+      });
+    });
+ 
+    return () => unsubscribe();
+  }, []);
+ 
+  // Load Manuscript Submissions - Only for teams with "Approved" verdict in Title Defense
   const loadSubmissions = async () => {
     setLoadingSubmissions(true);
     try {
+      // First, get all teams with "Approved" verdict from title defense
       const titleDefenseSnap = await getDocs(
         collection(db, "titleDefenseSchedules")
       );
-      const eligibleTeams = new Map();
-
-      // Get all approved teams from title defense
+      const approvedTeams = new Map();
+ 
+      // Collect all teams that passed title defense (verdict = "Approved")
       titleDefenseSnap.forEach((docX) => {
         const data = docX.data();
         const teamId = data?.teamId;
-        const teamName = data?.teamName;
         const verdict = data?.verdict;
-
-        if (teamId && teamName && verdict === "Approved") {
-          eligibleTeams.set(teamId, teamName);
+ 
+        if (teamId && verdict === "Approved") {
+          approvedTeams.set(teamId, true);
         }
       });
-
+ 
       // Get existing manuscript submissions
       const manuscriptSnap = await getDocs(collection(db, COLLECTION));
       const existingSubmissions = new Map();
-
+ 
       manuscriptSnap.forEach((docX) => {
         const d = docX.data();
         const teamId = d?.teamId;
@@ -301,18 +367,22 @@ export default function ManuscriptSubmission() {
           ...d,
         });
       });
-
+ 
       // Auto-create manuscript submissions for approved teams that don't have one
       const creationPromises = [];
-      for (const [teamId, teamName] of eligibleTeams) {
+      for (const [teamId] of approvedTeams) {
         if (!existingSubmissions.has(teamId)) {
+          // Find team info to get manager's last name
+          const teamInfo = teamOptions.find(t => t.id === teamId);
+          const teamName = teamInfo ? teamInfo.managerLastName : "etal etal";
+ 
           const currentDate = new Date();
           const manuscriptData = {
             teamId: teamId,
             teamName: teamName,
             title: "", // Empty title to be filled later
             date: currentDate.toISOString().split("T")[0], // Current date as default
-            duetime: currentDate.toTimeString().slice(0, 5), // CHANGED: using 'duetime' field instead of 'time'
+            duetime: currentDate.toTimeString().slice(0, 5),
             plag: 0,
             ai: 0,
             file: "—",
@@ -320,35 +390,39 @@ export default function ManuscriptSubmission() {
             createdAt: serverTimestamp(),
             fileUrl: [],
           };
-
+ 
           creationPromises.push(
             addDoc(collection(db, COLLECTION), manuscriptData)
           );
         }
       }
-
+ 
       // Wait for all creations to complete
       if (creationPromises.length > 0) {
         await Promise.all(creationPromises);
       }
-
+ 
       // Reload all manuscript submissions after potential creations
       const updatedManuscriptSnap = await getDocs(collection(db, COLLECTION));
       const rows = [];
-
+ 
       updatedManuscriptSnap.forEach((docX) => {
         const d = docX.data();
         const teamId = d?.teamId;
-
-        // Only include submissions for eligible teams
-        if (eligibleTeams.has(teamId)) {
+ 
+        // Only include submissions for approved teams
+        if (approvedTeams.has(teamId)) {
+          // Get current team name based on latest manager info
+          const teamInfo = teamOptions.find(t => t.id === teamId);
+          const currentTeamName = teamInfo ? teamInfo.managerLastName : d?.teamName || "etal etal";
+ 
           rows.push({
             id: docX.id,
             teamId: teamId,
-            teamName: d?.teamName || "",
+            teamName: currentTeamName,
             title: d?.title || "",
             date: d?.date || "",
-            duetime: d?.duetime || "", // CHANGED: using 'duetime' field instead of 'time'
+            duetime: d?.duetime || "",
             plag: Number(d?.plag ?? 0),
             ai: Number(d?.ai ?? 0),
             file: d?.file || "—",
@@ -360,7 +434,7 @@ export default function ManuscriptSubmission() {
           });
         }
       });
-
+ 
       // Sort by date, then by time (empty times first), then by creation date
       rows.sort((a, b) => {
         // First by date
@@ -368,7 +442,7 @@ export default function ManuscriptSubmission() {
           bd = b.date || "";
         if (ad < bd) return -1;
         if (ad > bd) return 1;
-
+ 
         // Then by time (empty times come first for re-submissions)
         const at = a.duetime || "",
           bt = b.duetime || "";
@@ -379,13 +453,13 @@ export default function ManuscriptSubmission() {
           if (at < bt) return -1;
           if (at > bt) return 1;
         }
-
+ 
         // Finally by creation date (newer first)
         const ac = a.createdAt?.toDate?.() || new Date(0);
         const bc = b.createdAt?.toDate?.() || new Date(0);
         return bc - ac; // Newer first
       });
-
+ 
       setSubmissions(rows);
     } catch (e) {
       console.error("Failed to load submissions:", e);
@@ -398,11 +472,11 @@ export default function ManuscriptSubmission() {
       setLoadingSubmissions(false);
     }
   };
-
+ 
   useEffect(() => {
     loadSubmissions();
-  }, []);
-
+  }, [teamOptions]); // Reload when teamOptions change (manager updates)
+ 
   // verdict updater
   const handleChangeVerdict = async (submissionId, newVerdict) => {
     try {
@@ -425,7 +499,7 @@ export default function ManuscriptSubmission() {
       );
     }
   };
-
+ 
   // Handle inline edit save
   const handleSaveEdit = async (submissionId, updatedData) => {
     try {
@@ -438,19 +512,19 @@ export default function ManuscriptSubmission() {
         showAlert("Required Field", "Please select a time.", "warning");
         return;
       }
-
-      const selected = teamOptions.find((t) => t.name === updatedData.teamName);
+ 
+      const selected = teamOptions.find((t) => t.managerLastName === updatedData.teamName);
       const teamId = selected?.id || null;
-
+ 
       const payload = {
         teamId,
         teamName: updatedData.teamName,
         date: updatedData.date,
-        duetime: updatedData.duetime, // CHANGED: using 'duetime' field instead of 'time'
+        duetime: updatedData.duetime,
       };
-
+ 
       await updateDoc(doc(db, COLLECTION, submissionId), payload);
-
+ 
       // Notify team (PM, Adviser, Members)
       await notifyTeamSchedule({
         kind: "Manuscript Submission",
@@ -459,7 +533,7 @@ export default function ManuscriptSubmission() {
         date: updatedData.date,
         time: updatedData.duetime,
       });
-
+ 
       setEditingId(null);
       await loadSubmissions();
       showAlert("Success", "Submission updated successfully.", "success");
@@ -469,7 +543,7 @@ export default function ManuscriptSubmission() {
       await loadSubmissions();
     }
   };
-
+ 
   // Handle submission re-submission
   const handleScheduleReSubmission = async (originalSubmission) => {
     try {
@@ -478,7 +552,7 @@ export default function ManuscriptSubmission() {
         teamName: originalSubmission.teamName,
         title: originalSubmission.title || "",
         date: "", // Empty date for re-submission
-        duetime: "", // CHANGED: using 'duetime' field instead of 'time'
+        duetime: "", // Empty time for re-submission
         plag: 0,
         ai: 0,
         verdict: "Pending",
@@ -488,12 +562,12 @@ export default function ManuscriptSubmission() {
         fileUrl: [],
         file: "—",
       };
-
+ 
       await addDoc(collection(db, COLLECTION), newSubmission);
-
+ 
       setMenuOpenId(null);
       await loadSubmissions();
-
+ 
       showAlert(
         "Success",
         "Re-submission scheduled successfully. Please set the new date and time.",
@@ -508,7 +582,7 @@ export default function ManuscriptSubmission() {
       );
     }
   };
-
+ 
   // Handle single submission deletion
   const handleDeleteSubmission = async (submission) => {
     const result = await Swal.fire({
@@ -521,9 +595,9 @@ export default function ManuscriptSubmission() {
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "Cancel",
     });
-
+ 
     if (!result.isConfirmed) return;
-
+ 
     try {
       await deleteDoc(doc(db, COLLECTION, submission.id));
       setMenuOpenId(null);
@@ -539,26 +613,26 @@ export default function ManuscriptSubmission() {
       await loadSubmissions();
     }
   };
-
+ 
   // Check if verdict can be edited (date must be passed)
   const canEditVerdict = (submission) => {
     return isDatePassed(submission.date, submission.duetime);
   };
-
+ 
   // Check if submission details can be edited (verdict must not be "Passed")
   const canEditSubmission = (submission) => {
     return submission.verdict !== "Passed";
   };
-
+ 
   // search filter (client-side) - only search team name and title
   const filtered = useMemo(() => {
     let result = submissions;
-
+ 
     // Apply verdict filter
     if (filterVerdict !== "all") {
       result = result.filter((s) => s.verdict === filterVerdict);
     }
-
+ 
     // Apply search text filter - team name and title
     const q = queryText.trim().toLowerCase();
     if (q) {
@@ -568,10 +642,10 @@ export default function ManuscriptSubmission() {
           t.title.toLowerCase().includes(q)
       );
     }
-
+ 
     return result;
   }, [queryText, filterVerdict, submissions]);
-
+ 
   // Select-all works on the filtered (visible) list
   const allVisibleIds = useMemo(() => filtered.map((s) => s.id), [filtered]);
   const allSelected =
@@ -579,7 +653,7 @@ export default function ManuscriptSubmission() {
   const toggleSelectAll = () => {
     setSelected((prev) => (allSelected ? new Set() : new Set(allVisibleIds)));
   };
-
+ 
   // Delete button behavior
   const handleBulkDeleteClick = async () => {
     if (!bulkMode) {
@@ -594,7 +668,7 @@ export default function ManuscriptSubmission() {
       );
       return;
     }
-
+ 
     const result = await Swal.fire({
       title: "Confirm Delete",
       text: `Delete ${selected.size} selected submission(s)? This cannot be undone.`,
@@ -605,9 +679,9 @@ export default function ManuscriptSubmission() {
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "Cancel",
     });
-
+ 
     if (!result.isConfirmed) return;
-
+ 
     try {
       await Promise.all(
         Array.from(selected).map((id) => deleteDoc(doc(db, COLLECTION, id)))
@@ -629,7 +703,7 @@ export default function ManuscriptSubmission() {
       await loadSubmissions();
     }
   };
-
+ 
   /* ===== PDF export with SweetAlert dropdown ===== */
   const loadImage = (src) =>
     new Promise((resolve, reject) => {
@@ -638,7 +712,7 @@ export default function ManuscriptSubmission() {
       img.onerror = reject;
       img.src = src;
     });
-
+ 
   const handleExportPDF = async () => {
     const { value: exportFilter } = await Swal.fire({
       title: "Export PDF",
@@ -657,15 +731,15 @@ export default function ManuscriptSubmission() {
       cancelButtonText: "Cancel",
       confirmButtonColor: MAROON,
     });
-
+ 
     if (!exportFilter) return;
-
+ 
     // Filter data based on selection
     let exportData = submissions;
     if (exportFilter !== "all") {
       exportData = submissions.filter((s) => s.verdict === exportFilter);
     }
-
+ 
     if (exportData.length === 0) {
       Swal.fire({
         title: "No Data",
@@ -677,7 +751,7 @@ export default function ManuscriptSubmission() {
       });
       return;
     }
-
+ 
     const title = `Manuscript Submissions - ${
       exportFilter === "all" ? "All" : exportFilter
     }`;
@@ -685,7 +759,7 @@ export default function ManuscriptSubmission() {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const marginX = 40;
-
+ 
     // preload images
     let dctImg, ccsImg, tsImg;
     try {
@@ -697,10 +771,10 @@ export default function ManuscriptSubmission() {
     } catch {
       // continue even if images fail to load
     }
-
+ 
     const drawHeader = () => {
       const topY = 24;
-
+ 
       if (dctImg) {
         const sideW = 64;
         const sideH = (dctImg.height / dctImg.width) * sideW;
@@ -718,7 +792,7 @@ export default function ManuscriptSubmission() {
           sideH
         );
       }
-
+ 
       const headerY = 92;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
@@ -748,12 +822,12 @@ export default function ManuscriptSubmission() {
         headerY + 64,
         { align: "center" }
       );
-
+ 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       const titleY = headerY + 96;
       doc.text(title, pageWidth / 2, titleY, { align: "center" });
-
+ 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.text(
@@ -764,13 +838,13 @@ export default function ManuscriptSubmission() {
           align: "center",
         }
       );
-
+ 
       doc.setDrawColor(180);
       doc.line(marginX, titleY + 26, pageWidth - marginX, titleY + 26);
-
+ 
       return titleY + 38; // table start Y
     };
-
+ 
     const drawFooter = () => {
       if (tsImg) {
         const logoW = 72;
@@ -779,15 +853,15 @@ export default function ManuscriptSubmission() {
         const y = pageHeight - 20 - logoH;
         doc.addImage(tsImg, "PNG", x, y, logoW, logoH);
       }
-
+ 
       const str = `Page ${doc.internal.getNumberOfPages()}`;
       doc.setFontSize(9);
       doc.setTextColor(120);
       doc.text(str, pageWidth - marginX, pageHeight - 14, { align: "right" });
     };
-
+ 
     const tableYStart = drawHeader();
-
+ 
     const contentWidth = pageWidth - marginX * 2;
     const W = {
       no: 0.05 * contentWidth,
@@ -799,16 +873,16 @@ export default function ManuscriptSubmission() {
       ai: 0.1 * contentWidth,
       ver: 0.13 * contentWidth,
     };
-
+ 
     const verdictColor = (v) => {
       const s = String(v || "").toLowerCase();
       if (s === "passed") return [34, 139, 34];
       if (s === "recheck") return [217, 168, 30];
       return [106, 15, 20]; // Pending/others
     };
-
+ 
     const pctColor = (n) => (Number(n) <= 10 ? [34, 139, 34] : [180, 35, 24]);
-
+ 
     autoTable(doc, {
       startY: tableYStart,
       head: [
@@ -828,7 +902,7 @@ export default function ManuscriptSubmission() {
         s.teamName || "",
         s.title || "",
         fmtDateHuman(s.date) || "",
-        to12h(s.duetime) || "", // CHANGED: using 'duetime' field
+        to12h(s.duetime) || "",
         `${Number(s.plag || 0)}%`,
         `${Number(s.ai || 0)}%`,
         s.verdict || "",
@@ -882,13 +956,13 @@ export default function ManuscriptSubmission() {
         drawFooter();
       },
     });
-
+ 
     doc.save(
       `manuscript_submissions_${
         exportFilter === "all" ? "all" : exportFilter.toLowerCase()
       }_${new Date().toISOString().slice(0, 10)}.pdf`
     );
-
+ 
     Swal.fire({
       title: "Export Successful!",
       text: `PDF exported with ${exportData.length} ${
@@ -898,33 +972,33 @@ export default function ManuscriptSubmission() {
       confirmButtonColor: MAROON,
     });
   };
-
+ 
   // EditableRow component for inline editing
   const EditableRow = ({ submission, onSave, onCancel }) => {
     const [editedData, setEditedData] = useState({
       teamName: submission.teamName || "",
       date: submission.date || "",
-      duetime: submission.duetime || "", // CHANGED: using 'duetime' field
+      duetime: submission.duetime || "",
     });
-
+ 
     const canEdit = canEditSubmission(submission);
-
+ 
     return (
       <tr className="bg-blue-50">
         <td className="px-4 py-3 text-neutral-600">
           {filtered.findIndex((s) => s.id === submission.id) + 1}.
         </td>
-
+ 
         {/* Team Name (readonly in edit mode) */}
         <td className="px-4 py-3 font-medium text-neutral-800">
           {submission.teamName}
         </td>
-
+ 
         {/* Title (readonly) */}
         <td className="px-4 py-3 font-medium text-neutral-800">
           {submission.title || "—"}
         </td>
-
+ 
         {/* Date */}
         <td className="px-4 py-3">
           <div className="relative">
@@ -944,12 +1018,12 @@ export default function ManuscriptSubmission() {
             />
           </div>
         </td>
-
+ 
         {/* Time Dropdown */}
         <td className="px-4 py-3">
           <div className="relative">
             <select
-              value={editedData.duetime} // CHANGED: using 'duetime' field
+              value={editedData.duetime}
               onChange={(e) =>
                 setEditedData((prev) => ({ ...prev, duetime: e.target.value }))
               }
@@ -974,17 +1048,30 @@ export default function ManuscriptSubmission() {
             />
           </div>
         </td>
-
+ 
         {/* Plagiarism (readonly) */}
         <td className={`px-4 py-3 font-semibold ${pctClass(submission.plag)}`}>
           {submission.plag}%
         </td>
-
+ 
         {/* AI (readonly) */}
         <td className={`px-4 py-3 font-semibold ${pctClass(submission.ai)}`}>
           {submission.ai}%
         </td>
-
+ 
+        {/* File Uploaded (readonly) */}
+        <td className="px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setFilesRow(submission)}
+            className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+            title="View uploaded files"
+          >
+            <ExternalLink className="w-4 h-4" />
+            View Files
+          </button>
+        </td>
+ 
         {/* Verdict */}
         <td className="px-4 py-3">
           <div className="relative inline-flex items-center">
@@ -1011,7 +1098,7 @@ export default function ManuscriptSubmission() {
             />
           </div>
         </td>
-
+ 
         {/* Action buttons */}
         <td className="px-2 py-3">
           <div className="flex items-center gap-1">
@@ -1034,7 +1121,7 @@ export default function ManuscriptSubmission() {
       </tr>
     );
   };
-
+ 
   // Get row background color based on verdict
   const getRowBackgroundColor = (verdict) => {
     if (verdict === "Failed") {
@@ -1042,11 +1129,11 @@ export default function ManuscriptSubmission() {
     }
     return "";
   };
-
+ 
   // cell color helper for ≤10% = green
   const pctClass = (n) =>
     Number(n) <= 10 ? "text-[#6BA34D]" : "text-[#E45454]";
-
+ 
   return (
     <div className="">
       <Breadcrumbs />
@@ -1056,7 +1143,7 @@ export default function ManuscriptSubmission() {
           style={{ backgroundColor: MAROON, width: 260 }}
         />
       </div>
-
+ 
       {/* actions */}
       <div className="mt-6 space-y-4">
         {/* Row 1: Back + Export (aligned) */}
@@ -1076,7 +1163,7 @@ export default function ManuscriptSubmission() {
             Export PDF
           </Btn>
         </div>
-
+ 
         {/* Row 2: Search (left) + Filter (right) */}
         <div className="flex items-center justify-between">
           <div className="relative">
@@ -1092,7 +1179,7 @@ export default function ManuscriptSubmission() {
               className="absolute left-3 top-2.5 text-neutral-400"
             />
           </div>
-
+ 
           <div className="flex items-center gap-3">
             {/* Filter Button */}
             <div className="relative">
@@ -1104,7 +1191,7 @@ export default function ManuscriptSubmission() {
                 Filter
                 <ChevronDown size={16} />
               </button>
-
+ 
               {filterOpen && (
                 <div className="absolute right-0 mt-1 z-20 w-48 rounded-md border bg-white shadow-lg">
                   <div className="py-1">
@@ -1164,7 +1251,7 @@ export default function ManuscriptSubmission() {
                 </div>
               )}
             </div>
-
+ 
             {bulkMode && (
               <button
                 onClick={exitBulk}
@@ -1176,7 +1263,7 @@ export default function ManuscriptSubmission() {
           </div>
         </div>
       </div>
-
+ 
       {/* Active Filter Badge */}
       {filterVerdict !== "all" && (
         <div className="mt-4 flex items-center gap-2">
@@ -1192,7 +1279,7 @@ export default function ManuscriptSubmission() {
           </div>
         </div>
       )}
-
+ 
       {/* table */}
       <div className="mt-5 rounded-xl border border-neutral-200 bg-white shadow-[0_6px_18px_rgba(0,0,0,0.05)]">
         <table className="w-full text-sm">
@@ -1269,7 +1356,7 @@ export default function ManuscriptSubmission() {
                     />
                   );
                 }
-
+ 
                 const isChecked = selected.has(s.id);
                 const rowColor = getRowBackgroundColor(s.verdict);
                 const canEditVerdictNow = canEditVerdict(s);
@@ -1277,7 +1364,7 @@ export default function ManuscriptSubmission() {
                 const fileCount = Array.isArray(s.fileUrl)
                   ? s.fileUrl.length
                   : 0;
-
+ 
                 return (
                   <tr key={s.id} className={`${rowColor}`}>
                     {/* first column: checkbox or row number */}
@@ -1294,28 +1381,28 @@ export default function ManuscriptSubmission() {
                     ) : (
                       <td className="px-4 py-3">{idx + 1}.</td>
                     )}
-
+ 
                     <td className="px-4 py-3 font-medium">{s.teamName}</td>
                     <td className="px-4 py-3">{s.title || "—"}</td>
-
+ 
                     {/* Date */}
                     <td className="px-4 py-3">{fmtDateHuman(s.date) || "—"}</td>
-
+ 
                     {/* Time */}
                     <td className="px-4 py-3">{to12h(s.duetime) || "—"}</td>
-
+ 
                     {/* Plagiarism */}
                     <td
                       className={`px-4 py-3 font-semibold ${pctClass(s.plag)}`}
                     >
                       {s.plag}%
                     </td>
-
+ 
                     {/* AI */}
                     <td className={`px-4 py-3 font-semibold ${pctClass(s.ai)}`}>
                       {s.ai}%
                     </td>
-
+ 
                     {/* View-only files modal trigger */}
                     <td className="px-4 py-3">
                       <button
@@ -1328,7 +1415,7 @@ export default function ManuscriptSubmission() {
                         View Files{fileCount ? ` (${fileCount})` : ""}
                       </button>
                     </td>
-
+ 
                     {/* Verdict */}
                     <td className="px-4 py-3">
                       <div className="relative inline-flex items-center">
@@ -1372,7 +1459,7 @@ export default function ManuscriptSubmission() {
                           )}
                       </div>
                     </td>
-
+ 
                     {/* Row actions - Kebab menu with Update, Schedule Re-Submission, and Remove */}
                     <td className="px-2 py-3 relative">
                       <button
@@ -1388,7 +1475,7 @@ export default function ManuscriptSubmission() {
                       >
                         <MoreVertical size={18} />
                       </button>
-
+ 
                       {!bulkMode && menuOpenId === s.id && (
                         <div className="absolute right-2 mt-1 z-20 w-48 rounded-md border bg-white shadow">
                           <button
@@ -1427,7 +1514,7 @@ export default function ManuscriptSubmission() {
           </tbody>
         </table>
       </div>
-
+ 
       {/* View Team Dialog */}
       {viewSchedule && (
         <ViewTeamDialog
@@ -1435,7 +1522,7 @@ export default function ManuscriptSubmission() {
           onClose={() => setViewSchedule(null)}
         />
       )}
-
+ 
       {/* View-only Uploaded Files modal */}
       {filesRow && (
         <FilesViewerModal row={filesRow} onClose={() => setFilesRow(null)} />
@@ -1443,14 +1530,14 @@ export default function ManuscriptSubmission() {
     </div>
   );
 }
-
+ 
 /* ------- View Team Dialog ------- */
 function ViewTeamDialog({ schedule, onClose }) {
   const [loading, setLoading] = useState(true);
   const [adviser, setAdviser] = useState("-");
   const [manager, setManager] = useState("-");
   const [members, setMembers] = useState([]);
-
+ 
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -1481,7 +1568,7 @@ function ViewTeamDialog({ schedule, onClose }) {
       alive = false;
     };
   }, [schedule?.teamId]);
-
+ 
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -1503,7 +1590,7 @@ function ViewTeamDialog({ schedule, onClose }) {
               />
             </div>
           </div>
-
+ 
           {/* body */}
           <div className="px-6 pb-6">
             <div className="grid grid-cols-2 gap-x-10 gap-y-6">
@@ -1516,7 +1603,7 @@ function ViewTeamDialog({ schedule, onClose }) {
                   {schedule?.teamName || "-"}
                 </div>
               </div>
-
+ 
               {/* Adviser */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -1526,7 +1613,7 @@ function ViewTeamDialog({ schedule, onClose }) {
                   {loading ? "Loading…" : adviser}
                 </div>
               </div>
-
+ 
               {/* Project Manager */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -1536,7 +1623,7 @@ function ViewTeamDialog({ schedule, onClose }) {
                   {loading ? "Loading…" : manager}
                 </div>
               </div>
-
+ 
               {/* Members */}
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -1557,7 +1644,7 @@ function ViewTeamDialog({ schedule, onClose }) {
                 </div>
               </div>
             </div>
-
+ 
             {/* footer */}
             <div className="mt-8 flex items-center justify-end">
               <button
@@ -1573,11 +1660,11 @@ function ViewTeamDialog({ schedule, onClose }) {
     </div>
   );
 }
-
+ 
 /* ---------------- View-only Files Modal ---------------- */
 function FilesViewerModal({ row, onClose }) {
   const files = Array.isArray(row?.fileUrl) ? row.fileUrl : [];
-
+ 
   // normalize: support either object form or raw URL strings
   const list = files.map((f, i) => {
     if (typeof f === "string") {
@@ -1591,7 +1678,7 @@ function FilesViewerModal({ row, onClose }) {
       uploadedAt: f.uploadedAt || "",
     };
   });
-
+ 
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/35" onClick={onClose} />
@@ -1615,7 +1702,7 @@ function FilesViewerModal({ row, onClose }) {
               <X className="w-5 h-5" />
             </button>
           </div>
-
+ 
           {/* body */}
           <div className="flex-1 px-5 pb-5 overflow-y-auto">
             <div className="rounded-xl border border-neutral-200">
@@ -1675,7 +1762,7 @@ function FilesViewerModal({ row, onClose }) {
               </div>
             </div>
           </div>
-
+ 
           {/* footer */}
           <div className="flex justify-end gap-2 px-5 pb-4 pt-2">
             <button

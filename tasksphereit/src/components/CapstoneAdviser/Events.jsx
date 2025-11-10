@@ -15,22 +15,33 @@ import {
   Check,
   X as CloseIcon,
 } from "lucide-react";
-
+ 
 import { getAdviserEvents } from "../../services/events";
 import { auth } from "../../config/firebase";
-
+ 
 /* ===== Firebase ===== */
 import { db } from "../../config/firebase";
-import { doc, setDoc, updateDoc, getDoc } from "firebase/firestore";
-
+import { 
+  doc, 
+  setDoc, 
+  updateDoc, 
+  getDoc, 
+  collection, 
+  getDocs, 
+  query, 
+  where,
+  onSnapshot 
+} from "firebase/firestore";
+ 
 /* ===== Supabase ===== */
 import { supabase } from "../../config/supabase";
-
+ 
 const MAROON = "#6A0F14";
-
+ 
 /** Must match your Firestore collection name */
 const MANUSCRIPT_COLLECTION = "manuscriptSubmissions";
-
+const TEAMS_COLLECTION = "teams";
+ 
 const to12h = (t) => {
   if (!t) return "";
   const [Hraw, Mraw] = String(t).split(":");
@@ -40,7 +51,7 @@ const to12h = (t) => {
   const hh = ((H + 11) % 12) + 1;
   return `${hh}:${String(M || 0).padStart(2, "0")} ${ampm}`;
 };
-
+ 
 const CardTable = ({ children }) => (
   <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
     <div className="overflow-x-auto">
@@ -48,7 +59,7 @@ const CardTable = ({ children }) => (
     </div>
   </div>
 );
-
+ 
 const Pill = ({ children, editable, onClick }) => (
   <span
     onClick={onClick}
@@ -61,7 +72,7 @@ const Pill = ({ children, editable, onClick }) => (
     {children}
   </span>
 );
-
+ 
 /* ============ Editable Cell ============ */
 function EditableCell({
   value,
@@ -76,11 +87,11 @@ function EditableCell({
   const [editValue, setEditValue] = useState(
     value?.toString() || (type === "number" ? "0" : "")
   );
-
+ 
   useEffect(() => {
     setEditValue(value?.toString() || (type === "number" ? "0" : ""));
   }, [value, type]);
-
+ 
   const handleChange = (newValue) => {
     if (type === "number") {
       // Only allow numbers and limit to 100
@@ -95,7 +106,7 @@ function EditableCell({
       setEditValue(newValue);
     }
   };
-
+ 
   const handleSave = () => {
     let finalValue;
     if (type === "number") {
@@ -105,7 +116,7 @@ function EditableCell({
     }
     onSave(row.id, field, finalValue);
   };
-
+ 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
       handleSave();
@@ -113,7 +124,7 @@ function EditableCell({
       onCancel();
     }
   };
-
+ 
   if (editing) {
     if (type === "select") {
       return (
@@ -147,7 +158,7 @@ function EditableCell({
         </div>
       );
     }
-
+ 
     return (
       <div className="flex items-center gap-1">
         <input
@@ -177,7 +188,7 @@ function EditableCell({
       </div>
     );
   }
-
+ 
   return (
     <div className="flex items-center gap-1 group">
       <span>{type === "number" ? `${value ?? 0}%` : value}</span>
@@ -191,19 +202,19 @@ function EditableCell({
     </div>
   );
 }
-
+ 
 /* ============ Editable Verdict ============ */
 function EditableVerdict({ value, row, onSave, editing, onEdit, onCancel }) {
   const [editValue, setEditValue] = useState(value || "Pending");
-
+ 
   useEffect(() => {
     setEditValue(value || "Pending");
   }, [value]);
-
+ 
   const handleSave = () => {
     onSave(row.id, "verdict", editValue);
   };
-
+ 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
       handleSave();
@@ -211,7 +222,7 @@ function EditableVerdict({ value, row, onSave, editing, onEdit, onCancel }) {
       onCancel();
     }
   };
-
+ 
   if (editing) {
     return (
       <div className="flex items-center gap-1">
@@ -244,7 +255,7 @@ function EditableVerdict({ value, row, onSave, editing, onEdit, onCancel }) {
       </div>
     );
   }
-
+ 
   return (
     <div className="flex items-center gap-1 group">
       <Pill>{value || "Pending"}</Pill>
@@ -258,33 +269,23 @@ function EditableVerdict({ value, row, onSave, editing, onEdit, onCancel }) {
     </div>
   );
 }
-
+ 
 /* ============ Kebab Menu ============ */
 function KebabMenu({ row, onEdit, canEdit }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
-
+ 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setOpen(false);
       }
     };
-
+ 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  // Debug logging to check why canEdit might be false
-  console.log("KebabMenu - Row data:", {
-    id: row.id,
-    teamName: row.teamName,
-    date: row.date,
-    timeStart: row.timeStart,
-    time: row.time,
-    canEdit: canEdit,
-  });
-
+ 
   return (
     <div className="relative" ref={menuRef}>
       <button
@@ -294,7 +295,7 @@ function KebabMenu({ row, onEdit, canEdit }) {
       >
         <MoreVertical className="w-4 h-4" />
       </button>
-
+ 
       {open && (
         <div className="absolute right-0 top-6 bg-white border border-neutral-200 rounded-md shadow-lg z-10 min-w-[120px]">
           <button
@@ -322,28 +323,28 @@ function KebabMenu({ row, onEdit, canEdit }) {
     </div>
   );
 }
-
+ 
 /* ============ Upload helpers ============ */
 const safeName = (name = "") =>
   name
     .replace(/[^a-zA-Z0-9._-]/g, "_")
     .replace(/_+/g, "_")
     .slice(0, 120);
-
+ 
 async function uploadToSupabase(file, row) {
   const fileKey = `${row.teamId || "no-team"}/${row.id}/${
     Date.now() + "-" + Math.random().toString(36).slice(2)
   }-${safeName(file.name)}`;
-
+ 
   const { error } = await supabase.storage
     .from("user-manuscripts")
     .upload(fileKey, file, { upsert: false });
   if (error) throw new Error(error.message);
-
+ 
   const {
     data: { publicUrl },
   } = supabase.storage.from("user-manuscripts").getPublicUrl(fileKey);
-
+ 
   return {
     name: file.name,
     fileName: fileKey,
@@ -351,7 +352,7 @@ async function uploadToSupabase(file, row) {
     uploadedAt: new Date().toISOString(),
   };
 }
-
+ 
 async function upsertFileUrl(docId, nextList) {
   const ref = doc(db, MANUSCRIPT_COLLECTION, docId);
   try {
@@ -360,7 +361,7 @@ async function upsertFileUrl(docId, nextList) {
     await setDoc(ref, { fileUrl: nextList }, { merge: true });
   }
 }
-
+ 
 /* ============ Upload Modal ============ */
 function UploadModal({ open, row, onClose, onSaved }) {
   const [pendingFiles, setPendingFiles] = useState([]);
@@ -368,16 +369,16 @@ function UploadModal({ open, row, onClose, onSaved }) {
   const [toDelete, setToDelete] = useState(new Set());
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef(null);
-
+ 
   // Initialize when opened
   useEffect(() => {
     if (!open || !row?.id) return;
-
+ 
     // snapshot existing files locally for editing
     setExisting(Array.isArray(row.fileUrl) ? [...row.fileUrl] : []);
     setPendingFiles([]);
     setToDelete(new Set());
-
+ 
     // ensure fileUrl exists remotely too
     (async () => {
       if (!Array.isArray(row.fileUrl)) {
@@ -395,21 +396,21 @@ function UploadModal({ open, row, onClose, onSaved }) {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, row?.id]);
-
+ 
   if (!open || !row) return null;
-
+ 
   const pickFiles = () => inputRef.current?.click();
-
+ 
   const onFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setPendingFiles((prev) => [...prev, ...files]);
     e.target.value = "";
   };
-
+ 
   const removePending = (idx) =>
     setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
-
+ 
   const removeExisting = (fileName) => {
     setExisting((prev) => prev.filter((f) => f.fileName !== fileName));
     setToDelete((prev) => {
@@ -418,7 +419,7 @@ function UploadModal({ open, row, onClose, onSaved }) {
       return next;
     });
   };
-
+ 
   const save = async () => {
     if (uploading || !row?.id) return;
     setUploading(true);
@@ -431,17 +432,17 @@ function UploadModal({ open, row, onClose, onSaved }) {
           .remove(names);
         if (error) console.warn("Supabase remove error:", error.message);
       }
-
+ 
       // 2) upload new files
       const uploaded =
         pendingFiles.length > 0
           ? await Promise.all(pendingFiles.map((f) => uploadToSupabase(f, row)))
           : [];
-
+ 
       // 3) compose final list & write to Firestore
       const nextList = [...existing, ...uploaded];
       await upsertFileUrl(row.id, nextList);
-
+ 
       onSaved?.(nextList);
       onClose();
     } catch (e) {
@@ -451,9 +452,9 @@ function UploadModal({ open, row, onClose, onSaved }) {
       setUploading(false);
     }
   };
-
+ 
   const hasChanges = pendingFiles.length > 0 || toDelete.size > 0;
-
+ 
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
@@ -477,7 +478,7 @@ function UploadModal({ open, row, onClose, onSaved }) {
               <X className="w-5 h-5" />
             </button>
           </div>
-
+ 
           {/* Body (scrollable) */}
           <div className="flex-1 px-5 pb-5 overflow-y-auto space-y-5">
             {/* Existing files */}
@@ -541,7 +542,7 @@ function UploadModal({ open, row, onClose, onSaved }) {
                 )}
               </div>
             </div>
-
+ 
             {/* Pending attachments */}
             <div className="rounded-xl border border-neutral-200">
               <div className="px-4 py-2 border-b border-neutral-200 text-sm font-semibold flex items-center justify-between">
@@ -562,7 +563,7 @@ function UploadModal({ open, row, onClose, onSaved }) {
                   onChange={onFileChange}
                 />
               </div>
-
+ 
               <div className="p-4">
                 {pendingFiles.length === 0 ? (
                   <div className="text-sm text-neutral-600">
@@ -598,7 +599,7 @@ function UploadModal({ open, row, onClose, onSaved }) {
               </div>
             </div>
           </div>
-
+ 
           {/* Footer */}
           <div className="flex justify-end gap-2 px-5 pb-4 pt-2">
             <button
@@ -624,7 +625,14 @@ function UploadModal({ open, row, onClose, onSaved }) {
     </div>
   );
 }
-
+ 
+// Helper function to get last name from full name
+const getLastName = (fullName) => {
+  if (!fullName) return "";
+  const parts = fullName.trim().split(" ");
+  return parts[parts.length - 1] || "";
+};
+ 
 /* ============================ Main ============================ */
 export default function AdviserEvents() {
   const [rows, setRows] = useState({
@@ -642,128 +650,259 @@ export default function AdviserEvents() {
   const [defTab, setDefTab] = useState(
     (searchParams.get("tab") || "title").toLowerCase()
   );
-
+ 
   // Upload modal state
   const [uploadRow, setUploadRow] = useState(null);
-
+ 
   // Inline editing state
   const [editingCells, setEditingCells] = useState(new Set()); // Set of 'docId-field' strings
-
+ 
   const uid =
     auth?.currentUser?.uid ??
     (typeof window !== "undefined" ? localStorage.getItem("uid") : null);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        setLoading(true);
-        const res = await getAdviserEvents(uid);
-        console.log("Fetched manuscript data:", res.manuscript); // Debug log
-
-        // FIXED: Properly extract date and time from manuscript submissions
-        const manus = (res.manuscript || []).map((m) => {
-          console.log("Manuscript document:", m); // Debug to see all fields
-
-          // Try different possible field names for date and time
-          const date =
-            m.dueDate || m.date || m.submissionDate || m.deadline || "";
-          const time =
-            m.dueTime ||
-            m.time ||
-            m.submissionTime ||
-            m.deadlineTime ||
-            m.timeStart ||
-            "";
-
+ 
+  // Get adviser's teams and their manuscript submissions
+  const fetchAdviserManuscripts = async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching manuscripts for adviser UID:", uid);
+ 
+      // First, get all teams where this user is the adviser
+      const teamsQuery = query(
+        collection(db, TEAMS_COLLECTION),
+        where("adviser.uid", "==", uid)
+      );
+      const teamsSnapshot = await getDocs(teamsQuery);
+      const adviserTeamIds = teamsSnapshot.docs.map(doc => doc.id);
+ 
+      console.log("Adviser's team IDs:", adviserTeamIds);
+ 
+      if (adviserTeamIds.length === 0) {
+        console.log("No teams found for this adviser");
+        setRows(prev => ({ ...prev, manuscript: [] }));
+        return;
+      }
+ 
+      // Get manuscript submissions for these teams
+      const manuscriptsQuery = query(
+        collection(db, MANUSCRIPT_COLLECTION),
+        where("teamId", "in", adviserTeamIds)
+      );
+ 
+      const manuscriptsSnapshot = await getDocs(manuscriptsQuery);
+      const manuscriptsData = manuscriptsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+ 
+      console.log("Raw manuscript data:", manuscriptsData);
+ 
+      // Process manuscript data with team information
+      const processedManuscripts = await Promise.all(
+        manuscriptsData.map(async (m) => {
+          // Get current team info to ensure we have the latest team name
+          let currentTeamName = m.teamName || "Unknown Team";
+          try {
+            const teamDoc = await getDoc(doc(db, TEAMS_COLLECTION, m.teamId));
+            if (teamDoc.exists()) {
+              const teamData = teamDoc.data();
+              // Use manager's last name + "etal" format
+              if (teamData.manager && teamData.manager.fullName) {
+                const lastName = getLastName(teamData.manager.fullName);
+                currentTeamName = `${lastName} etal`;
+              } else if (teamData.name) {
+                currentTeamName = teamData.name;
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching team data:", error);
+          }
+ 
+          // Extract date and time fields - check ALL possible field names
+          const date = m.date || m.dueDate || m.submissionDate || m.deadline || "";
+ 
+          let duetime = "";
+          if (m.duetime) duetime = m.duetime;
+          else if (m.dueTime) duetime = m.dueTime;
+          else if (m.time) duetime = m.time;
+          else if (m.submissionTime) duetime = m.submissionTime;
+          else if (m.deadlineTime) duetime = m.deadlineTime;
+          else if (m.timeStart) duetime = m.timeStart;
+ 
+          console.log(`Processing manuscript ${m.id}:`, {
+            date,
+            duetime,
+            teamName: currentTeamName,
+            allFields: Object.keys(m)
+          });
+ 
           return {
             ...m,
             fileUrl: Array.isArray(m.fileUrl) ? m.fileUrl : [],
-            time: time,
+            duetime: duetime,
             date: date,
-            timeStart: time, // Make sure timeStart is also set for consistency
-            teamName: m.teamName || m.team || "",
+            timeStart: duetime, // For compatibility
+            teamName: currentTeamName,
             title: m.title || m.projectTitle || "",
             plag: m.plag || m.plagiarism || 0,
             ai: m.ai || m.aiScore || 0,
             verdict: m.verdict || m.status || "Pending",
           };
+        })
+      );
+ 
+      console.log("Processed manuscripts:", processedManuscripts);
+      setRows(prev => ({ ...prev, manuscript: processedManuscripts }));
+ 
+    } catch (error) {
+      console.error("Error fetching adviser manuscripts:", error);
+      setRows(prev => ({ ...prev, manuscript: [] }));
+    } finally {
+      setLoading(false);
+    }
+  };
+ 
+  // Real-time listener for team changes
+  useEffect(() => {
+    if (!uid) return;
+ 
+    // Listen for changes in teams collection
+    const teamsQuery = query(
+      collection(db, TEAMS_COLLECTION),
+      where("adviser.uid", "==", uid)
+    );
+ 
+    const unsubscribeTeams = onSnapshot(teamsQuery, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'removed') {
+          // Team was dissolved - remove its manuscripts
+          const dissolvedTeamId = change.doc.id;
+          console.log("Team dissolved, removing manuscripts for team:", dissolvedTeamId);
+          setRows(prev => ({
+            ...prev,
+            manuscript: prev.manuscript.filter(m => m.teamId !== dissolvedTeamId)
+          }));
+        } else if (change.type === 'modified') {
+          // Team was updated (manager changed, etc.) - update team names
+          const updatedTeam = { id: change.doc.id, ...change.doc.data() };
+          console.log("Team updated:", updatedTeam);
+ 
+          // Update team name in manuscripts
+          let newTeamName = updatedTeam.name || "Unknown Team";
+          if (updatedTeam.manager && updatedTeam.manager.fullName) {
+            const lastName = getLastName(updatedTeam.manager.fullName);
+            newTeamName = `${lastName} etal`;
+          }
+ 
+          setRows(prev => ({
+            ...prev,
+            manuscript: prev.manuscript.map(m => 
+              m.teamId === updatedTeam.id 
+                ? { ...m, teamName: newTeamName }
+                : m
+            )
+          }));
+        }
+      });
+    });
+ 
+    // Listen for manuscript changes
+    const manuscriptsUnsubscribe = onSnapshot(
+      collection(db, MANUSCRIPT_COLLECTION), 
+      (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'removed') {
+            // Manuscript was deleted
+            const removedId = change.doc.id;
+            setRows(prev => ({
+              ...prev,
+              manuscript: prev.manuscript.filter(m => m.id !== removedId)
+            }));
+          }
         });
-
-        console.log("Processed manuscript data with date/time:", manus); // Debug log
-
-        if (alive) setRows({ ...res, manuscript: manus });
-      } catch (e) {
-        console.error("Failed to load events:", e);
-        if (alive)
-          setRows({
-            titleDefense: [],
-            manuscript: [],
-            oralDefense: [],
-            finalDefense: [],
-            finalRedefense: [],
-          });
-      } finally {
-        if (alive) setLoading(false);
       }
-    })();
+    );
+ 
     return () => {
-      alive = false;
+      unsubscribeTeams();
+      manuscriptsUnsubscribe();
     };
   }, [uid]);
-
-  // Additional useEffect to debug and fetch manuscript data directly if needed
+ 
+  // Initial data fetch
+  useEffect(() => {
+    if (uid) {
+      fetchAdviserManuscripts();
+    }
+  }, [uid]);
+ 
+  // Additional direct fetch as backup
   useEffect(() => {
     const fetchManuscriptsDirectly = async () => {
       try {
-        const { collection, getDocs } = await import("firebase/firestore");
+        console.log("Backup: Fetching all manuscripts directly...");
         const manuscriptsCollection = collection(db, MANUSCRIPT_COLLECTION);
         const snapshot = await getDocs(manuscriptsCollection);
         const manuscriptsData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-        console.log("Direct Firestore fetch - Manuscripts:", manuscriptsData);
-
-        // Update manuscript rows with direct fetch data
-        setRows((prev) => ({
-          ...prev,
-          manuscript: manuscriptsData.map((m) => {
-            const date =
-              m.dueDate || m.date || m.submissionDate || m.deadline || "";
-            const time =
-              m.dueTime ||
-              m.time ||
-              m.submissionTime ||
-              m.deadlineTime ||
-              m.timeStart ||
-              "";
-
+ 
+        console.log("Backup fetch - all manuscripts:", manuscriptsData);
+ 
+        // Get adviser's team IDs to filter
+        const teamsQuery = query(
+          collection(db, TEAMS_COLLECTION),
+          where("adviser.uid", "==", uid)
+        );
+        const teamsSnapshot = await getDocs(teamsQuery);
+        const adviserTeamIds = teamsSnapshot.docs.map(doc => doc.id);
+ 
+        // Filter manuscripts by adviser's teams and process
+        const filteredManuscripts = manuscriptsData
+          .filter(m => adviserTeamIds.includes(m.teamId))
+          .map((m) => {
+            const date = m.date || m.dueDate || m.submissionDate || m.deadline || "";
+            let duetime = "";
+            if (m.duetime) duetime = m.duetime;
+            else if (m.dueTime) duetime = m.dueTime;
+            else if (m.time) duetime = m.time;
+            else if (m.submissionTime) duetime = m.submissionTime;
+            else if (m.deadlineTime) duetime = m.deadlineTime;
+            else if (m.timeStart) duetime = m.timeStart;
+ 
             return {
               ...m,
               fileUrl: Array.isArray(m.fileUrl) ? m.fileUrl : [],
-              time: time,
+              duetime: duetime,
               date: date,
-              timeStart: time, // Make sure timeStart is also set
+              timeStart: duetime,
               teamName: m.teamName || m.team || "",
               title: m.title || m.projectTitle || "",
               plag: m.plag || m.plagiarism || 0,
               ai: m.ai || m.aiScore || 0,
               verdict: m.verdict || m.status || "Pending",
             };
-          }),
+          });
+ 
+        setRows((prev) => ({
+          ...prev,
+          manuscript: filteredManuscripts,
         }));
       } catch (error) {
-        console.error("Direct fetch error:", error);
+        console.error("Backup fetch error:", error);
       }
     };
-
-    // Only fetch directly if manuscript data is empty but we're in manuscript view
-    if (view === "manuscript" && rows.manuscript.length === 0 && !loading) {
-      fetchManuscriptsDirectly();
+ 
+    // If still no data after initial load, try backup fetch
+    if (view === "manuscript" && rows.manuscript.length === 0 && !loading && uid) {
+      console.log("No data found, running backup fetch...");
+      setTimeout(() => {
+        fetchManuscriptsDirectly();
+      }, 1000);
     }
-  }, [view, rows.manuscript.length, loading]);
-
+  }, [view, rows.manuscript.length, loading, uid]);
+ 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     if (view === "menu") next.delete("view");
@@ -773,35 +912,28 @@ export default function AdviserEvents() {
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, defTab]);
-
-  // FIXED: Improved canEditRow function to properly check for date and time
+ 
+  // FIXED: Updated canEditRow function
   const canEditRow = (row) => {
-    // Check if both date and time exist and are not empty
     const hasDate = !!row.date && row.date.trim() !== "";
-    const hasTime =
-      !!(row.timeStart || row.time) &&
-      ((row.timeStart && row.timeStart.trim() !== "") ||
-        (row.time && row.time.trim() !== ""));
-
-    console.log("canEditRow check:", {
-      id: row.id,
-      teamName: row.teamName,
+    const hasDuetime = !!row.duetime && row.duetime.trim() !== "";
+ 
+    console.log("canEditRow check for:", row.teamName, {
       date: row.date,
-      timeStart: row.timeStart,
-      time: row.time,
+      duetime: row.duetime,
       hasDate,
-      hasTime,
-      canEdit: hasDate && hasTime,
+      hasDuetime,
+      canEdit: hasDate && hasDuetime,
     });
-
-    return hasDate && hasTime;
+ 
+    return hasDate && hasDuetime;
   };
-
+ 
   const handleSaveScore = async (docId, field, value) => {
     try {
       const ref = doc(db, MANUSCRIPT_COLLECTION, docId);
       await updateDoc(ref, { [field]: value });
-
+ 
       // Update local state
       setRows((prev) => ({
         ...prev,
@@ -809,7 +941,7 @@ export default function AdviserEvents() {
           m.id === docId ? { ...m, [field]: value } : m
         ),
       }));
-
+ 
       // Remove from editing set
       setEditingCells((prev) => {
         const next = new Set(prev);
@@ -821,14 +953,14 @@ export default function AdviserEvents() {
       alert("Failed to update score. Please try again.");
     }
   };
-
+ 
   const handleEditCell = (docId, field) => {
     const row = rows.manuscript.find((m) => m.id === docId);
     if (row && canEditRow(row)) {
       setEditingCells((prev) => new Set(prev).add(`${docId}-${field}`));
     }
   };
-
+ 
   const handleBulkEdit = (row) => {
     if (canEditRow(row)) {
       // Enable editing for all three fields at once
@@ -837,7 +969,7 @@ export default function AdviserEvents() {
       );
     }
   };
-
+ 
   const handleCancelEdit = (docId, field) => {
     setEditingCells((prev) => {
       const next = new Set(prev);
@@ -845,11 +977,11 @@ export default function AdviserEvents() {
       return next;
     });
   };
-
+ 
   const isEditing = (docId, field) => {
     return editingCells.has(`${docId}-${field}`);
   };
-
+ 
   const Header = (
     <div className="space-y-2">
       <div
@@ -862,7 +994,7 @@ export default function AdviserEvents() {
       <div className="h-[3px] w-full" style={{ backgroundColor: MAROON }} />
     </div>
   );
-
+ 
   const CategoryCard = ({ title, icon: Icon, onClick }) => (
     <button
       onClick={onClick}
@@ -879,7 +1011,7 @@ export default function AdviserEvents() {
       </div>
     </button>
   );
-
+ 
   if (view === "menu") {
     return (
       <div className="space-y-4">
@@ -899,11 +1031,11 @@ export default function AdviserEvents() {
       </div>
     );
   }
-
+ 
   return (
     <div className="space-y-4">
       {Header}
-
+ 
       {view === "manuscript" && (
         <section>
           <div className="flex items-center gap-2 mb-2">
@@ -912,137 +1044,142 @@ export default function AdviserEvents() {
               Manuscript Results
             </h2>
           </div>
-
+ 
           {/* Instructions */}
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
               <strong>Note:</strong> You can only edit scores and verdict when a
-              due date and time are set by the instructor. Click the edit icons
+              due date and due time are set by the instructor. Click the edit icons
               next to each field or use the "Update" action to edit all fields
               at once.
             </p>
           </div>
-
-          <CardTable>
-            <thead>
-              <tr className="bg-neutral-50/80 text-neutral-600">
-                <th className="text-left py-2 pl-6 pr-3">NO</th>
-                <th className="text-left py-2 pr-3">Team</th>
-                <th className="text-left py-2 pr-3">Title</th>
-                <th className="text-left py-2 pr-3">Due Date</th>
-                <th className="text-left py-2 pr-3">Due Time</th>
-                <th className="text-left py-2 pr-3">Plagiarism</th>
-                <th className="text-left py-2 pr-3">AI</th>
-                <th className="text-left py-2 pr-3">Verdict</th>
-                <th className="text-left py-2 pr-3">File Uploaded</th>
-                <th className="text-left py-2 pr-6">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(loading ? [] : rows.manuscript).map((r, idx) => {
-                const canEdit = canEditRow(r);
-                const editingPlag = isEditing(r.id, "plag");
-                const editingAI = isEditing(r.id, "ai");
-                const editingVerdict = isEditing(r.id, "verdict");
-
-                console.log("Row rendering:", {
-                  id: r.id,
-                  teamName: r.teamName,
-                  date: r.date,
-                  timeStart: r.timeStart,
-                  time: r.time,
-                  canEdit,
-                });
-
-                return (
-                  <tr
-                    key={`ms-${r.id}`}
-                    className="border-t border-neutral-200"
-                  >
-                    <td className="py-2 pl-6 pr-3">{idx + 1}.</td>
-                    <td className="py-2 pr-3">{r.teamName}</td>
-                    <td className="py-2 pr-3">{r.title || "—"}</td>
-                    <td className="py-2 pr-3">
-                      {r.date || (
-                        <span className="text-red-500 text-xs">Not set</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-3">
-                      {r.timeStart ? (
-                        to12h(r.timeStart)
-                      ) : (
-                        <span className="text-red-500 text-xs">Not set</span>
-                      )}
-                    </td>
-
-                    {/* Plagiarism Score - Editable */}
-                    <td className="py-2 pr-3">
-                      <EditableCell
-                        value={r.plag}
-                        row={r}
-                        field="plag"
-                        onSave={handleSaveScore}
-                        editing={editingPlag}
-                        onEdit={handleEditCell}
-                        onCancel={() => handleCancelEdit(r.id, "plag")}
-                        type="number"
-                      />
-                    </td>
-
-                    {/* AI Score - Editable */}
-                    <td className="py-2 pr-3">
-                      <EditableCell
-                        value={r.ai}
-                        row={r}
-                        field="ai"
-                        onSave={handleSaveScore}
-                        editing={editingAI}
-                        onEdit={handleEditCell}
-                        onCancel={() => handleCancelEdit(r.id, "ai")}
-                        type="number"
-                      />
-                    </td>
-
-                    {/* Verdict - Editable */}
-                    <td className="py-2 pr-3">
-                      <EditableCell
-                        value={r.verdict}
-                        row={r}
-                        field="verdict"
-                        onSave={handleSaveScore}
-                        editing={editingVerdict}
-                        onEdit={handleEditCell}
-                        onCancel={() => handleCancelEdit(r.id, "verdict")}
-                        type="select"
-                      />
-                    </td>
-
-                    {/* Upload button + modal */}
-                    <td className="py-2 pr-3">
-                      <button
-                        type="button"
-                        onClick={() => setUploadRow(r)}
-                        className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
-                      >
-                        <Paperclip className="w-4 h-4" />
-                        Upload File
-                      </button>
-                    </td>
-
-                    {/* Kebab Menu */}
-                    <td className="py-2 pr-6">
-                      <KebabMenu
-                        row={r}
-                        onEdit={handleBulkEdit}
-                        canEdit={canEdit}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </CardTable>
-
+ 
+          {rows.manuscript.length === 0 && !loading ? (
+            <div className="text-center py-8 text-neutral-500">
+              No manuscript submissions found for your teams.
+            </div>
+          ) : (
+            <CardTable>
+              <thead>
+                <tr className="bg-neutral-50/80 text-neutral-600">
+                  <th className="text-left py-2 pl-6 pr-3">NO</th>
+                  <th className="text-left py-2 pr-3">Team</th>
+                  <th className="text-left py-2 pr-3">Title</th>
+                  <th className="text-left py-2 pr-3">Due Date</th>
+                  <th className="text-left py-2 pr-3">Due Time</th>
+                  <th className="text-left py-2 pr-3">Plagiarism</th>
+                  <th className="text-left py-2 pr-3">AI</th>
+                  <th className="text-left py-2 pr-3">Verdict</th>
+                  <th className="text-left py-2 pr-3">File Uploaded</th>
+                  <th className="text-left py-2 pr-6">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(loading ? [] : rows.manuscript).map((r, idx) => {
+                  const canEdit = canEditRow(r);
+                  const editingPlag = isEditing(r.id, "plag");
+                  const editingAI = isEditing(r.id, "ai");
+                  const editingVerdict = isEditing(r.id, "verdict");
+ 
+                  console.log("Rendering row:", {
+                    id: r.id,
+                    teamName: r.teamName,
+                    date: r.date,
+                    duetime: r.duetime,
+                    canEdit,
+                  });
+ 
+                  return (
+                    <tr
+                      key={`ms-${r.id}`}
+                      className="border-t border-neutral-200"
+                    >
+                      <td className="py-2 pl-6 pr-3">{idx + 1}.</td>
+                      <td className="py-2 pr-3">{r.teamName}</td>
+                      <td className="py-2 pr-3">{r.title || "—"}</td>
+                      <td className="py-2 pr-3">
+                        {r.date || (
+                          <span className="text-red-500 text-xs">Not set</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-3">
+                        {r.duetime ? (
+                          to12h(r.duetime)
+                        ) : (
+                          <span className="text-red-500 text-xs">Not set</span>
+                        )}
+                      </td>
+ 
+                      {/* Plagiarism Score - Editable */}
+                      <td className="py-2 pr-3">
+                        <EditableCell
+                          value={r.plag}
+                          row={r}
+                          field="plag"
+                          onSave={handleSaveScore}
+                          editing={editingPlag}
+                          onEdit={handleEditCell}
+                          onCancel={() => handleCancelEdit(r.id, "plag")}
+                          type="number"
+                        />
+                      </td>
+ 
+                      {/* AI Score - Editable */}
+                      <td className="py-2 pr-3">
+                        <EditableCell
+                          value={r.ai}
+                          row={r}
+                          field="ai"
+                          onSave={handleSaveScore}
+                          editing={editingAI}
+                          onEdit={handleEditCell}
+                          onCancel={() => handleCancelEdit(r.id, "ai")}
+                          type="number"
+                        />
+                      </td>
+ 
+                      {/* Verdict - Editable */}
+                      <td className="py-2 pr-3">
+                        <EditableCell
+                          value={r.verdict}
+                          row={r}
+                          field="verdict"
+                          onSave={handleSaveScore}
+                          editing={editingVerdict}
+                          onEdit={handleEditCell}
+                          onCancel={() => handleCancelEdit(r.id, "verdict")}
+                          type="select"
+                        />
+                      </td>
+ 
+                      {/* Upload button + modal */}
+                      <td className="py-2 pr-3">
+                        <button
+                          type="button"
+                          onClick={() => setUploadRow(r)}
+                          className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+                        >
+                          <Paperclip className="w-4 h-4" />
+                          Upload File
+                        </button>
+                      </td>
+ 
+                      {/* Kebab Menu */}
+                      <td className="py-2 pr-6">
+                        <KebabMenu
+                          row={r}
+                          onEdit={handleBulkEdit}
+                          canEdit={canEdit}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </CardTable>
+          )}
+ 
           {/* Upload Modal */}
           <UploadModal
             open={!!uploadRow}
@@ -1060,7 +1197,7 @@ export default function AdviserEvents() {
           />
         </section>
       )}
-
+ 
       {view === "defenses" && (
         <>
           <div className="flex gap-2 mb-3">
@@ -1082,7 +1219,7 @@ export default function AdviserEvents() {
               </button>
             ))}
           </div>
-
+ 
           {defTab === "title" && (
             <section>
               <div className="flex items-center gap-2 mb-2">
@@ -1131,7 +1268,7 @@ export default function AdviserEvents() {
               </CardTable>
             </section>
           )}
-
+ 
           {defTab === "oral" && (
             <section>
               <div className="flex items-center gap-2 mb-2">
@@ -1182,7 +1319,7 @@ export default function AdviserEvents() {
               </CardTable>
             </section>
           )}
-
+ 
           {defTab === "final" && (
             <section>
               <div className="flex items-center gap-2 mb-2">
@@ -1244,7 +1381,7 @@ export default function AdviserEvents() {
               </CardTable>
             </section>
           )}
-
+ 
           {defTab === "redef" && (
             <section>
               <div className="flex items-center gap-2 mb-2">
