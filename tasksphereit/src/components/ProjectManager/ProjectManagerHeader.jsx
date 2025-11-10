@@ -1,0 +1,40 @@
+import React from "react";
+import { Menu, User, NotebookText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import NotiBell from "../common/NotiBell";
+
+export default function ProjectManagerHeader({ onOpenProfile }) {
+  const navigate = useNavigate(); // sample usage of useNavigate
+
+  return (
+    <header className="bg-white border-b border-neutral-200 shadow-sm">
+      <div className="flex items-center justify-between px-6 py-3">
+        {/* Left: menu toggle for mobile */}
+        <div className="flex items-center gap-4">
+          <button className="md:hidden p-2 rounded-lg hover:bg-neutral-100">
+            <Menu className="w-6 h-6 text-[#6A0F14]" />
+          </button>
+        </div>
+
+        {/* Right: icons */}
+        <div className="flex items-center gap-4">
+          <button
+            className="p-2 rounded-full hover:bg-neutral-100 cursor-pointer"
+            onClick={() => navigate("/projectmanager/notes")}
+            title="Notes"
+          >
+            <NotebookText className="w-6 h-6 text-[#6A0F14]" />
+          </button>
+          <NotiBell role="Project Manager" to="/projectmanager/notifications" />
+          <button
+            className="p-2 rounded-full hover:bg-neutral-100 cursor-pointer"
+            onClick={onOpenProfile}
+            title="Open Profile"
+          >
+            <User className="w-6 h-6 text-[#6A0F14]" />
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}

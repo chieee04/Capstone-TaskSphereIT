@@ -1,0 +1,2399 @@
+{
+  "finalReDefense": [
+    {
+      "methodology": "Agile",
+      "projectPhases": [
+        {
+          "phase": "Develop",
+          "taskTypes": [
+            {
+              "type": "Documentation",
+              "tasks": [
+                {
+                  "task": "1.Re-Polishing: Chapter 1",
+                  "subtasks": [
+                    {
+                      "subtask": "Introduction",
+                      "elements": [
+                        "Project Context",
+                        "Background of the Study",
+                        "Policies and Procedures",
+                        "Users Position"
+                      ]
+                    },
+                    {
+                      "subtask": "Objectives",
+                      "elements": [
+                        "General Objectives",
+                        "Specific Objectives"
+                      ]
+                    },
+                    {
+                      "subtask": "Scope and Limitation",
+                      "elements": [
+                        "Scope",
+                        "Limitation"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "2.Re-Polishing: Chapter 2",
+                  "subtasks": [
+                    {
+                      "subtask": "Related Theories",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Related Literature",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "3.Re-Polishing: Chapter 3",
+                  "subtasks": [
+                    {
+                      "subtask": "Implementation",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "4. Re-Polishing: Chapter 4",
+                  "subtasks": [
+                    {
+                      "subtask": "Methodology",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Environment",
+                      "elements": [
+                        "Locale",
+                        "Population of the Study",
+                        "Organizational Chart/Profile"
+                      ]
+                    },
+                    {
+                      "subtask": "Requirement Specification",
+                      "elements": [
+                        "Operational Feasibility [Fishbone Diagram]",
+                        "Operational Feasibility [Functional Decomposition Diagram]",
+                        "Technical Feasibility",
+                        "Schedule Feasibility",
+                        "Economic Feasibility",
+                        "Requirements Modeling [Context Diagram]",
+                        "Requirements Modeling [Data Flow Diagram]",
+                        "Requirements Modeling [System Flowchart]",
+                        "Requirements Modeling [Program Flowchart]",
+                        "Requirements Modeling [Use Case Diagram]",
+                        "Requirements Modeling [Use Class Diagram]",
+                        "Requirements Modeling [Sequence Diagram]",
+                        "Requirements Modeling [Activity Diagram]",
+                        "Risk Assessment/Analysis"
+                      ]
+                    },
+                    {
+                      "subtask": "Design",
+                      "elements": [
+                        "Output and User-interface Design Forms",
+                        "Data Design",
+                        "System Architecture [Network Model]",
+                        "System Architecture [Network Topology]",
+                        "System Architecture [Network Security]"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Software",
+                        "Hardware Specification",
+                        "Program Specification"
+                      ]
+                    },
+                    {
+                      "subtask": "Programming Enviroment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Re-Polishing: Development",
+                  "subtasks": [
+                    {
+                      "subtask": "1.Software",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "2.Hardware Specification",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "3.Program Specification",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "4.Programming Enviroment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "5.Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "6.Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "6.Re-Polishing:Verification and Testing",
+                  "subtasks": [
+                    {
+                      "subtask": "Unit Testing",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Integration Testing",
+                      "elements": [
+                        "Compatibility Testing",
+                        "Performance Testing",
+                        "Stress Testing",
+                        "Load Testing"
+                      ]
+                    },
+                    {
+                      "subtask": "System Testing",
+                      "elements": [
+                        "System Function",
+                        "Test Data",
+                        "Test Result and Observations"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "6.Acceptance Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "7.Re-Polishing: Implementation Plan",
+                  "subtasks": [
+                    {
+                      "subtask": "Physical Environment",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Interfaces",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Functionality",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Data",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Security",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "8.Re-Polishing:Installation Process",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "9.Re-Polishing: Chapter 5",
+                  "subtasks": [
+                    {
+                      "subtask": "1.Conclusion",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "2.Recomendations",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "3.Appendices",
+                      "elements": [
+                        "Appendix F",
+                        "Appendix G",
+                        "Appendix H",
+                        "Appendix I"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "10.Re-Polishing Supporting Sections",
+                  "subtasks": [
+                    {
+                      "subtask": "References",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Resource Person",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Appendices",
+                      "elements": [
+                        "Appendix A",
+                        "Appendix B",
+                        "Appendix C",
+                        "Appendix D",
+                        "Appendix E"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "11.Review Documentation and & System Details",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "12.Re-Defense: Manuscript Submission",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "System Development",
+              "tasks": [
+                {
+                  "task": "1.UI Enhancement",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "2.Functionality Enhancement",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "3.Bug Fixing",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "Test",
+              "tasks": [
+                {
+                  "task": "4.Re-Defense System QA",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Unit Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Compatibility Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Performance Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Stress Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Load Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Concurrent Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Pacing Time",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Response Time",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Network Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "5.Bug Fixing and Final Adjustments",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Deploy",
+          "taskTypes": [
+            {
+              "type": "Deploy",
+              "tasks": [
+                {
+                  "task": "6.Patch Update",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Review",
+          "taskTypes": [
+            {
+              "type": "Review",
+              "tasks": [
+                {
+                  "task": "7.Review Users Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "8.Final Re-Defense",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "9.Final Re-Defense Feedback Integration",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "10.Manuscript Re-Submission for AI and Plagiarism Check",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Discussion & Review",
+          "taskTypes": [
+            {
+              "type": "Meetings",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Gather Users/Client Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Adjustment of the System",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Re-Defense Preparation",
+                  "subtasks": [
+                    {
+                      "subtask": "System Testing Request Letter",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "PowerPoint Presentation",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Mock Defense",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Manuscript Printing",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "methodology": "Extreme Programming (XP)",
+      "projectPhases": [
+        {
+          "phase": "Coding",
+          "taskTypes": [
+            {
+              "type": "Documentation",
+              "tasks": [
+                {
+                  "task": "Re-Polishing: Chapter 1",
+                  "subtasks": [
+                    {
+                      "subtask": "Introduction",
+                      "elements": [
+                        "Project Context",
+                        "Background of the Study",
+                        "Policies and Procedures",
+                        "Users Position"
+                      ]
+                    },
+                    {
+                      "subtask": "Objectives",
+                      "elements": [
+                        "General Objectives",
+                        "Specific Objectives"
+                      ]
+                    },
+                    {
+                      "subtask": "Scope and Limitation",
+                      "elements": [
+                        "Scope",
+                        "Limitation"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Re-Polishing: Chapter 2",
+                  "subtasks": [
+                    {
+                      "subtask": "Related Theories",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Related Literature",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Re-Polishing: Chapter 3",
+                  "subtasks": [
+                    {
+                      "subtask": "Implementation",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "4. Re-Polishing: Chapter 4",
+                  "subtasks": [
+                    {
+                      "subtask": "Methodology",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Environment",
+                      "elements": [
+                        "Locale",
+                        "Population of the Study",
+                        "Organizational Chart/Profile"
+                      ]
+                    },
+                    {
+                      "subtask": "Requirement Specification",
+                      "elements": [
+                        "Operational Feasibility [Fishbone Diagram]",
+                        "Operational Feasibility [Functional Decomposition Diagram]",
+                        "Technical Feasibility",
+                        "Schedule Feasibility",
+                        "Economic Feasibility",
+                        "Requirements Modeling [Context Diagram]",
+                        "Requirements Modeling [Data Flow Diagram]",
+                        "Requirements Modeling [System Flowchart]",
+                        "Requirements Modeling [Program Flowchart]",
+                        "Requirements Modeling [Use Case Diagram]",
+                        "Requirements Modeling [Use Class Diagram]",
+                        "Requirements Modeling [Sequence Diagram]",
+                        "Requirements Modeling [Activity Diagram]",
+                        "Risk Assessment/Analysis"
+                      ]
+                    },
+                    {
+                      "subtask": "Design",
+                      "elements": [
+                        "Output and User-interface Design Forms",
+                        "Data Design",
+                        "System Architecture [Network Model]",
+                        "System Architecture [Network Topology]",
+                        "System Architecture [Network Security]"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Software",
+                        "Hardware Specification",
+                        "Program Specification"
+                      ]
+                    },
+                    {
+                      "subtask": "Programming Enviroment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "5.Re-Polishing: Development",
+                  "subtasks": [
+                    {
+                      "subtask": "1. Software",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "2.Hardware Specification",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "3.Program Specification",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "4.Programming Enviroment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "5.Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "6.Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "6.Re-Polishing:Verification and Testing",
+                  "subtasks": [
+                    {
+                      "subtask": "Unit Testing",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Integration Testing",
+                      "elements": [
+                        "Compatibility Testing",
+                        "Performance Testing",
+                        "Stress Testing",
+                        "Load Testing"
+                      ]
+                    },
+                    {
+                      "subtask": "System Testing",
+                      "elements": [
+                        "System Function",
+                        "Test Data",
+                        "Test Result and Observations"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Acceptance Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "7.Re-Polishing: Implementation Plan",
+                  "subtasks": [
+                    {
+                      "subtask": "Physical Environment",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Interfaces",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Functionality",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Data",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Security",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "8.Re-Polishing:Installation Process",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "9.Re-Polishing: Chapter 5",
+                  "subtasks": [
+                    {
+                      "subtask": "Conclusion",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Recomendations",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Appendices",
+                      "elements": [
+                        "Appendix F",
+                        "Appendix G",
+                        "Appendix H",
+                        "Appendix I"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "10.Re-Polishing Supporting Sections",
+                  "subtasks": [
+                    {
+                      "subtask": "References",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Resource Person",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Appendices",
+                      "elements": [
+                        "Appendix A",
+                        "Appendix B",
+                        "Appendix C",
+                        "Appendix D",
+                        "Appendix E"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "11.Review Documentation and & System Details",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "12.Re-Defense: Manuscript Submission",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "System Development",
+              "tasks": [
+                {
+                  "task": "1.Iterative UI Refinement",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "2.Continuous Feature Improvement",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "3.Ongoing Refactoring and Defect Resolution",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "Testing",
+              "tasks": [
+                {
+                  "task": "4.Re-Defense System QA",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Unit Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Compatibility Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Performance Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Stress Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Load Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Concurrent Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Pacing Time",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Response Time",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Network Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "5.Bug Fixing and Final Adjustments",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "6.Patch Update",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Listening",
+          "taskTypes": [
+            {
+              "type": "Customer Collaboration",
+              "tasks": [
+                {
+                  "task": "7.Review Users Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "8.Gather Users/Client Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "9.Finalization of the System",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "10.Final Re-Defense",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "11.Final Re-Defense Feedback Integration",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "12.Manuscript Re-Submission for AI and Plagiarism Check",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Discussion & Review",
+          "taskTypes": [
+            {
+              "type": "Meetings",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Re-Defense Preparation",
+                  "subtasks": [
+                    {
+                      "subtask": "System Testing Request Letter",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "PowerPoint Presentation",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Mock Defense",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Manuscript Printing",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "methodology": "Rapid Application Development (RAD)",
+      "projectPhases": [
+        {
+          "phase": "Construction",
+          "taskTypes": [
+            {
+              "type": "Documentation",
+              "tasks": [
+                {
+                  "task": "1.Re-Polishing: Chapter 1",
+                  "subtasks": [
+                    {
+                      "subtask": "Introduction",
+                      "elements": [
+                        "Project Context",
+                        "Background of the Study",
+                        "Policies and Procedures",
+                        "Users Position"
+                      ]
+                    },
+                    {
+                      "subtask": "Objectives",
+                      "elements": [
+                        "General Objectives",
+                        "Specific Objectives"
+                      ]
+                    },
+                    {
+                      "subtask": "Scope and Limitation",
+                      "elements": [
+                        "Scope",
+                        "Limitation"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "2. Re-Polishing: Chapter 2",
+                  "subtasks": [
+                    {
+                      "subtask": "Related Theories",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Related Literature",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "3.Re-Polishing: Chapter 3",
+                  "subtasks": [
+                    {
+                      "subtask": "Implementation",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "4. Re-Polishing: Chapter 4",
+                  "subtasks": [
+                    {
+                      "subtask": "Methodology",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Environment",
+                      "elements": [
+                        "Locale",
+                        "Population of the Study",
+                        "Organizational Chart/Profile"
+                      ]
+                    },
+                    {
+                      "subtask": "Requirement Specification",
+                      "elements": [
+                        "Operational Feasibility [Fishbone Diagram]",
+                        "Operational Feasibility [Functional Decomposition Diagram]",
+                        "Technical Feasibility",
+                        "Schedule Feasibility",
+                        "Economic Feasibility",
+                        "Requirements Modeling [Context Diagram]",
+                        "Requirements Modeling [Data Flow Diagram]",
+                        "Requirements Modeling [System Flowchart]",
+                        "Requirements Modeling [Program Flowchart]",
+                        "Requirements Modeling [Use Case Diagram]",
+                        "Requirements Modeling [Use Class Diagram]",
+                        "Requirements Modeling [Sequence Diagram]",
+                        "Requirements Modeling [Activity Diagram]",
+                        "Risk Assessment/Analysis"
+                      ]
+                    },
+                    {
+                      "subtask": "Design",
+                      "elements": [
+                        "Output and User-interface Design Forms",
+                        "Data Design",
+                        "System Architecture [Network Model]",
+                        "System Architecture [Network Topology]",
+                        "System Architecture [Network Security]"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Software",
+                        "Hardware Specification",
+                        "Program Specification"
+                      ]
+                    },
+                    {
+                      "subtask": "Programming Enviroment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "5.Re-Polishing: Development",
+                  "subtasks": [
+                    {
+                      "subtask": "1.Software",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "2.Hardware Specification",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "3.Program Specification",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "4.Programming Enviroment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "5.Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "6.Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "6.Re-Polishing:Verification and Testing",
+                  "subtasks": [
+                    {
+                      "subtask": "Unit Testing",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Integration Testing",
+                      "elements": [
+                        "Compatibility Testing",
+                        "Performance Testing",
+                        "Stress Testing",
+                        "Load Testing"
+                      ]
+                    },
+                    {
+                      "subtask": "System Testing",
+                      "elements": [
+                        "System Function",
+                        "Test Data",
+                        "Test Result and Observations"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "4.Acceptance Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "7.Re-Polishing: Implementation Plan",
+                  "subtasks": [
+                    {
+                      "subtask": "Physical Environment",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Interfaces",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Functionality",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Data",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Security",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "8.Re-Polishing:Installation Process",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "9.Re-Polishing: Chapter 5",
+                  "subtasks": [
+                    {
+                      "subtask": "1.Conclusion",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "2.Recomendations",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "3.Appendices",
+                      "elements": [
+                        "Appendix F",
+                        "Appendix G",
+                        "Appendix H",
+                        "Appendix I"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "10.Re-Polishing Supporting Sections",
+                  "subtasks": [
+                    {
+                      "subtask": "References",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Resource Person",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Appendices",
+                      "elements": [
+                        "Appendix A",
+                        "Appendix B",
+                        "Appendix C",
+                        "Appendix D",
+                        "Appendix E"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "11. Review Documentation and & System Details",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "12. Re-Defense: Manuscript Submission",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "System Development",
+              "tasks": [
+                {
+                  "task": "1.UI Enhancement",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "2.Functionality Enhancement",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "3.Bug Fixing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "4..Re-Defense System QA",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Unit Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Compatibility Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Performance Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Stress Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Load Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Concurrent Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Pacing Time",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Response Time",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Network Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "5.Bug Fixing and Final Adjustments",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Cutover",
+          "taskTypes": [
+            {
+              "type": "Cutover Activities",
+              "tasks": [
+                {
+                  "task": "6.Patch Update",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "7.System Update Orientation for End Users",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "8.Review Users Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "9.System Completion and Cutover Activities",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "10.Final Re-Defense",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "11.Final Re-Defense Feedback Integration",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "12.Manuscript Re-Submission for AI and Plagiarism Check",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Discussion & Review",
+          "taskTypes": [
+            {
+              "type": "Meetings",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Re-Defense Preparation",
+                  "subtasks": [
+                    {
+                      "subtask": "System Testing Request Letter",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "PowerPoint Presentation",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Mock Defense",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Manuscript Printing",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "methodology": "Prototyping",
+      "projectPhases": [
+        {
+          "phase": "Refining Prototype",
+          "taskTypes": [
+            {
+              "type": "Documentation",
+              "tasks": [
+                {
+                  "task": "Final Defense Response: UI Polishing & Functional Optimization",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Re-Polishing: Chapter 1",
+                  "subtasks": [
+                    {
+                      "subtask": "Introduction",
+                      "elements": [
+                        "Project Context",
+                        "Background of the Study",
+                        "Policies and Procedures",
+                        "Users Position"
+                      ]
+                    },
+                    {
+                      "subtask": "Objectives",
+                      "elements": [
+                        "General Objectives",
+                        "Specific Objectives"
+                      ]
+                    },
+                    {
+                      "subtask": "Scope and Limitation",
+                      "elements": [
+                        "Scope",
+                        "Limitation"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Re-Polishing: Chapter 2",
+                  "subtasks": [
+                    {
+                      "subtask": "Related Theories",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Related Literature",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "4.Re-Polishing: Chapter 3",
+                  "subtasks": [
+                    {
+                      "subtask": "Implementation",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "5. Re-Polishing: Chapter 4",
+                  "subtasks": [
+                    {
+                      "subtask": "Methodology",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Environment",
+                      "elements": [
+                        "Locale",
+                        "Population of the Study",
+                        "Organizational Chart/Profile"
+                      ]
+                    },
+                    {
+                      "subtask": "Requirement Specification",
+                      "elements": [
+                        "Operational Feasibility [Fishbone Diagram]",
+                        "Operational Feasibility [Functional Decomposition Diagram]",
+                        "Technical Feasibility",
+                        "Schedule Feasibility",
+                        "Economic Feasibility",
+                        "Requirements Modeling [Context Diagram]",
+                        "Requirements Modeling [Data Flow Diagram]",
+                        "Requirements Modeling [System Flowchart]",
+                        "Requirements Modeling [Program Flowchart]",
+                        "Requirements Modeling [Use Case Diagram]",
+                        "Requirements Modeling [Use Class Diagram]",
+                        "Requirements Modeling [Sequence Diagram]",
+                        "Requirements Modeling [Activity Diagram]",
+                        "Risk Assessment/Analysis"
+                      ]
+                    },
+                    {
+                      "subtask": "Design",
+                      "elements": [
+                        "Output and User-interface Design Forms",
+                        "Data Design",
+                        "System Architecture [Network Model]",
+                        "System Architecture [Network Topology]",
+                        "System Architecture [Network Security]"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Software",
+                        "Hardware Specification",
+                        "Program Specification"
+                      ]
+                    },
+                    {
+                      "subtask": "Programming Enviroment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "5.Re-Polishing: Development",
+                  "subtasks": [
+                    {
+                      "subtask": "1.Software",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "2.Hardware Specification",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "3.Program Specification",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "4.Programming Enviroment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "5.Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "6.Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "6.Re-Polishing:Verification and Testing",
+                  "subtasks": [
+                    {
+                      "subtask": "Unit Testing",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Integration Testing",
+                      "elements": [
+                        "Compatibility Testing",
+                        "Performance Testing",
+                        "Stress Testing",
+                        "Load Testing"
+                      ]
+                    },
+                    {
+                      "subtask": "System Testing",
+                      "elements": [
+                        "System Function",
+                        "Test Data",
+                        "Test Result and Observations"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "4.Acceptance Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "7.Re-Polishing: Implementation Plan",
+                  "subtasks": [
+                    {
+                      "subtask": "Physical Environment",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Interfaces",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Functionality",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Data",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Security",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "8.Re-Polishing:Installation Process",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "9.Re-Polishing: Chapter 5",
+                  "subtasks": [
+                    {
+                      "subtask": "1.Conclusion",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "2.Recomendations",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "3.Appendices",
+                      "elements": [
+                        "Appendix F",
+                        "Appendix G",
+                        "Appendix H",
+                        "Appendix I"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "10.Re-Polishing Supporting Sections",
+                  "subtasks": [
+                    {
+                      "subtask": "References",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Resource Person",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Appendices",
+                      "elements": [
+                        "Appendix A",
+                        "Appendix B",
+                        "Appendix C",
+                        "Appendix D",
+                        "Appendix E"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "11. Review Documentation and & System Details",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "12. Re-Defense: Manuscript Submission",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Implement Product & Maintain",
+          "taskTypes": [
+            {
+              "type": "System Development",
+              "tasks": [
+                {
+                  "task": "1.Improved visual design and layout",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "2.Feature & Workflow Improvements",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "3.Bug Fixing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "4.Re-Defense System QA",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Unit Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Compatibility Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Performance Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Stress Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Load Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Concurrent Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Pacing Time",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Response Time",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Network Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "5.Bug Fixing and Final Adjustments",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "6.System Patch",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "7.Review Users Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "8.Finalization of the System",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "9.Final Re-Defense",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "10.Final Re-Defense Feedback Integration",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "11.Manuscript Re-Submission for AI and Plagiarism Check",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Discussion & Review",
+          "taskTypes": [
+            {
+              "type": "Meetings",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Re-Defense Preparation",
+                  "subtasks": [
+                    {
+                      "subtask": "System Testing Request Letter",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "PowerPoint Presentation",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Mock Defense",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Manuscript Printing",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "methodology": "Spiral",
+      "projectPhases": [
+        {
+          "phase": "Engineering",
+          "taskTypes": [
+            {
+              "type": "Documentation",
+              "tasks": [
+                {
+                  "task": "1.Re-Polishing: Chapter 1",
+                  "subtasks": [
+                    {
+                      "subtask": "Introduction",
+                      "elements": [
+                        "Project Context",
+                        "Background of the Study",
+                        "Policies and Procedures",
+                        "Users Position"
+                      ]
+                    },
+                    {
+                      "subtask": "Objectives",
+                      "elements": [
+                        "General Objectives",
+                        "Specific Objectives"
+                      ]
+                    },
+                    {
+                      "subtask": "Scope and Limitation",
+                      "elements": [
+                        "Scope",
+                        "Limitation"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "2.Re-Polishing: Chapter 2",
+                  "subtasks": [
+                    {
+                      "subtask": "Related Theories",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Related Literature",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "3.Re-Polishing: Chapter 3",
+                  "subtasks": [
+                    {
+                      "subtask": "Implementation",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "4. Re-Polishing: Chapter 4",
+                  "subtasks": [
+                    {
+                      "subtask": "Methodology",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Environment",
+                      "elements": [
+                        "Locale",
+                        "Population of the Study",
+                        "Organizational Chart/Profile"
+                      ]
+                    },
+                    {
+                      "subtask": "Requirement Specification",
+                      "elements": [
+                        "Operational Feasibility [Fishbone Diagram]",
+                        "Operational Feasibility [Functional Decomposition Diagram]",
+                        "Technical Feasibility",
+                        "Schedule Feasibility",
+                        "Economic Feasibility",
+                        "Requirements Modeling [Context Diagram]",
+                        "Requirements Modeling [Data Flow Diagram]",
+                        "Requirements Modeling [System Flowchart]",
+                        "Requirements Modeling [Program Flowchart]",
+                        "Requirements Modeling [Use Case Diagram]",
+                        "Requirements Modeling [Use Class Diagram]",
+                        "Requirements Modeling [Sequence Diagram]",
+                        "Requirements Modeling [Activity Diagram]",
+                        "Risk Assessment/Analysis"
+                      ]
+                    },
+                    {
+                      "subtask": "Design",
+                      "elements": [
+                        "Output and User-interface Design Forms",
+                        "Data Design",
+                        "System Architecture [Network Model]",
+                        "System Architecture [Network Topology]",
+                        "System Architecture [Network Security]"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Software",
+                        "Hardware Specification",
+                        "Program Specification"
+                      ]
+                    },
+                    {
+                      "subtask": "Programming Enviroment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "5.Re-Polishing: Development",
+                  "subtasks": [
+                    {
+                      "subtask": "1.Software",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "2.Hardware Specification",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "3.Program Specification",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "4.Programming Enviroment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "5.Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "6.Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "6.Re-Polishing: Verification and Testing",
+                  "subtasks": [
+                    {
+                      "subtask": "Unit Testing",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Integration Testing",
+                      "elements": [
+                        "Compatibility Testing",
+                        "Performance Testing",
+                        "Stress Testing",
+                        "Load Testing"
+                      ]
+                    },
+                    {
+                      "subtask": "System Testing",
+                      "elements": [
+                        "System Function",
+                        "Test Data",
+                        "Test Result and Observations"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "4.Acceptance Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "6.Re-Polishing: Implementation Plan",
+                  "subtasks": [
+                    {
+                      "subtask": "Physical Environment",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Interfaces",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Functionality",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Data",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Security",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "7.Re-Polishing: Installation Process",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "8.Re-Polishing: Chapter 5",
+                  "subtasks": [
+                    {
+                      "subtask": "1.Conclusion",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "2.Recommendations",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "3.Appendices",
+                      "elements": [
+                        "Appendix F",
+                        "Appendix G",
+                        "Appendix H",
+                        "Appendix I"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "9.Re-Polishing Supporting Sections",
+                  "subtasks": [
+                    {
+                      "subtask": "References",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Resource Person",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Appendices",
+                      "elements": [
+                        "Appendix A",
+                        "Appendix B",
+                        "Appendix C",
+                        "Appendix D",
+                        "Appendix E"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "10.Review Documentation and & System Details",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "11.Re-Defense: Manuscript Submission",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "System Development",
+          "taskTypes": [
+            {
+              "type": "Development",
+              "tasks": [
+                {
+                  "task": "1.Refine User Interface Based on Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "2.Feature Improvement Implementation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "3.System Issue Resolution",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Re-Defense System QA",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Unit Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Compatibility Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Performance Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Stress Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Load Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Concurrent Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Pacing Time",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Response Time",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Network Testing",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "5.Bug Fixing and Final Adjustments",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "6.Patch Update",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Evaluate",
+          "taskTypes": [
+            {
+              "type": "Evaluation & Feedback",
+              "tasks": [
+                {
+                  "task": "7.Review Users Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "8.Finalization of the System",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "9.Final Re-Defense",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "10.Final Re-Defense Feedback Integration",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "11.Manuscript Re- Submission for AI and Plagiarism Check",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Discussion & Review",
+          "taskTypes": [
+            {
+              "type": "Meetings",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Re-Defense Preparation",
+                  "subtasks": [
+                    {
+                      "subtask": "System Testing Request Letter",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "PowerPoint Presentation",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Mock Defense",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Manuscript Printing",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
