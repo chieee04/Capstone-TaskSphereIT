@@ -642,7 +642,7 @@ const ProjectManagerDashboard = () => {
           <div className="p-6">
             <div className="grid grid-cols-12 gap-6 items-center">
               <div className="col-span-12 xl:col-span-8">
-                <Donut segments={donut} centerText="40%" />
+                <Donut segments={donut} centerText="0" />
               </div>
               <div className="col-span-12 xl:col-span-4">
                 <Legend items={donut} />
