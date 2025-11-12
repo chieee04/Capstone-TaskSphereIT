@@ -999,25 +999,22 @@ export default function ManuscriptSubmission() {
           {submission.title || "—"}
         </td>
  
-        {/* Date */}
-        <td className="px-4 py-3">
-          <div className="relative">
-            <input
-              type="date"
-              value={editedData.date}
-              onChange={(e) =>
-                setEditedData((prev) => ({ ...prev, date: e.target.value }))
-              }
-              disabled={!canEdit}
-              className={`w-full px-2 py-1 rounded border text-sm ${
-                canEdit
-                  ? "border-neutral-300"
-                  : "border-neutral-200 bg-neutral-100 cursor-not-allowed"
-              }`}
-              required
-            />
-          </div>
-        </td>
+        <input
+  type="date"
+  value={editedData.date}
+  onChange={(e) =>
+    setEditedData((prev) => ({ ...prev, date: e.target.value }))
+  }
+  disabled={!canEdit}
+  min={getCurrentDate()} // 👈 Prevents past date selection
+  className={`w-full px-2 py-1 rounded border text-sm ${
+    canEdit
+      ? "border-neutral-300"
+      : "border-neutral-200 bg-neutral-100 cursor-not-allowed"
+  }`}
+  required
+/>
+
  
         {/* Time Dropdown */}
         <td className="px-4 py-3">

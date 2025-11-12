@@ -15,6 +15,8 @@ import AdviserIcon from "../../assets/imgs/InstructoIconAdviser.png";
 
 import { useInstructorTeams } from "./InstructorFunctions/InstructorTeamsFunction";
 import Select from "react-select";
+import Swal from "sweetalert2";
+
 
 const MAROON = "#6A0F14";
 
@@ -138,12 +140,33 @@ const InstructorTeams = () => {
         >
           <button
             className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-            onClick={() => {
-              setMenuOpenId(null);
-              if (window.confirm(`Dissolve team "${team.name}"?`)) {
-                dissolveTeam(team.id);
-              }
-            }}
+            onClick={async () => {
+  setMenuOpenId(null);
+
+  const result = await Swal.fire({
+    title: `Dissolve Team?`,
+    html: `Dissolve team <b>"${team.name}"</b>?`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#6A0F14",
+    cancelButtonColor: "#9ca3af",
+    confirmButtonText: "Yes, dissolve",
+    cancelButtonText: "Cancel",
+  });
+
+  if (!result.isConfirmed) return;
+
+  await dissolveTeam(team.id);
+
+  Swal.fire({
+    icon: "success",
+    title: "Team Dissolved",
+    text: `Team "${team.name}" has been dissolved successfully.`,
+    timer: 2000,
+    showConfirmButton: false,
+  });
+}}
+
           >
             <Trash2 className="w-4 h-4" /> Dissolve
           </button>

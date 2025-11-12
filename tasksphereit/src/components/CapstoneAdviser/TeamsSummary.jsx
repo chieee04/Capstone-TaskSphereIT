@@ -516,5 +516,4 @@ useEffect(() => {
     </div>
   );
 };
-
 export default TeamsSummary;

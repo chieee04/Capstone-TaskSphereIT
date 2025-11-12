@@ -30,7 +30,9 @@ import {
   getDocs, 
   query, 
   where,
-  onSnapshot 
+  onSnapshot,
+  deleteDoc,
+  Timestamp
 } from "firebase/firestore";
  
 /* ===== Supabase ===== */
@@ -41,6 +43,10 @@ const MAROON = "#6A0F14";
 /** Must match your Firestore collection name */
 const MANUSCRIPT_COLLECTION = "manuscriptSubmissions";
 const TEAMS_COLLECTION = "teams";
+const TITLE_DEFENSE_COLLECTION = "titleDefenseSchedules";
+const ORAL_DEFENSE_COLLECTION = "oralDefenseSchedules";
+const FINAL_DEFENSE_COLLECTION = "finalDefenseSchedules";
+const REFINAL_DEFENSE_COLLECTION = "refinalDefenseSchedules";
  
 const to12h = (t) => {
   if (!t) return "";
@@ -633,6 +639,15 @@ const getLastName = (fullName) => {
   return parts[parts.length - 1] || "";
 };
  
+// Helper function to format team name
+const formatTeamName = (teamData) => {
+  if (teamData.manager && teamData.manager.fullName) {
+    const lastName = getLastName(teamData.manager.fullName);
+    return `${lastName} etal`;
+  }
+  return teamData.name || "Unknown Team";
+};
+ 
 /* ============================ Main ============================ */
 export default function AdviserEvents() {
   const [rows, setRows] = useState({
@@ -660,6 +675,180 @@ export default function AdviserEvents() {
   const uid =
     auth?.currentUser?.uid ??
     (typeof window !== "undefined" ? localStorage.getItem("uid") : null);
+ 
+  // FIXED: Enhanced function to fetch ALL defense schedules - only show teams in their specific schedules
+  const fetchAllDefenseSchedules = async () => {
+    try {
+      console.log("Fetching ALL defense schedules from separate collections...");
+ 
+      // Get adviser's teams first
+      const teamsQuery = query(
+        collection(db, TEAMS_COLLECTION),
+        where("adviser.uid", "==", uid)
+      );
+      const teamsSnapshot = await getDocs(teamsQuery);
+      const adviserTeams = teamsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+ 
+      console.log("Adviser's teams:", adviserTeams);
+ 
+      if (adviserTeams.length === 0) {
+        console.log("No teams found for this adviser");
+        setRows(prev => ({
+          ...prev,
+          titleDefense: [],
+          oralDefense: [],
+          finalDefense: [],
+          finalRedefense: []
+        }));
+        return;
+      }
+ 
+      const adviserTeamIds = adviserTeams.map(team => team.id);
+ 
+      // Fetch from each collection separately
+      const [titleDefenseSnapshot, oralDefenseSnapshot, finalDefenseSnapshot, refinalDefenseSnapshot] = await Promise.all([
+        getDocs(collection(db, TITLE_DEFENSE_COLLECTION)),
+        getDocs(collection(db, ORAL_DEFENSE_COLLECTION)),
+        getDocs(collection(db, FINAL_DEFENSE_COLLECTION)),
+        getDocs(collection(db, REFINAL_DEFENSE_COLLECTION))
+      ]);
+ 
+      console.log("Raw defense data counts:", {
+        titleDefense: titleDefenseSnapshot.docs.length,
+        oralDefense: oralDefenseSnapshot.docs.length,
+        finalDefense: finalDefenseSnapshot.docs.length,
+        refinalDefense: refinalDefenseSnapshot.docs.length
+      });
+ 
+      // FIXED: Process each collection independently - only show teams that have schedules in that specific collection
+      const processDefenseData = (snapshot, defenseType, teamDataMap) => {
+        return snapshot.docs
+          .filter(doc => {
+            const data = doc.data();
+            // Only include schedules that belong to adviser's teams AND have valid schedule data
+            return data.teamId && adviserTeamIds.includes(data.teamId) && 
+                   (data.date || data.scheduleDate || data.deadline); // Must have some date
+          })
+          .map((doc) => {
+            const data = doc.data();
+            const teamData = teamDataMap[data.teamId];
+            let currentTeamName = "Unknown Team";
+            let currentTeamTitle = "";
+ 
+            if (teamData) {
+              currentTeamName = formatTeamName(teamData);
+              currentTeamTitle = teamData.projectTitle || teamData.title || data.title || "";
+            }
+ 
+            // Enhanced panelists extraction
+            let panelists = [];
+            if (Array.isArray(data.panelists)) {
+              panelists = data.panelists;
+            } else if (typeof data.panelists === 'string') {
+              panelists = [data.panelists];
+            } else if (data.panelist) {
+              panelists = Array.isArray(data.panelist) ? data.panelist : [data.panelist];
+            } else if (data.panelMembers) {
+              panelists = Array.isArray(data.panelMembers) ? data.panelMembers : [data.panelMembers];
+            } else if (data.panelistsNames) {
+              panelists = [data.panelistsNames];
+            }
+ 
+            // Enhanced date extraction
+            const date = data.date || data.scheduleDate || data.deadline || data.scheduledDate || "";
+ 
+            // Enhanced time extraction
+            const timeStart = data.timeStart || data.time || data.scheduleTime || data.deadlineTime || data.startTime || "";
+ 
+            // Enhanced verdict extraction
+            const verdict = data.verdict || data.status || data.result || data.outcome || "Pending";
+ 
+            return {
+              id: doc.id,
+              ...data,
+              defenseType: defenseType,
+              teamName: currentTeamName,
+              title: currentTeamTitle,
+              date: date,
+              timeStart: timeStart,
+              panelists: panelists,
+              verdict: verdict,
+              isAdviserTeam: true
+            };
+          });
+      };
+ 
+      // Create team data map for quick lookup
+      const teamDataMap = {};
+      adviserTeams.forEach(team => {
+        teamDataMap[team.id] = team;
+      });
+ 
+      // Process each defense type independently
+      // Each tab will ONLY show teams that have schedules in that specific collection
+      const titleDefense = processDefenseData(titleDefenseSnapshot, 'title', teamDataMap);
+      const oralDefense = processDefenseData(oralDefenseSnapshot, 'oral', teamDataMap);
+      const finalDefense = processDefenseData(finalDefenseSnapshot, 'final', teamDataMap);
+      const finalRedefense = processDefenseData(refinalDefenseSnapshot, 'redefense', teamDataMap);
+ 
+      console.log("Final processed defense schedules:", {
+        titleDefense: titleDefense.map(d => ({ 
+          id: d.id, 
+          teamName: d.teamName, 
+          teamId: d.teamId, 
+          date: d.date, 
+          timeStart: d.timeStart,
+          collection: 'titleDefense'
+        })),
+        oralDefense: oralDefense.map(d => ({ 
+          id: d.id, 
+          teamName: d.teamName, 
+          teamId: d.teamId, 
+          date: d.date, 
+          timeStart: d.timeStart,
+          collection: 'oralDefense'
+        })),
+        finalDefense: finalDefense.map(d => ({ 
+          id: d.id, 
+          teamName: d.teamName, 
+          teamId: d.teamId, 
+          date: d.date, 
+          timeStart: d.timeStart,
+          collection: 'finalDefense'
+        })),
+        finalRedefense: finalRedefense.map(d => ({ 
+          id: d.id, 
+          teamName: d.teamName, 
+          teamId: d.teamId, 
+          date: d.date, 
+          timeStart: d.timeStart,
+          collection: 'refinalDefense'
+        }))
+      });
+ 
+      // FIXED: Set each defense type independently - no cross-population
+      setRows(prev => ({
+        ...prev,
+        titleDefense: titleDefense, // Only teams with title defense schedules
+        oralDefense: oralDefense,   // Only teams with oral defense schedules
+        finalDefense: finalDefense, // Only teams with final defense schedules
+        finalRedefense: finalRedefense // Only teams with re-defense schedules
+      }));
+ 
+    } catch (error) {
+      console.error("Error fetching defense schedules:", error);
+      setRows(prev => ({
+        ...prev,
+        titleDefense: [],
+        oralDefense: [],
+        finalDefense: [],
+        finalRedefense: []
+      }));
+    }
+  };
  
   // Get adviser's teams and their manuscript submissions
   const fetchAdviserManuscripts = async () => {
@@ -706,13 +895,7 @@ export default function AdviserEvents() {
             const teamDoc = await getDoc(doc(db, TEAMS_COLLECTION, m.teamId));
             if (teamDoc.exists()) {
               const teamData = teamDoc.data();
-              // Use manager's last name + "etal" format
-              if (teamData.manager && teamData.manager.fullName) {
-                const lastName = getLastName(teamData.manager.fullName);
-                currentTeamName = `${lastName} etal`;
-              } else if (teamData.name) {
-                currentTeamName = teamData.name;
-              }
+              currentTeamName = formatTeamName(teamData);
             }
           } catch (error) {
             console.error("Error fetching team data:", error);
@@ -762,7 +945,7 @@ export default function AdviserEvents() {
     }
   };
  
-  // Real-time listener for team changes
+  // Real-time listener for team and defense schedule changes
   useEffect(() => {
     if (!uid) return;
  
@@ -775,24 +958,33 @@ export default function AdviserEvents() {
     const unsubscribeTeams = onSnapshot(teamsQuery, (snapshot) => {
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'removed') {
-          // Team was dissolved - remove its manuscripts
+          // Team was dissolved - remove its manuscripts and defense schedules
           const dissolvedTeamId = change.doc.id;
-          console.log("Team dissolved, removing manuscripts for team:", dissolvedTeamId);
+          console.log("Team dissolved, removing data for team:", dissolvedTeamId);
+ 
+          // Remove manuscripts
           setRows(prev => ({
             ...prev,
             manuscript: prev.manuscript.filter(m => m.teamId !== dissolvedTeamId)
           }));
+ 
+          // Remove defense schedules
+          setRows(prev => ({
+            ...prev,
+            titleDefense: prev.titleDefense.filter(d => d.teamId !== dissolvedTeamId),
+            oralDefense: prev.oralDefense.filter(d => d.teamId !== dissolvedTeamId),
+            finalDefense: prev.finalDefense.filter(d => d.teamId !== dissolvedTeamId),
+            finalRedefense: prev.finalRedefense.filter(d => d.teamId !== dissolvedTeamId)
+          }));
+ 
         } else if (change.type === 'modified') {
           // Team was updated (manager changed, etc.) - update team names
           const updatedTeam = { id: change.doc.id, ...change.doc.data() };
           console.log("Team updated:", updatedTeam);
  
-          // Update team name in manuscripts
-          let newTeamName = updatedTeam.name || "Unknown Team";
-          if (updatedTeam.manager && updatedTeam.manager.fullName) {
-            const lastName = getLastName(updatedTeam.manager.fullName);
-            newTeamName = `${lastName} etal`;
-          }
+          // Update team name in manuscripts and defense schedules
+          const newTeamName = formatTeamName(updatedTeam);
+          const newTeamTitle = updatedTeam.projectTitle || updatedTeam.title || "";
  
           setRows(prev => ({
             ...prev,
@@ -800,6 +992,26 @@ export default function AdviserEvents() {
               m.teamId === updatedTeam.id 
                 ? { ...m, teamName: newTeamName }
                 : m
+            ),
+            titleDefense: prev.titleDefense.map(d =>
+              d.teamId === updatedTeam.id
+                ? { ...d, teamName: newTeamName, title: newTeamTitle }
+                : d
+            ),
+            oralDefense: prev.oralDefense.map(d =>
+              d.teamId === updatedTeam.id
+                ? { ...d, teamName: newTeamName, title: newTeamTitle }
+                : d
+            ),
+            finalDefense: prev.finalDefense.map(d =>
+              d.teamId === updatedTeam.id
+                ? { ...d, teamName: newTeamName, title: newTeamTitle }
+                : d
+            ),
+            finalRedefense: prev.finalRedefense.map(d =>
+              d.teamId === updatedTeam.id
+                ? { ...d, teamName: newTeamName, title: newTeamTitle }
+                : d
             )
           }));
         }
@@ -823,9 +1035,46 @@ export default function AdviserEvents() {
       }
     );
  
+    // Listen for ALL defense schedule changes from all collections
+    const titleDefenseUnsubscribe = onSnapshot(
+      collection(db, TITLE_DEFENSE_COLLECTION),
+      () => {
+        console.log("Title defense schedules changed, refetching...");
+        fetchAllDefenseSchedules();
+      }
+    );
+ 
+    const oralDefenseUnsubscribe = onSnapshot(
+      collection(db, ORAL_DEFENSE_COLLECTION),
+      () => {
+        console.log("Oral defense schedules changed, refetching...");
+        fetchAllDefenseSchedules();
+      }
+    );
+ 
+    const finalDefenseUnsubscribe = onSnapshot(
+      collection(db, FINAL_DEFENSE_COLLECTION),
+      () => {
+        console.log("Final defense schedules changed, refetching...");
+        fetchAllDefenseSchedules();
+      }
+    );
+ 
+    const refinalDefenseUnsubscribe = onSnapshot(
+      collection(db, REFINAL_DEFENSE_COLLECTION),
+      () => {
+        console.log("Re-final defense schedules changed, refetching...");
+        fetchAllDefenseSchedules();
+      }
+    );
+ 
     return () => {
       unsubscribeTeams();
       manuscriptsUnsubscribe();
+      titleDefenseUnsubscribe();
+      oralDefenseUnsubscribe();
+      finalDefenseUnsubscribe();
+      refinalDefenseUnsubscribe();
     };
   }, [uid]);
  
@@ -833,75 +1082,17 @@ export default function AdviserEvents() {
   useEffect(() => {
     if (uid) {
       fetchAdviserManuscripts();
+      fetchAllDefenseSchedules();
     }
   }, [uid]);
  
-  // Additional direct fetch as backup
+  // Refresh data when switching to defenses view
   useEffect(() => {
-    const fetchManuscriptsDirectly = async () => {
-      try {
-        console.log("Backup: Fetching all manuscripts directly...");
-        const manuscriptsCollection = collection(db, MANUSCRIPT_COLLECTION);
-        const snapshot = await getDocs(manuscriptsCollection);
-        const manuscriptsData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
- 
-        console.log("Backup fetch - all manuscripts:", manuscriptsData);
- 
-        // Get adviser's team IDs to filter
-        const teamsQuery = query(
-          collection(db, TEAMS_COLLECTION),
-          where("adviser.uid", "==", uid)
-        );
-        const teamsSnapshot = await getDocs(teamsQuery);
-        const adviserTeamIds = teamsSnapshot.docs.map(doc => doc.id);
- 
-        // Filter manuscripts by adviser's teams and process
-        const filteredManuscripts = manuscriptsData
-          .filter(m => adviserTeamIds.includes(m.teamId))
-          .map((m) => {
-            const date = m.date || m.dueDate || m.submissionDate || m.deadline || "";
-            let duetime = "";
-            if (m.duetime) duetime = m.duetime;
-            else if (m.dueTime) duetime = m.dueTime;
-            else if (m.time) duetime = m.time;
-            else if (m.submissionTime) duetime = m.submissionTime;
-            else if (m.deadlineTime) duetime = m.deadlineTime;
-            else if (m.timeStart) duetime = m.timeStart;
- 
-            return {
-              ...m,
-              fileUrl: Array.isArray(m.fileUrl) ? m.fileUrl : [],
-              duetime: duetime,
-              date: date,
-              timeStart: duetime,
-              teamName: m.teamName || m.team || "",
-              title: m.title || m.projectTitle || "",
-              plag: m.plag || m.plagiarism || 0,
-              ai: m.ai || m.aiScore || 0,
-              verdict: m.verdict || m.status || "Pending",
-            };
-          });
- 
-        setRows((prev) => ({
-          ...prev,
-          manuscript: filteredManuscripts,
-        }));
-      } catch (error) {
-        console.error("Backup fetch error:", error);
-      }
-    };
- 
-    // If still no data after initial load, try backup fetch
-    if (view === "manuscript" && rows.manuscript.length === 0 && !loading && uid) {
-      console.log("No data found, running backup fetch...");
-      setTimeout(() => {
-        fetchManuscriptsDirectly();
-      }, 1000);
+    if (view === "defenses" && uid) {
+      console.log("Switched to defenses view, refreshing ALL defense data...");
+      fetchAllDefenseSchedules();
     }
-  }, [view, rows.manuscript.length, loading, uid]);
+  }, [view, uid]);
  
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
@@ -1220,6 +1411,8 @@ export default function AdviserEvents() {
             ))}
           </div>
  
+          {/* FIXED: Each defense tab now ONLY shows teams that have schedules in that specific collection */}
+ 
           {defTab === "title" && (
             <section>
               <div className="flex items-center gap-2 mb-2">
@@ -1236,6 +1429,7 @@ export default function AdviserEvents() {
                   <tr className="bg-neutral-50/80 text-neutral-600">
                     <th className="text-left py-2 pl-6 pr-3">NO</th>
                     <th className="text-left py-2 pr-3">Team</th>
+                    <th className="text-left py-2 pr-3">Title</th>
                     <th className="text-left py-2 pr-3">Date</th>
                     <th className="text-left py-2 pr-3">Time</th>
                     <th className="text-left py-2 pr-3">Panelist</th>
@@ -1250,20 +1444,31 @@ export default function AdviserEvents() {
                     >
                       <td className="py-2 pl-6 pr-3">{idx + 1}.</td>
                       <td className="py-2 pr-3">{r.teamName}</td>
-                      <td className="py-2 pr-3">{r.date}</td>
+                      <td className="py-2 pr-3">{r.title || "—"}</td>
+                      <td className="py-2 pr-3">{r.date || "—"}</td>
                       <td className="py-2 pr-3">
-                        {r.timeStart ? to12h(r.timeStart) : ""}
+                        {r.timeStart ? to12h(r.timeStart) : "—"}
                       </td>
                       <td className="py-2 pr-3">
-                        {Array.isArray(r.panelists)
+                        {Array.isArray(r.panelists) && r.panelists.length > 0
                           ? r.panelists.join(", ")
-                          : ""}
+                          : "—"}
                       </td>
                       <td className="py-2 pr-6">
-                        <Pill>{r.verdict}</Pill>
+                        <Pill>{r.verdict || "Pending"}</Pill>
                       </td>
                     </tr>
                   ))}
+                  {rows.titleDefense.length === 0 && !loading && (
+                    <tr className="border-t border-neutral-200">
+                      <td
+                        className="py-6 text-center text-neutral-500"
+                        colSpan={7}
+                      >
+                        No title defense schedules found for your teams.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </CardTable>
             </section>
@@ -1300,21 +1505,31 @@ export default function AdviserEvents() {
                     >
                       <td className="py-2 pl-6 pr-3">{idx + 1}.</td>
                       <td className="py-2 pr-3">{r.teamName}</td>
-                      <td className="py-2 pr-3">{r.title}</td>
-                      <td className="py-2 pr-3">{r.date}</td>
+                      <td className="py-2 pr-3">{r.title || "—"}</td>
+                      <td className="py-2 pr-3">{r.date || "—"}</td>
                       <td className="py-2 pr-3">
-                        {r.timeStart ? to12h(r.timeStart) : ""}
+                        {r.timeStart ? to12h(r.timeStart) : "—"}
                       </td>
                       <td className="py-2 pr-3">
-                        {Array.isArray(r.panelists)
+                        {Array.isArray(r.panelists) && r.panelists.length > 0
                           ? r.panelists.join(", ")
-                          : ""}
+                          : "—"}
                       </td>
                       <td className="py-2 pr-6">
-                        <Pill>{r.verdict}</Pill>
+                        <Pill>{r.verdict || "Pending"}</Pill>
                       </td>
                     </tr>
                   ))}
+                  {rows.oralDefense.length === 0 && !loading && (
+                    <tr className="border-t border-neutral-200">
+                      <td
+                        className="py-6 text-center text-neutral-500"
+                        colSpan={7}
+                      >
+                        No oral defense schedules found for your teams.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </CardTable>
             </section>
@@ -1352,15 +1567,15 @@ export default function AdviserEvents() {
                       >
                         <td className="py-2 pl-6 pr-3">{idx + 1}.</td>
                         <td className="py-2 pr-3">{r.teamName}</td>
-                        <td className="py-2 pr-3">{r.title}</td>
-                        <td className="py-2 pr-3">{r.date}</td>
+                        <td className="py-2 pr-3">{r.title || "—"}</td>
+                        <td className="py-2 pr-3">{r.date || "—"}</td>
                         <td className="py-2 pr-3">
-                          {r.timeStart ? to12h(r.timeStart) : ""}
+                          {r.timeStart ? to12h(r.timeStart) : "—"}
                         </td>
                         <td className="py-2 pr-3">
-                          {Array.isArray(r.panelists)
+                          {Array.isArray(r.panelists) && r.panelists.length > 0
                             ? r.panelists.join(", ")
-                            : ""}
+                            : "—"}
                         </td>
                         <td className="py-2 pr-6">
                           <Pill>{r.verdict || "Pending"}</Pill>
@@ -1373,7 +1588,7 @@ export default function AdviserEvents() {
                         className="py-6 text-center text-neutral-500"
                         colSpan={7}
                       >
-                        No final defense items yet.
+                        No final defense schedules found for your teams.
                       </td>
                     </tr>
                   )}
@@ -1414,15 +1629,15 @@ export default function AdviserEvents() {
                       >
                         <td className="py-2 pl-6 pr-3">{idx + 1}.</td>
                         <td className="py-2 pr-3">{r.teamName}</td>
-                        <td className="py-2 pr-3">{r.title}</td>
-                        <td className="py-2 pr-3">{r.date}</td>
+                        <td className="py-2 pr-3">{r.title || "—"}</td>
+                        <td className="py-2 pr-3">{r.date || "—"}</td>
                         <td className="py-2 pr-3">
-                          {r.timeStart ? to12h(r.timeStart) : ""}
+                          {r.timeStart ? to12h(r.timeStart) : "—"}
                         </td>
                         <td className="py-2 pr-3">
-                          {Array.isArray(r.panelists)
+                          {Array.isArray(r.panelists) && r.panelists.length > 0
                             ? r.panelists.join(", ")
-                            : ""}
+                            : "—"}
                         </td>
                         <td className="py-2 pr-6">
                           <Pill>{r.verdict || "Pending"}</Pill>
@@ -1435,7 +1650,7 @@ export default function AdviserEvents() {
                         className="py-6 text-center text-neutral-500"
                         colSpan={7}
                       >
-                        No final re-defense items yet.
+                        No final re-defense schedules found for your teams.
                       </td>
                     </tr>
                   )}
