@@ -31,11 +31,11 @@ const COLORS = {
 // No static sample datasets; everything loads from Firestore.
 
 const statusColor = (s) =>
-  s === "To Review"   ? COLORS.toreview :
-  s === "In Progress" ? COLORS.inprogress :
-  s === "To Do"       ? COLORS.todo :
-  s === "Completed"   ? COLORS.completed :
-                        COLORS.missed;
+  s === "To Review" ? COLORS.toreview :
+    s === "In Progress" ? COLORS.inprogress :
+      s === "To Do" ? COLORS.todo :
+        s === "Completed" ? COLORS.completed :
+          COLORS.missed;
 
 // ---- small UI bits -------------------------------------------------------
 const Card = ({ children, className = "" }) => (
@@ -166,8 +166,8 @@ const Donut = ({ segments, centerText = "40%" }) => {
 /* ============================
    Simple Calendar (Month view)
    ============================ */
-const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // sample events to mimic your screenshot
 // Calendar events are loaded live (tasks + schedules)
@@ -339,11 +339,10 @@ const CalendarCard = ({ pmUid }) => {
               <button
                 key={key}
                 onClick={() => setView(key)}
-                className={`h-8 px-4 rounded-md text-sm font-medium border ${
-                  active
+                className={`h-8 px-4 rounded-md text-sm font-medium border ${active
                     ? "text-white"
                     : "text-neutral-700 bg-white"
-                }`}
+                  }`}
                 style={{
                   background: active ? MAROON : undefined,
                   borderColor: active ? MAROON : "#e5e7eb",
@@ -415,8 +414,8 @@ const CalendarCard = ({ pmUid }) => {
 const ProjectManagerDashboard = () => {
   // Live data that falls back to sample values until loaded
   const [upcoming, setUpcoming] = useState([]);
-  const [weekly, setWeekly] = useState([{ key: "todo", label: "To Do", value: 0, color: COLORS.todo },{ key: "inprogress", label: "In Progress", value: 0, color: COLORS.inprogress },{ key: "toreview", label: "To Review", value: 0, color: COLORS.toreview },{ key: "completed", label: "Completed", value: 0, color: COLORS.completed },{ key: "missed", label: "Missed", value: 0, color: COLORS.missed }]);
-  const [donut, setDonut] = useState([{ key: "todo", label: "To Do", pct: 0, color: COLORS.todo },{ key: "inprogress", label: "In Progress", pct: 0, color: COLORS.inprogress },{ key: "toreview", label: "To Review", pct: 0, color: COLORS.toreview },{ key: "completed", label: "Completed", pct: 0, color: COLORS.completed },{ key: "missed", label: "Missed", pct: 0, color: COLORS.missed }]);
+  const [weekly, setWeekly] = useState([{ key: "todo", label: "To Do", value: 0, color: COLORS.todo }, { key: "inprogress", label: "In Progress", value: 0, color: COLORS.inprogress }, { key: "toreview", label: "To Review", value: 0, color: COLORS.toreview }, { key: "completed", label: "Completed", value: 0, color: COLORS.completed }, { key: "missed", label: "Missed", value: 0, color: COLORS.missed }]);
+  const [donut, setDonut] = useState([{ key: "todo", label: "To Do", pct: 0, color: COLORS.todo }, { key: "inprogress", label: "In Progress", pct: 0, color: COLORS.inprogress }, { key: "toreview", label: "To Review", pct: 0, color: COLORS.toreview }, { key: "completed", label: "Completed", pct: 0, color: COLORS.completed }, { key: "missed", label: "Missed", pct: 0, color: COLORS.missed }]);
   const [recentTasks, setRecentTasks] = useState([]);
 
   // helpers
@@ -427,7 +426,7 @@ const ProjectManagerDashboard = () => {
     const hh = ((H + 11) % 12) + 1;
     return `${hh}:${String(M || 0).padStart(2, "0")} ${ampm}`;
   };
-  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const fmtDate = (yyyy_mm_dd) => {
     if (!yyyy_mm_dd) return "--";
     const [y, m, d] = yyyy_mm_dd.split("-").map(Number);
@@ -526,50 +525,64 @@ const ProjectManagerDashboard = () => {
         // Upcoming: nearest future dueAtMs
         const now = Date.now();
         const upcomingRaw = all
-          .filter((t) => typeof t.dueAtMs === "number" && t.dueAtMs >= now)
-          .sort((a, b) => (a.dueAtMs || 0) - (b.dueAtMs || 0))
-          .slice(0, 5)
-          .map((t) => ({
-            name: t.team?.name || (t.assignees?.[0]?.name || "—"),
-            chapter: t.task || t.type || "Task",
-            date: fmtDate(t.dueDate || ""),
-            time: to12h(t.dueTime || ""),
-            color:
-              (t.status === "In Progress" && COLORS.inprogress) ||
-              (t.status === "To Review" && COLORS.toreview) ||
-              (t.status === "Completed" && COLORS.completed) ||
-              COLORS.todo,
-          }));
+  .filter((t) => typeof t.dueAtMs === "number" && t.dueAtMs >= now)
+  .filter(
+    (t) =>
+      typeof t.dueAtMs === "number" &&
+     t.dueAtMs >= now &&
+      String(t.status || "").toLowerCase() !== "completed"
+  )
+  .sort((a, b) => (a.dueAtMs || 0) - (b.dueAtMs || 0))
+  .slice(0, 5)
+  .map((t) => ({
+    name: t.team?.name || (t.assignees?.[0]?.name || "—"),
+    chapter: t.task || t.type || "Task",
+    date: fmtDate(t.dueDate || ""),
+    time: to12h(t.dueTime || ""),
+    color:
+      (t.status === "In Progress" && COLORS.inprogress) ||
+      (t.status === "To Review" && COLORS.toreview) ||
+      (t.status === "Completed" && COLORS.completed) ||
+      COLORS.todo,
+  }));
         if (upcomingRaw.length > 0) setUpcoming(upcomingRaw);
 
         // Weekly summary: counts by status (simple total)
         const counts = { todo: 0, inprogress: 0, toreview: 0, completed: 0, missed: 0 };
         const nowMs = Date.now();
         all.forEach((t) => {
-          const s = String(t.status || "To Do").toLowerCase();
-          if (s.includes("review")) counts.toreview++;
-          else if (s.includes("progress")) counts.inprogress++;
-          else if (s.includes("complete")) counts.completed++;
-          else counts.todo++;
-          if (typeof t.dueAtMs === "number" && t.dueAtMs < nowMs && (t.status || "") !== "Completed") counts.missed++;
-        });
+  const s = String(t.status || "To Do").toLowerCase();
+  const isOverdue = typeof t.dueAtMs === "number" && t.dueAtMs < nowMs && (t.status || "") !== "Completed";
+
+  if (isOverdue) {
+    counts.missed++;
+  } else if (s.includes("review")) {
+    counts.toreview++;
+  } else if (s.includes("progress")) {
+    counts.inprogress++;
+  } else if (s.includes("complete")) {
+    counts.completed++;
+  } else {
+    counts.todo++;
+  }
+});
         setWeekly([
-          { key: "todo",       label: "To Do",       value: counts.todo,       color: COLORS.todo },
+          { key: "todo", label: "To Do", value: counts.todo, color: COLORS.todo },
           { key: "inprogress", label: "In Progress", value: counts.inprogress, color: COLORS.inprogress },
-          { key: "toreview",   label: "To Review",   value: counts.toreview,   color: COLORS.toreview },
-          { key: "completed",  label: "Completed",   value: counts.completed,  color: COLORS.completed },
-          { key: "missed",     label: "Missed",      value: counts.missed,     color: COLORS.missed },
+          { key: "toreview", label: "To Review", value: counts.toreview, color: COLORS.toreview },
+          { key: "completed", label: "Completed", value: counts.completed, color: COLORS.completed },
+          { key: "missed", label: "Missed", value: counts.missed, color: COLORS.missed },
         ]);
 
         // Donut: percentage from counts
         const total = counts.todo + counts.inprogress + counts.toreview + counts.completed + counts.missed;
         const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
         setDonut([
-          { key: "todo",       label: "To Do",       pct: pct(counts.todo),       color: COLORS.todo },
+          { key: "todo", label: "To Do", pct: pct(counts.todo), color: COLORS.todo },
           { key: "inprogress", label: "In Progress", pct: pct(counts.inprogress), color: COLORS.inprogress },
-          { key: "toreview",   label: "To Review",   pct: pct(counts.toreview),   color: COLORS.toreview },
-          { key: "completed",  label: "Completed",   pct: pct(counts.completed),  color: COLORS.completed },
-          { key: "missed",     label: "Missed",      pct: pct(counts.missed),     color: COLORS.missed },
+          { key: "toreview", label: "To Review", pct: pct(counts.toreview), color: COLORS.toreview },
+          { key: "completed", label: "Completed", pct: pct(counts.completed), color: COLORS.completed },
+          { key: "missed", label: "Missed", pct: pct(counts.missed), color: COLORS.missed },
         ]);
 
         // Recent tasks
@@ -642,7 +655,11 @@ const ProjectManagerDashboard = () => {
           <div className="p-6">
             <div className="grid grid-cols-12 gap-6 items-center">
               <div className="col-span-12 xl:col-span-8">
-                <Donut segments={donut} centerText="0" />
+                <Donut
+  segments={donut}
+  centerText={`${(donut.find((d) => d.key === "completed")?.pct || 0)}%`}
+/>
+
               </div>
               <div className="col-span-12 xl:col-span-4">
                 <Legend items={donut} />

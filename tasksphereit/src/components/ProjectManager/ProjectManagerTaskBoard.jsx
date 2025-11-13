@@ -805,7 +805,7 @@ export default function ProjectManagerTaskBoard() {
       titleDefenseTasks: { A: new Map(), B: new Map() },
       oralDefenseTasks: { A: new Map(), B: new Map() },
       finalDefenseTasks: { A: new Map(), B: new Map() },
-      finalRedefenseTasks: { A: new Map(), B: new Map() }, // ← added
+      finalRedefenseTasks: { A: new Map(), B: new Map() },
     };
 
     const normalize = (collectionName, d) => {
@@ -849,6 +849,8 @@ export default function ProjectManagerTaskBoard() {
         dueDisplay,
         createdDisplay,
         dueAtMs: dueAtMs || null,
+        // ADD TASK MANAGER FIELD FOR FILTERING
+        taskManager: x.taskManager || "Project Manager", // Default to Project Manager for old tasks
       };
     };
 
@@ -858,7 +860,7 @@ export default function ProjectManagerTaskBoard() {
         "titleDefenseTasks",
         "oralDefenseTasks",
         "finalDefenseTasks",
-        "finalRedefenseTasks", // ← added
+        "finalRedefenseTasks",
       ]) {
         for (const subset of ["A", "B"]) {
           store[coll][subset].forEach((val, key) =>
@@ -866,53 +868,42 @@ export default function ProjectManagerTaskBoard() {
           );
         }
       }
-      setCards(Array.from(unionMap.values()));
+      
+      // FILTER CARDS BASED ON SELECTED TAB
+      const filteredCards = Array.from(unionMap.values()).filter(card => {
+        if (managerTab === "Adviser") {
+          return card.taskManager === "Adviser";
+        } else {
+          return card.taskManager === "Project Manager";
+        }
+      });
+      
+      setCards(filteredCards);
     };
 
     const attach = (collectionName) => {
       chunks(teamIds, 10).forEach((ids) => {
-        const qa = query(
-          collection(db, collectionName),
-          where("taskManager", "==", managerTab),
-          where("team.id", "in", ids)
-        );
-        const ua = onSnapshot(qa, (snap) => {
+        const q = query(collection(db, collectionName), where("team.id", "in", ids));
+        const unsub = onSnapshot(q, (snap) => {
           const next = new Map();
-          snap.docs.forEach((d) =>
-            next.set(d.id, normalize(collectionName, d))
-          );
+          snap.docs.forEach((d) => next.set(d.id, normalize(collectionName, d)));
           store[collectionName].A = next;
           publish();
         });
-
-        const qb = query(
-          collection(db, collectionName),
-          where("taskManager", "==", managerTab),
-          where("teamId", "in", ids)
-        );
-        const ub = onSnapshot(qb, (snap) => {
-          const next = new Map();
-          snap.docs.forEach((d) =>
-            next.set(d.id, normalize(collectionName, d))
-          );
-          store[collectionName].B = next;
-          publish();
-        });
-
-        unsubsRef.current.push(ua, ub);
+        unsubsRef.current.push(unsub);
       });
     };
 
     attach("titleDefenseTasks");
     attach("oralDefenseTasks");
     attach("finalDefenseTasks");
-    attach("finalRedefenseTasks"); // ← added
+    attach("finalRedefenseTasks");
 
     return () => {
       unsubsRef.current.forEach((u) => typeof u === "function" && u());
       unsubsRef.current = [];
     };
-  }, [teams, managerTab]);
+  }, [teams, managerTab]); // ADD managerTab AS DEPENDENCY
 
   const grouped = useMemo(() => {
     const map = Object.fromEntries(COLUMNS.map((c) => [c.id, []]));
@@ -962,7 +953,11 @@ export default function ProjectManagerTaskBoard() {
           {COLUMNS.map((col) => (
             <Column key={col.id} title={col.title} color={col.color}>
               {grouped[col.id].length === 0 ? (
-                <div className="text-sm text-neutral-500">No tasks.</div>
+                <div className="text-sm text-neutral-500">
+                  {managerTab === "Adviser" 
+                    ? "No adviser tasks." 
+                    : "No project manager tasks."}
+                </div>
               ) : (
                 grouped[col.id].map((card) => (
                   <KanbanCard

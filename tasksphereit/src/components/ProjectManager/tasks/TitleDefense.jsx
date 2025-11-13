@@ -94,6 +94,7 @@ const StatusBadge = ({ value }) => {
     "To Review": "bg-[#6FA8DC] text-white",
     "In Progress": "bg-[#7C9C3B] text-white",
     Completed: "bg-[#6A0F14] text-white",
+    Missed: "bg-[#C0392B] text-white", // 🔴 Added red color for Missed
   };
   return (
     <span
@@ -792,37 +793,58 @@ const TitleDefense = ({ onBack }) => {
 
   /* Tasks created by this PM (live) */
   useEffect(() => {
-    if (!pmUid) return;
-    const unsub = onSnapshot(
-      query(
-        collection(db, TASKS_COLLECTION),
-        where("createdBy.uid", "==", pmUid),
-        orderBy("createdAt", "desc")
-      ),
-      (snap) => {
-        setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setSelected(new Set());
-        setPage(1);
+  if (!pmUid) return;
+  const unsub = onSnapshot(
+    query(
+      collection(db, TASKS_COLLECTION),
+      where("createdBy.uid", "==", pmUid),
+      orderBy("createdAt", "desc")
+    ),
+    async (snap) => {
+      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setTasks(docs);
+      setSelected(new Set());
+      setPage(1);
 
-        // clear optimistic overlays for members with a task now
-        setOptimistic((prev) => {
-          const next = { ...prev };
-          const memberWithTask = new Set();
-          for (const t of snap.docs) {
-            const data = t.data();
-            (data.assignees || []).forEach((a) => {
-              if (a?.uid) memberWithTask.add(a.uid);
-            });
-          }
-          for (const k of Object.keys(next)) {
-            if (memberWithTask.has(k)) delete next[k];
-          }
-          return next;
-        });
+      // 🕒 Auto-update overdue tasks
+      const now = Date.now();
+      const updates = docs
+        .filter(
+          (t) =>
+            typeof t.dueAtMs === "number" &&
+            t.dueAtMs < now &&
+            (t.status || "") !== "Completed" &&
+            (t.status || "") !== "Missed"
+        )
+        .map((t) =>
+          updateDoc(doc(db, TASKS_COLLECTION, t.id), { status: "Missed" })
+        );
+
+      if (updates.length > 0) {
+        console.log(`Auto-updated ${updates.length} missed tasks`);
+        await Promise.allSettled(updates);
       }
-    );
-    return () => unsub && unsub();
-  }, [pmUid]);
+
+      // clear optimistic overlays
+      setOptimistic((prev) => {
+        const next = { ...prev };
+        const memberWithTask = new Set();
+        for (const t of snap.docs) {
+          const data = t.data();
+          (data.assignees || []).forEach((a) => {
+            if (a?.uid) memberWithTask.add(a.uid);
+          });
+        }
+        for (const k of Object.keys(next)) {
+          if (memberWithTask.has(k)) delete next[k];
+        }
+        return next;
+      });
+    }
+  );
+  return () => unsub && unsub();
+}, [pmUid]);
+
 
   /* Build table rows: only members who have non-completed tasks (each task = 1 row) */
   const rows = useMemo(() => {

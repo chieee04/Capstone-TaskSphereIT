@@ -221,18 +221,19 @@ function MemberDashboard() {
         };
         const now = Date.now();
         mine.forEach((t) => {
-          const s = String(t.status || "To Do").toLowerCase();
-          if (s.includes("review")) counts.toreview++;
-          else if (s.includes("progress")) counts.inprogress++;
-          else if (s.includes("complete")) counts.completed++;
-          else counts.todo++;
-          if (
-            typeof t.dueAtMs === "number" &&
-            t.dueAtMs < now &&
-            (t.status || "") !== "Completed"
-          )
-            counts.missed++;
-        });
+  const s = String(t.status || "To Do").toLowerCase();
+  const isMissed =
+    typeof t.dueAtMs === "number" &&
+    t.dueAtMs < now &&
+    (t.status || "") !== "completed";
+
+  if (isMissed) {
+    counts.missed++;
+  } else if (s.includes("review")) counts.toreview++;
+  else if (s.includes("progress")) counts.inprogress++;
+  else if (s.includes("complete")) counts.completed++;
+  else counts.todo++;
+});
         if (alive) setWeeklyCounts(counts);
       } catch (e) {
         console.error("MemberDashboard load failed:", e);
@@ -499,23 +500,26 @@ function MemberDashboard() {
           <div style={{ maxWidth: "300px", maxHeight: "300px" }}>
             <Pie
               data={{
-                labels: ["To Do", "In Progress", "Completed", "Missed"],
-                datasets: [
-                  {
-                    data: [
-                      weeklyCounts.todo,
-                      weeklyCounts.inprogress,
-                      weeklyCounts.completed,
-                      weeklyCounts.missed,
-                    ],
-                    backgroundColor: [
-                      COLOR.todo,
-                      COLOR.inprogress,
-                      COLOR.completed,
-                      COLOR.missed,
-                    ],
-                  },
-                ],
+                labels: ["To Do", "In Progress", "To Review", "Completed", "Missed"],
+datasets: [
+  {
+    data: [
+      weeklyCounts.todo,
+      weeklyCounts.inprogress,
+      weeklyCounts.toreview,
+      weeklyCounts.completed,
+      weeklyCounts.missed,
+    ],
+    backgroundColor: [
+      COLOR.todo,
+      COLOR.inprogress,
+      COLOR.toreview,
+      COLOR.completed,
+      COLOR.missed,
+    ],
+  },
+],
+
               }}
               options={{ responsive: true, maintainAspectRatio: true }}
             />
