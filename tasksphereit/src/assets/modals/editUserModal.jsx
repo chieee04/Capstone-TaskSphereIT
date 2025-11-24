@@ -1,9 +1,11 @@
+//editUserModal.jsx
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../config/firebase";
 import { resetPasswordToDefault } from "../scripts/enroll";
 import Swal from "sweetalert2";
+import { updateTeamsForUser } from "../../components/CapstoneInstructor/InstructorFunctions/InstructorTeamsFunction";
 
 const EditUserModal = ({
   open,
@@ -59,14 +61,20 @@ const EditUserModal = ({
     } else {
       try {
         await handleSaveUser();
-        await Swal.fire({
-          icon: "success",
-          title: "Success!",
-          text: "User updated successfully",
-          timer: 1500,
-          showConfirmButton: false,
-        });
-        closeModal();
+await updateTeamsForUser(form);
+
+closeModal(); // ✅ close immediately
+
+setTimeout(() => {
+  Swal.fire({
+    icon: "success",
+    title: "Success!",
+    text: "User updated successfully",
+    timer: 1500,
+    showConfirmButton: false,
+  });
+}, 200); // small delay para smooth
+
       } catch (error) {
         console.error("Error saving user:", error);
       }

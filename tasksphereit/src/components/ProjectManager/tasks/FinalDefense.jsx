@@ -1,3 +1,4 @@
+
 // src/components/ProjectManager/tasks/FinalDefense.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -5,8 +6,6 @@ import {
   SlidersHorizontal,
   CalendarDays,
   Clock,
-  ChevronLeft,
-  ChevronRight,
   PlusCircle,
   UserCircle2,
   Paperclip,
@@ -14,6 +13,9 @@ import {
   MoreVertical,
   Loader2,
   Trash2,
+  Edit,
+  Users,
+  ChevronDown,
   AlertCircle,
 } from "lucide-react";
 
@@ -29,6 +31,7 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  getDoc,
 } from "firebase/firestore";
 
 /* ===== Supabase ===== */
@@ -39,7 +42,148 @@ import OPTIONS_JSON from "../methodologyContents/finalDefense.json";
 
 const MAROON = "#6A0F14";
 const TASKS_COLLECTION = "finalDefenseTasks";
-const ORAL_COLLECTION = "oralDefenseTasks";
+
+/* ---------- Status Colors ---------- */
+const STATUS_COLORS = {
+  "To Do": "#FABC3F", // Yellow
+  "In Progress": "#809D3C", // Green
+  "To Review": "#578FCA", // Blue
+  "Completed": "#AA60C8", // Purple
+  "Missed": "#3B0304", // Maroon
+};
+
+// Updated: Team tasks can go up to "Completed", Adviser tasks only up to "To Review"
+const STATUS_OPTIONS_TEAM = ["To Do", "In Progress", "To Review", "Completed"];
+const STATUS_OPTIONS_ADVISER = ["To Do", "In Progress", "To Review"];
+// Updated: Filter options without "Completed"
+const FILTER_OPTIONS_TEAM = ["All Status", "To Do", "In Progress", "To Review", "Missed"];
+const FILTER_OPTIONS_ADVISER = ["All Status", "To Do", "In Progress", "To Review", "Missed"];
+
+/* ---------- helpers ---------- */
+const localTodayStr = () => {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().split("T")[0];
+};
+
+const formatTime12Hour = (time24) => {
+  if (!time24 || time24 === "null") return "null";
+  const [hours, minutes] = time24.split(':');
+  const hour = parseInt(hours, 10);
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes} ${period}`;
+};
+
+const formatDateMonthDayYear = (dateStr) => {
+  if (!dateStr || dateStr === "null") return "null";
+  
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return "null";
+    
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "null";
+  }
+};
+
+const ordinal = (n) => {
+  if (n % 100 >= 11 && n % 100 <= 13) return `${n}th`;
+  const r = n % 10;
+  if (r === 1) return `${n}st`;
+  if (r === 2) return `${n}nd`;
+  if (r === 3) return `${n}rd`;
+  return `${n}th`;
+};
+const parseRevCount = (rev) => {
+  const m = String(rev || "").match(/^(\d+)(st|nd|rd|th)\s+Revision$/i);
+  return m ? parseInt(m[1], 10) : 0;
+};
+const nextRevision = (prev = "No Revision") => {
+  const count = parseRevCount(prev);
+  if (count >= 10) {
+    return null; // Maximum revisions reached
+  }
+  return `${ordinal(count + 1)} Revision`;
+};
+
+/* ===== Status component ===== */
+const StatusBadgeFinalDefense = ({ value, isEditable, onChange, disabled = false, statusOptions = STATUS_OPTIONS_TEAM }) => {
+  const backgroundColor = STATUS_COLORS[value] || "#6B7280"; // Default gray
+  
+  if (!value || value === "--") return <span>--</span>;
+  
+  if (disabled) {
+    return (
+      <span
+        className="inline-flex items-center px-2.5 py-0.5 rounded text-[12px] font-medium text-white cursor-not-allowed opacity-70"
+        style={{ backgroundColor }}
+      >
+        {value}
+      </span>
+    );
+  }
+  
+  return isEditable ? (
+    <div className="relative inline-flex items-center">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="text-[12px] font-medium border border-neutral-300 rounded px-2.5 py-0.5 bg-white cursor-pointer appearance-none pr-6 text-gray-900"
+        style={{
+          backgroundColor: backgroundColor,
+          color: 'white',
+        }}
+      >
+        {statusOptions.map((status) => (
+          <option key={status} value={status} className="text-gray-900 bg-white">
+            {status}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="w-3 h-3 text-white absolute right-1.5 pointer-events-none" />
+    </div>
+  ) : (
+    <span
+      className="inline-flex items-center px-2.5 py-0.5 rounded text-[12px] font-medium text-white"
+      style={{ backgroundColor }}
+    >
+      {value}
+    </span>
+  );
+};
+
+const RevisionPill = ({ value }) =>
+  value && value !== "null" && value !== "No Revision" ? (
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[12px] font-medium bg-neutral-100 border border-neutral-200">
+      {value}
+    </span>
+  ) : (
+    <span>--</span>
+  );
+
+// Helper function to display due date and time properly
+const displayDueDate = (dueDate, isAdviserTask = false) => {
+  if (isAdviserTask && (!dueDate || dueDate === "--")) {
+    return "--";
+  }
+  return dueDate ? formatDateMonthDayYear(dueDate) : "--";
+};
+
+const displayDueTime = (dueTime, isAdviserTask = false) => {
+  if (isAdviserTask && (!dueTime || dueTime === "--")) {
+    return "--";
+  }
+  return dueTime ? formatTime12Hour(dueTime) : "--";
+};
+
+// Helper function to check if adviser task has due date and time
+const hasDueDateAndTime = (task) => {
+  return task && task.dueDate && task.dueTime && task.dueDate !== "--" && task.dueTime !== "--";
+};
 
 /* -----------------------------------------------------------
    Build indexes from JSON (methodologies → phases → types → tasks → subtasks → elements)
@@ -68,41 +212,66 @@ function buildIndexesFromJSON(json) {
       const phaseName = String(p?.phase || "").trim();
       if (phaseName) PHASE_OPTIONS[mName].push(phaseName);
 
+      // Initialize TASK_SEEDS for this methodology and phase
+      if (!TASK_SEEDS[mName][phaseName]) {
+        TASK_SEEDS[mName][phaseName] = {};
+      }
+
       const types = Array.isArray(p?.taskTypes) ? p.taskTypes : [];
       for (const tt of types) {
         const tType = String(tt?.type || "").trim();
         if (!tType) continue;
 
-        if (!TASK_SEEDS[mName][tType]) TASK_SEEDS[mName][tType] = [];
+        if (!TASK_SEEDS[mName][phaseName][tType]) TASK_SEEDS[mName][phaseName][tType] = [];
 
         const tasks = Array.isArray(tt?.tasks) ? tt.tasks : [];
         for (const t of tasks) {
           const taskName = String(t?.task || "").trim();
           if (!taskName) continue;
 
-          if (!TASK_SEEDS[mName][tType].includes(taskName)) {
-            TASK_SEEDS[mName][tType].push(taskName);
+          if (!TASK_SEEDS[mName][phaseName][tType].includes(taskName)) {
+            TASK_SEEDS[mName][phaseName][tType].push(taskName);
           }
 
-          const subtasksArr = Array.isArray(t?.subtasks) ? t.subtasks : [];
+          // Handle subtasks - both array of strings and array of objects
+          let subtasksArr = [];
+          if (Array.isArray(t?.subtasks)) {
+            subtasksArr = t.subtasks.map(subtask => {
+              if (typeof subtask === 'string') {
+                return { subtask: subtask.trim(), elements: [] };
+              } else if (typeof subtask === 'object') {
+                return {
+                  subtask: String(subtask?.subtask || "").trim(),
+                  elements: Array.isArray(subtask?.elements) ? subtask.elements : []
+                };
+              }
+              return { subtask: "", elements: [] };
+            }).filter(item => item.subtask);
+          }
+
           if (!SUBTASKS[mName][taskName]) SUBTASKS[mName][taskName] = [];
+          
           for (const s of subtasksArr) {
-            const sName = String(s?.subtask || "").trim();
+            const sName = s.subtask;
             if (!sName) continue;
+            
             if (!SUBTASKS[mName][taskName].includes(sName)) {
               SUBTASKS[mName][taskName].push(sName);
             }
-            const els = Array.isArray(s?.elements) ? s.elements : [];
-            if (els.length) {
-              ELEMENTS[mName][sName] = els.map((e) => String(e));
+            
+            // Handle elements
+            if (s.elements && s.elements.length > 0) {
+              ELEMENTS[mName][sName] = s.elements.map(e => String(e));
             }
           }
 
+          // Handle task-level elements
           const taskEls = Array.isArray(t?.elements) ? t.elements : [];
-          if (taskEls.length) {
+          if (taskEls.length > 0) {
             if (!ELEMENTS[mName][taskName]) {
-              ELEMENTS[mName][taskName] = taskEls.map((e) => String(e));
+              ELEMENTS[mName][taskName] = taskEls.map(e => String(e));
             }
+            // Add task itself as a subtask if it has elements
             if (!SUBTASKS[mName][taskName]?.includes(taskName)) {
               SUBTASKS[mName][taskName]?.push(taskName);
             }
@@ -138,8 +307,8 @@ const {
   FIXED_PHASE,
 } = buildIndexesFromJSON(OPTIONS_JSON);
 
-/* ---------- helpers ---------- */
-const snapTimeTo = (val, stepMin = 10) => {
+/* ---------- small helpers ---------- */
+const snapTimeTo = (val, stepMin = 1) => {
   if (!val) return "";
   const [H, M] = String(val).split(":").map(Number);
   let mm = Math.round(M / stepMin) * stepMin;
@@ -149,14 +318,6 @@ const snapTimeTo = (val, stepMin = 10) => {
     hh = (hh + 1) % 24;
   }
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-};
-
-const toMs = (d, t) => {
-  if (!d) return null;
-  if (Number.isFinite(d)) return d; // already ms
-  const time = t || "00:00";
-  const ms = Date.parse(`${d}T${time}:00`);
-  return Number.isFinite(ms) ? ms : null;
 };
 
 /* ===== Supabase files ===== */
@@ -188,7 +349,331 @@ const deleteTaskFileFromSupabase = async (fileName) => {
   if (error) throw new Error(error.message || "Delete failed");
 };
 
-/* ======= Create/Edit Task Dialog (classic UI; JSON-driven) ======= */
+/* ======= Confirmation Dialog ======= */
+function ConfirmationDialog({
+  open,
+  onClose,
+  onConfirm,
+  title = "Confirmation",
+  message = "Are you sure you want to proceed?",
+  confirmText = "Yes",
+  cancelText = "No",
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overscroll-contain">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-2xl border border-neutral-200">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+              {title}
+            </h3>
+            <p className="text-neutral-600">{message}</p>
+          </div>
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-neutral-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+            >
+              {cancelText}
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow hover:bg-[#4A0405]"
+              style={{ backgroundColor: MAROON }}
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ======= Simple Edit Due Date & Time Dialog ======= */
+function EditDueDateTimeDialog({
+  open,
+  onClose,
+  onSaved,
+  existingTask,
+  rowData, // Add rowData prop to get the correct member info
+  isFinalDefenseAllowed, // Add this prop to check if final defense is allowed
+  lockedMethodology, // Add methodology prop
+}) {
+  const [saving, setSaving] = useState(false);
+  const [due, setDue] = useState("");
+  const [time, setTime] = useState("");
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const today = localTodayStr();
+  const currentRevisionCount = parseRevCount(existingTask?.revision);
+
+  useEffect(() => {
+    if (!open) return;
+    if (existingTask) {
+      setDue(existingTask.dueDate || "");
+      setTime(existingTask.dueTime || "");
+    } else {
+      setDue("");
+      setTime("");
+    }
+    setHasChanges(false);
+  }, [open, existingTask]);
+
+  const canSave = due && time && currentRevisionCount < 10 && isFinalDefenseAllowed;
+
+  const save = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    try {
+      const dueAtMs = due && time ? new Date(`${due}T${time}:00`).getTime() : null;
+      const currentStatus = existingTask?.status || "To Do";
+      const currentRevision = existingTask?.revision || "No Revision";
+      
+      // Check if date/time actually changed
+      const dueChanged = existingTask && due !== (existingTask.dueDate || "");
+      const timeChanged = existingTask && time !== (existingTask.dueTime || "");
+      const dateTimeChanged = dueChanged || timeChanged;
+
+      let newStatus = currentStatus;
+      let newRevision = currentRevision;
+
+      // Apply revision and status rules based on current status
+      if (dateTimeChanged) {
+        if (currentStatus === "To Review" || currentStatus === "Missed") {
+          // Bump revision and reset to "To Do" for "To Review" and "Missed" tasks
+          const nextRev = nextRevision(currentRevision);
+          if (nextRev) {
+            newRevision = nextRev;
+            newStatus = "To Do";
+          } else {
+            // Maximum revisions reached - don't change revision but show message
+            alert("Maximum revisions (10) reached. Please create a new task instead of editing this one.");
+            setSaving(false);
+            return;
+          }
+        }
+        // For "To Do" and "In Progress", keep current status and revision
+      }
+
+      const payload = {
+        dueDate: due || null,
+        dueTime: time || null,
+        dueAtMs,
+        revision: newRevision,
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (existingTask?.id) {
+        await updateDoc(
+          doc(db, TASKS_COLLECTION, existingTask.id),
+          payload
+        );
+      }
+
+      onSaved?.();
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const shouldShowRevisionNote = () => {
+    const currentStatus = existingTask?.status || "To Do";
+    return currentStatus === "To Review" || currentStatus === "Missed";
+  };
+
+  const handleClose = () => {
+    if (hasChanges) {
+      setShowExitConfirm(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleConfirmExit = () => {
+    setShowExitConfirm(false);
+    onClose();
+  };
+
+  const handleInputChange = () => {
+    setHasChanges(true);
+  };
+
+  if (!open) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overscroll-contain">
+        {/* backdrop */}
+        <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
+
+        {/* panel - centered */}
+        <div className="relative z-10 w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl border border-neutral-200 flex flex-col max-h-[85vh]">
+            {/* header - UPDATED with Edit icon and horizontal line moved down */}
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-neutral-200">
+              <div
+                className="flex items-center gap-2 text-[16px] font-semibold"
+                style={{ color: MAROON }}
+              >
+                <Edit className="w-5 h-5" /> {/* Changed to Edit icon */}
+                <span>Edit</span>
+              </div>
+              <button
+                onClick={handleClose}
+                className="p-1 rounded-md hover:bg-neutral-100 text-neutral-500"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* CONTENT */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-5 space-y-5">
+              {/* Final Defense Allowed Check */}
+              {!isFinalDefenseAllowed && (
+                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-yellow-800 mb-1">Final Defense Not Available</h4>
+                      <p className="text-yellow-700 text-sm">
+                        Final Defense tasks cannot be managed until your team receives an "Approved" verdict on Oral Defense.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Task Info - REMOVED border box styling */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-neutral-700">Task Information</h3>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="font-medium">Assigned:</span> {rowData?.memberName || "Team"}
+                  </div>
+                  <div>
+                    <span className="font-medium">Methodology:</span> {lockedMethodology || "Not Set"}
+                  </div>
+                  <div>
+                    <span className="font-medium">Task Type:</span> {existingTask?.type || "Unknown"}
+                  </div>
+                  <div>
+                    <span className="font-medium">Task:</span> {existingTask?.task || "Unknown"}
+                  </div>
+                  <div>
+                    <span className="font-medium">Current Status:</span> {existingTask?.status || "To Do"}
+                  </div>
+                  <div>
+                    <span className="font-medium">Current Revision:</span> {existingTask?.revision || "No Revision"}
+                  </div>
+                </div>
+              </div>
+
+              {currentRevisionCount >= 10 ? (
+                <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-sm font-bold">!</span>
+                      </div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-red-800 mb-1">Maximum Revisions Reached</h4>
+                      <p className="text-red-700 text-sm">
+                        This task has reached the maximum of 10 revisions. It is recommended to create a new task instead of editing this one further.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-12 gap-4">
+                    <div className="col-span-6">
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        Due Date
+                      </label>
+                      <input
+                        type="date"
+                        min={today}
+                        className="w-full rounded-lg border border-neutral-300 px-3 py-2"
+                        value={due}
+                        onChange={(e) => {
+                          setDue(e.target.value);
+                          handleInputChange();
+                        }}
+                        disabled={!isFinalDefenseAllowed}
+                      />
+                    </div>
+                    <div className="col-span-6">
+                      <label className="block text-sm font-medium text-neutral-700 mb-1">
+                        Time
+                      </label>
+                      <input
+                        type="time"
+                        step={60} // 1 minute
+                        className="w-full rounded-lg border border-neutral-300 px-3 py-2"
+                        value={time}
+                        onChange={(e) => {
+                          setTime(e.target.value);
+                          handleInputChange();
+                        }}
+                        disabled={!isFinalDefenseAllowed}
+                      />
+                    </div>
+                  </div>
+
+                  {shouldShowRevisionNote() && (
+                    <div className="bg-blue-50 rounded-lg p-3">
+                      <p className="text-sm text-blue-700">
+                        <strong>Note:</strong> Updating due date/time will add revision number and reset status to "To Do".
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* footer - REMOVED Cancel button */}
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-neutral-200">
+              <button
+                type="button"
+                onClick={save}
+                disabled={!canSave || saving}
+                className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow disabled:opacity-50"
+                style={{ backgroundColor: MAROON }}
+              >
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Exit Confirmation */}
+      <ConfirmationDialog
+        open={showExitConfirm}
+        onClose={() => setShowExitConfirm(false)}
+        onConfirm={handleConfirmExit}
+        title="Discard Changes?"
+        message="Are you sure you want to exit? Any unsaved changes will be lost."
+        confirmText="Yes, Exit"
+        cancelText="No, Stay"
+      />
+    </>
+  );
+}
+
+/* ======= Create/Edit Task Dialog ======= */
 function EditTaskDialog({
   open,
   onClose,
@@ -200,9 +685,12 @@ function EditTaskDialog({
   existingTask,
   mode, // "team" | "adviser"
   lockedMethodology,
+  rowData, // Add rowData prop to get the correct member info
+  isFinalDefenseAllowed, // Add this prop to check if final defense is allowed
 }) {
   const isTeamMode = mode === "team";
-  const timeStepSec = isTeamMode ? 600 : 1200; // 10m vs 20m
+  const isAdviserMode = mode === "adviser";
+  const timeStepSec = 60; // 1 minute for both
 
   const [saving, setSaving] = useState(false);
   const [teamId, setTeamId] = useState("");
@@ -226,27 +714,64 @@ function EditTaskDialog({
   const [filesToDelete, setFilesToDelete] = useState([]);
   const fileInputRef = useRef(null);
 
-  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []); // single declaration only
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const stepMin = 1; // 1 minute step
+  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const roundUpNow = (sMin = 1) => {
+    const d = new Date();
+    let m = Math.ceil(d.getMinutes() / sMin) * sMin;
+    let h = d.getHours();
+    if (m === 60) {
+      m = 0;
+      h = (h + 1) % 24;
+    }
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  };
+  const minTimeForDate = (dateStr) =>
+    dateStr === todayISO ? roundUpNow(stepMin) : "";
 
   const availablePhases = useMemo(
     () => (methodology ? PHASE_OPTIONS[methodology] || [] : []),
     [methodology]
   );
+  
+  // FIXED: Get available types based on selected methodology AND phase
+  const availableTypes = useMemo(
+    () => {
+      if (!methodology || !phase) return [];
+      return Object.keys(TASK_SEEDS[methodology]?.[phase] || {});
+    },
+    [methodology, phase]
+  );
+  
+  // FIXED: Get task options based on methodology, phase, and type
   const taskOptions = useMemo(() => {
     const mKey = lockedMethodology || methodology;
-    if (!mKey || !type) return [];
-    return TASK_SEEDS[mKey]?.[type] || [];
-  }, [lockedMethodology, methodology, type]);
+    if (!mKey || !phase || !type) return [];
+    return TASK_SEEDS[mKey]?.[phase]?.[type] || [];
+  }, [lockedMethodology, methodology, phase, type]);
+  
   const subtaskOptions = useMemo(() => {
     const mKey = lockedMethodology || methodology;
     if (!mKey || !task) return [];
     return SUBTASKS[mKey]?.[task] || [];
   }, [lockedMethodology, methodology, task]);
+  
   const elementOptions = useMemo(() => {
     const mKey = lockedMethodology || methodology;
     if (!mKey || !subtasks) return [];
     return ELEMENTS[mKey]?.[subtasks] || [];
   }, [lockedMethodology, methodology, subtasks]);
+
+  useEffect(() => {
+    if (!due) return;
+    if (due === todayISO && time) {
+      const minT = minTimeForDate(due);
+      if (time < minT) setTime(minT);
+    }
+  }, [due]); // eslint-disable-line
 
   useEffect(() => {
     if (!open) return;
@@ -264,14 +789,27 @@ function EditTaskDialog({
       setTask(existingTask.task || "");
       setSubtasks(existingTask.subtasks || "");
       setElements(existingTask.elements || "");
-      setDue(existingTask.dueDate || "");
-      setTime(existingTask.dueTime || "");
-      setAssignees(
-        (existingTask.assignees || []).map((a) => ({
-          uid: a.uid,
-          name: a.name,
-        }))
-      );
+      
+      // For adviser tasks, always show empty due date/time (will be set by adviser)
+      if (isAdviserMode) {
+        setDue("");
+        setTime("");
+      } else {
+        setDue(existingTask.dueDate || "");
+        setTime(existingTask.dueTime || "");
+      }
+      
+      // Use the rowData member info instead of the task's assignees
+      if (rowData?.isTeamTask) {
+        // For team tasks, assign all members
+        const allMembers = [...members, pm].filter(Boolean);
+        setAssignees(allMembers);
+      } else {
+        // For individual tasks, use the specific member from rowData
+        const specificMember = members.find(m => m.uid === rowData?.memberUid) || pm;
+        setAssignees(specificMember ? [specificMember] : []);
+      }
+      
       setComment(existingTask.comment || "");
       setAttachedFiles(existingTask.fileUrl || []);
       setNewFiles([]);
@@ -281,17 +819,18 @@ function EditTaskDialog({
       setTask("");
       setSubtasks("");
       setElements("");
+      // For new adviser tasks, don't set due date/time
       setDue("");
       setTime("");
-      setAssignees(
-        seedMember ? [{ uid: seedMember.uid, name: seedMember.name }] : []
-      );
+      // UPDATED: For new team tasks, start with empty assignees instead of pre-populating
+      setAssignees([]);
       setComment("");
       setAttachedFiles([]);
       setNewFiles([]);
       setFilesToDelete([]);
     }
-  }, [open, existingTask, seedMember, teams, lockedMethodology]);
+    setHasChanges(false);
+  }, [open, existingTask, seedMember, teams, lockedMethodology, pm, members, rowData, isAdviserMode]);
 
   const onChangeMethodology = (v) => {
     setMethodology(v);
@@ -300,41 +839,55 @@ function EditTaskDialog({
     setTask("");
     setSubtasks("");
     setElements("");
+    setHasChanges(true);
   };
+  
+  // FIXED: When phase changes, reset type, task, subtasks, elements
+  const onChangePhase = (v) => {
+    setPhase(v);
+    setType("");
+    setTask("");
+    setSubtasks("");
+    setElements("");
+    setHasChanges(true);
+  };
+  
   const onChangeType = (v) => {
     setType(v);
     setTask("");
     setSubtasks("");
     setElements("");
+    setHasChanges(true);
   };
   const onChangeTask = (v) => {
     setTask(v);
     setSubtasks("");
     setElements("");
+    setHasChanges(true);
   };
   const onChangeSubtasks = (v) => {
     setSubtasks(v);
     setElements("");
+    setHasChanges(true);
   };
 
+  // UPDATED: Team tasks require date and time, adviser tasks don't
   const canSave =
+    isFinalDefenseAllowed && // Add this condition
     (mode === "team" ? true : !!teamId) &&
     (lockedMethodology ? true : !!methodology) &&
     (lockedMethodology ? true : !!phase || availablePhases.length <= 1) &&
     type &&
     task &&
-    (mode === "team" ? assignees.length > 0 : true);
+    (mode === "team" ? assignees.length > 0 : true) &&
+    // Team tasks require date and time, adviser tasks don't
+    (mode === "team" ? (due && time) : true);
 
-  const addAssignee = () => {
-    if (!pickedUid) return;
-    const found = members.find((m) => m.uid === pickedUid);
-    if (!found) return;
-    if (!assignees.some((a) => a.uid === pickedUid))
-      setAssignees((arr) => [...arr, found]);
-    setPickedUid("");
+  const assignTeam = () => {
+    // For team assignment, just add a single "Team" assignee
+    setAssignees([{ uid: 'team', name: 'Team' }]);
+    setHasChanges(true);
   };
-  const removeAssignee = (uid) =>
-    setAssignees((arr) => arr.filter((a) => a.uid !== uid));
 
   const handleAttachClick = () => fileInputRef.current?.click();
   const onFilePicked = (e) => {
@@ -347,15 +900,19 @@ function EditTaskDialog({
       isNew: true,
     }));
     setNewFiles((prev) => [...prev, ...objs]);
+    setHasChanges(true);
     e.target.value = "";
   };
-  const removeNewFile = (id) =>
+  const removeNewFile = (id) => {
     setNewFiles((prev) => prev.filter((f) => f.id !== id));
+    setHasChanges(true);
+  };
   const removeExistingFile = (id) => {
     const f = attachedFiles.find((x) => x.id === id);
     if (!f) return;
-    setFilesToDelete((prev) => [...prev, f]);
+    setFilesToDelete((prev) => (f.fileName ? [...prev, f] : prev));
     setAttachedFiles((prev) => prev.filter((x) => x.id !== id));
+    setHasChanges(true);
   };
 
   const save = async () => {
@@ -392,11 +949,19 @@ function EditTaskDialog({
       }
       const finalFileUrl = [...attachedFiles, ...uploaded];
 
-      const timeString = time ? snapTimeTo(time, isTeamMode ? 10 : 20) : "";
+      // For adviser tasks, don't set due date/time - set them to null
+      const timeString = isTeamMode && time ? time : "";
       const dueAtMs =
-        due && timeString
+        isTeamMode && due && timeString
           ? new Date(`${due}T${timeString}:00`).getTime()
           : null;
+      
+      // Only validate due date/time for team tasks
+      if (dueAtMs && dueAtMs < Date.now() && isTeamMode) {
+        alert("Due date/time must be in the future.");
+        setSaving(false);
+        return;
+      }
 
       const hasElements = elementOptions.length > 0;
       const elementsValue = subtasks
@@ -410,6 +975,9 @@ function EditTaskDialog({
       const finalMethodology = lockedMethodology || methodology || "";
       const finalPhase = FIXED_PHASE[finalMethodology] ?? phase ?? "";
 
+      // FIXED: Add isTeamTask field to properly identify team tasks
+      const isTeamTask = mode === "team" && assignees.some(a => a.uid === 'team');
+
       const payload = {
         methodology: finalMethodology,
         phase: finalPhase,
@@ -418,32 +986,32 @@ function EditTaskDialog({
         subtasks: subtasks || null,
         elements: elementsValue,
         fileUrl: finalFileUrl,
-        dueDate: due || null,
-        dueTime: timeString || null,
-        dueAtMs,
+        // For adviser tasks, explicitly set due date/time to null
+        dueDate: isTeamMode ? (due || null) : null,
+        dueTime: isTeamMode ? (timeString || null) : null,
+        dueAtMs: isTeamMode ? dueAtMs : null,
         status: existingTask?.status || "To Do",
         revision: existingTask?.revision || "No Revision",
-        assignees: isTeamMode
-          ? assignees.map((a) => ({ uid: a.uid, name: a.name }))
-          : [],
+        assignees:
+          mode === "team"
+            ? assignees.map((a) => ({ uid: a.uid, name: a.name }))
+            : [],
         team: team ? { id: team.id, name: team.name } : null,
         comment: comment || "",
         createdBy: pm
           ? { uid: pm.uid, name: pm.name, role: "Project Manager" }
           : null,
         taskManager,
+        isTeamTask: isTeamTask, // FIXED: Add this field to identify team tasks
+        updatedAt: serverTimestamp(),
       };
 
       if (existingTask?.id) {
-        await updateDoc(doc(db, TASKS_COLLECTION, existingTask.id), {
-          ...payload,
-          updatedAt: serverTimestamp(),
-        });
+        await updateDoc(doc(db, TASKS_COLLECTION, existingTask.id), payload);
       } else {
         await addDoc(collection(db, TASKS_COLLECTION), {
           ...payload,
           createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
         });
       }
 
@@ -454,122 +1022,620 @@ function EditTaskDialog({
     }
   };
 
+  const handleClose = () => {
+    if (hasChanges) {
+      setShowExitConfirm(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleConfirmExit = () => {
+    setShowExitConfirm(false);
+    onClose();
+  };
+
+  const handleInputChange = () => {
+    setHasChanges(true);
+  };
+
   if (!open) return null;
 
   const methodologyLocked = !!lockedMethodology;
 
+  // Check if "Team" is in assignees
+  const hasTeamAssignee = assignees.some(a => a.uid === 'team');
+  
+  // Check if any individual members are assigned
+  const hasIndividualAssignees = assignees.length > 0 && !hasTeamAssignee;
+
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative z-10 mx-auto mt-10 w-[980px] max-w-[95vw]">
-        <div className="bg-white rounded-2xl shadow-2xl border border-neutral-200 overflow-hidden flex flex-col max-h-[85vh]">
-          <div className="h-[2px] w-full" style={{ backgroundColor: MAROON }} />
-          <div className="flex items-center justify-between px-5 pt-3 pb-2">
-            <div
-              className="flex items-center gap-2 text-[16px] font-semibold"
-              style={{ color: MAROON }}
-            >
-              <span>●</span>
-              <span>{existingTask ? "Edit Task" : "Create Task"}</span>
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overscroll-contain">
+        <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
+        <div className="relative z-10 w-full max-w-[700px]">
+          <div className="bg-white rounded-2xl shadow-2xl border border-neutral-200 flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-neutral-200">
+              <div
+                className="flex items-center gap-2 text-[16px] font-semibold"
+                style={{ color: MAROON }}
+              >
+                <PlusCircle className="w-5 h-5" />
+                <span>{existingTask ? "Edit Task" : "Create Task"}</span>
+              </div>
+              <button
+                onClick={handleClose}
+                className="p-1 rounded-md hover:bg-neutral-100 text-neutral-500"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1 rounded-md hover:bg-neutral-100 text-neutral-500"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
 
-          {/* Form body */}
-          <div className="flex-1 px-5 pb-5 space-y-5 overflow-y-auto">
-            {/* Team (shown when not in team mode) */}
-            {/* ... unchanged from prior version ... */}
+            {/* Content */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-5 space-y-4">
+              {/* Final Defense Allowed Check */}
+              {!isFinalDefenseAllowed && (
+                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-yellow-800 mb-1">Final Defense Not Available</h4>
+                      <p className="text-yellow-700 text-sm">
+                        Final Defense tasks cannot be created or edited until your team receives an "Approved" verdict on Oral Defense.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-            {/* Methodology / Phase / Task-Type / Task / Subtask / Elements */}
-            {/* ... unchanged from prior version but JSON-driven ... */}
+              {/* Methodology & Phase */}
+              <div className="grid grid-cols-12 gap-3">
+                <div className="col-span-6">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Methodology
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                    value={methodology}
+                    onChange={(e) => onChangeMethodology(e.target.value)}
+                    disabled={methodologyLocked || !isFinalDefenseAllowed}
+                  >
+                    <option value="">
+                      {methodologyLocked
+                        ? lockedMethodology
+                        : "Select methodology"}
+                    </option>
+                    {METHODOLOGIES.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  {methodologyLocked && (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Methodology is locked to <b>{lockedMethodology}</b> from Oral Defense.
+                    </p>
+                  )}
+                </div>
 
-            {/* Due Date / Time (no min to allow backdating) */}
-            {/* ... unchanged from prior version ... */}
+                <div className="col-span-6">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Project Phase
+                  </label>
+                  {(() => {
+                    const list = methodology
+                      ? PHASE_OPTIONS[methodology] || []
+                      : [];
+                    return list.length > 1 ? (
+                      <select
+                        className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                        value={phase}
+                        onChange={(e) => onChangePhase(e.target.value)}
+                        disabled={!methodology || !isFinalDefenseAllowed}
+                      >
+                        <option value="">
+                          {methodology
+                            ? "Select phase"
+                            : "Pick Methodology first"}
+                        </option>
+                        {list.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        className="w-full rounded-lg border border-neutral-300 px-3 py-2 bg-neutral-100 text-sm"
+                        value={phase}
+                        readOnly
+                        placeholder={
+                          methodology
+                            ? "Auto-selected"
+                            : "Pick Methodology first"
+                        }
+                      />
+                    );
+                  })()}
+                </div>
+              </div>
 
-            {/* Assignees (team mode), Comment & Attachments */}
-            {/* ... unchanged from prior version ... */}
+              {/* Type / Task / Subtasks */}
+              <div className="grid grid-cols-12 gap-3">
+                <div className="col-span-4">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Task Type
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                    value={type}
+                    onChange={(e) => onChangeType(e.target.value)}
+                    disabled={!(methodologyLocked || methodology) || !phase || !isFinalDefenseAllowed}
+                  >
+                    <option value="">
+                      {methodologyLocked || methodology
+                        ? phase ? "Select" : "Pick Phase first"
+                        : "Pick Methodology first"}
+                    </option>
+                    {availableTypes.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            {/* Actions */}
-            {/* ... unchanged from prior version ... */}
+                <div className="col-span-4">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Task
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                    value={task}
+                    onChange={(e) => onChangeTask(e.target.value)}
+                    disabled={!type || !isFinalDefenseAllowed}
+                  >
+                    <option value="">
+                      {type ? "Select task" : "Pick Task Type first"}
+                    </option>
+                    {taskOptions.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-span-4">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Subtasks
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                    value={subtasks}
+                    onChange={(e) => onChangeSubtasks(e.target.value)}
+                    disabled={
+                      !task ||
+                      (lockedMethodology || methodology
+                        ? (
+                            SUBTASKS[lockedMethodology || methodology]?.[
+                              task
+                            ] || []
+                          ).length === 0
+                        : true) ||
+                      !isFinalDefenseAllowed
+                    }
+                  >
+                    <option value="">
+                      {task
+                        ? (lockedMethodology || methodology) &&
+                          (
+                            SUBTASKS[lockedMethodology || methodology]?.[
+                              task
+                            ] || []
+                          ).length
+                          ? "Select subtask"
+                          : "No subtasks"
+                        : "Pick Task first"}
+                    </option>
+                    {(lockedMethodology || methodology) && task
+                      ? (
+                          SUBTASKS[lockedMethodology || methodology]?.[
+                            task
+                          ] || []
+                        ).map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))
+                      : null}
+                  </select>
+                </div>
+              </div>
+
+              {/* Elements / Due Date / Time */}
+              <div className="grid grid-cols-12 gap-3">
+                <div className="col-span-4">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Elements
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+                    value={elements}
+                    onChange={(e) => {
+                      setElements(e.target.value);
+                      handleInputChange();
+                    }}
+                    disabled={
+                      !subtasks ||
+                      (lockedMethodology || methodology
+                        ? (
+                            ELEMENTS[lockedMethodology || methodology]?.[
+                              subtasks
+                            ] || []
+                          ).length === 0
+                        : true) ||
+                      !isFinalDefenseAllowed
+                    }
+                  >
+                    <option value="">
+                      {subtasks
+                        ? (lockedMethodology || methodology) &&
+                          (
+                            ELEMENTS[lockedMethodology || methodology]?.[
+                              subtasks
+                            ] || []
+                          ).length
+                          ? "Select element"
+                          : "No elements"
+                        : "Pick Subtask first"}
+                    </option>
+                    {(lockedMethodology || methodology) && subtasks
+                      ? (
+                          ELEMENTS[lockedMethodology || methodology]?.[
+                            subtasks
+                          ] || []
+                        ).map((el) => (
+                          <option key={el} value={el}>
+                            {el}
+                          </option>
+                        ))
+                      : null}
+                  </select>
+                </div>
+
+                <div className="col-span-4">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Due Date {isTeamMode && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="date"
+                    min={todayISO}
+                    className={`w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm ${
+                      isAdviserMode || !isFinalDefenseAllowed ? 'bg-neutral-100 cursor-not-allowed' : ''
+                    }`}
+                    value={due}
+                    onChange={(e) => {
+                      if (isAdviserMode || !isFinalDefenseAllowed) return;
+                      setDue(e.target.value);
+                      handleInputChange();
+                    }}
+                    disabled={isAdviserMode || !isFinalDefenseAllowed}
+                    title={isAdviserMode ? "Due date will be set by the Capstone Adviser" : !isFinalDefenseAllowed ? "Final defense not available yet" : ""}
+                  />
+                  {isAdviserMode && (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Due date will be set by the Capstone Adviser
+                    </p>
+                  )}
+                </div>
+
+                <div className="col-span-4">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Time {isTeamMode && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="time"
+                    step={timeStepSec}
+                    min={
+                      due === todayISO && !isAdviserMode
+                        ? (() => {
+                            const d = new Date();
+                            let m = d.getMinutes();
+                            let h = d.getHours();
+                            return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+                          })()
+                        : ""
+                    }
+                    className={`w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm ${
+                      isAdviserMode || !isFinalDefenseAllowed ? 'bg-neutral-100 cursor-not-allowed' : ''
+                    }`}
+                    value={time}
+                    onChange={(e) => {
+                      if (isAdviserMode || !isFinalDefenseAllowed) return;
+                      setTime(e.target.value);
+                      handleInputChange();
+                    }}
+                    disabled={isAdviserMode || !isFinalDefenseAllowed}
+                    title={isAdviserMode ? "Time will be set by the Capstone Adviser" : !isFinalDefenseAllowed ? "Final defense not available yet" : ""}
+                  />
+                  {isAdviserMode && (
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Time will be set by the Capstone Adviser
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Assign Members (team mode) - Updated to match TitleDefense exactly */}
+              {mode === "team" && (
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Assigned <span className="text-red-500">*</span>
+                  </label>
+                  <AssigneesPicker
+                    members={[...members, pm].filter(Boolean)}
+                    pickedUid={pickedUid}
+                    setPickedUid={setPickedUid}
+                    assignees={assignees}
+                    setAssignees={(newAssignees) => {
+                      setAssignees(newAssignees);
+                      handleInputChange();
+                    }}
+                    onAssignTeam={assignTeam}
+                    hasTeamAssignee={hasTeamAssignee}
+                    hasIndividualAssignees={hasIndividualAssignees}
+                    isFinalDefenseAllowed={isFinalDefenseAllowed}
+                  />
+                </div>
+              )}
+
+              {/* Comment + attachments */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Leave Comment:
+                </label>
+                <div className="rounded-xl border border-neutral-300 bg-white shadow-sm">
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-200">
+                    <UserCircle2 className="w-5 h-5 text-neutral-600" />
+                    <span className="text-sm font-semibold text-neutral-800">
+                      {pm?.name || "Project Manager"}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <textarea
+                      rows={3}
+                      className="w-full resize-none px-3 py-2 text-sm outline-none"
+                      value={comment}
+                      onChange={(e) => {
+                        setComment(e.target.value);
+                        handleInputChange();
+                      }}
+                      disabled={!isFinalDefenseAllowed}
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 bottom-2 p-1 rounded hover:bg-neutral-100"
+                      title="Attach"
+                      onClick={handleAttachClick}
+                      disabled={!isFinalDefenseAllowed}
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      className="hidden"
+                      type="file"
+                      multiple
+                      onChange={onFilePicked}
+                      disabled={!isFinalDefenseAllowed}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {(attachedFiles.length > 0 || newFiles.length > 0) && (
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Attachments ({attachedFiles.length + newFiles.length})
+                  </label>
+                  <div className="space-y-2">
+                    {attachedFiles.map((f) => (
+                      <div
+                        key={f.id}
+                        className="flex items-center justify-between p-2 rounded-lg border border-neutral-200"
+                      >
+                        <div className="truncate text-sm">
+                          <span className="font-medium">{f.name}</span>
+                          {f.url ? (
+                            <a
+                              className="ml-2 text-xs text-[#6A0F14] underline"
+                              href={f.url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              open
+                            </a>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          className="p-1 rounded-md hover:bg-neutral-200"
+                          aria-label={`Remove ${f.name}`}
+                          onClick={() => removeExistingFile(f.id)}
+                          disabled={!isFinalDefenseAllowed}
+                        >
+                          <X className="w-4 h-4 text-neutral-600" />
+                        </button>
+                      </div>
+                    ))}
+                    {newFiles.map((nf) => (
+                      <div
+                        key={nf.id}
+                        className="flex items-center justify-between p-2 rounded-lg border border-neutral-200"
+                      >
+                        <div className="truncate text-sm">
+                          <span className="font-medium">{nf.name}</span>
+                          <span className="ml-2 text-xs text-blue-600">
+                            (new)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="p-1 rounded-md hover:bg-neutral-200"
+                          aria-label={`Remove ${nf.name}`}
+                          onClick={() => removeNewFile(nf.id)}
+                          disabled={!isFinalDefenseAllowed}
+                        >
+                          <X className="w-4 h-4 text-neutral-600" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-neutral-200">
+              <button
+                type="button"
+                onClick={save}
+                disabled={!canSave || saving}
+                className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow disabled:opacity-50"
+                style={{ backgroundColor: MAROON }}
+              >
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                {existingTask ? "Save" : "Create"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Exit Confirmation */}
+      <ConfirmationDialog
+        open={showExitConfirm}
+        onClose={() => setShowExitConfirm(false)}
+        onConfirm={handleConfirmExit}
+        title="Discard Changes?"
+        message="Are you sure you want to exit? Any unsaved changes will be lost."
+        confirmText="Yes, Exit"
+        cancelText="No, Stay"
+      />
+    </>
   );
 }
 
-/* ===== Status + Revision components (classic visuals) ===== */
-const StatusBadge = ({ value, isEditable, onChange }) => {
-  const statusColors = {
-    "To Do": "bg-[#D9A81E] text-white",
-    "To Review": "bg-[#6FA8DC] text-white",
-    "In Progress": "bg-[#7C9C3B] text-white",
-    Completed: "bg-[#6A0F14] text-white",
-  };
-  if (!value || value === "--") return <span>--</span>;
-  return isEditable ? (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium border-none bg-white shadow-md cursor-pointer"
-    >
-      {Object.keys(statusColors).map((status) => (
-        <option
-          key={status}
-          value={status}
-          className={`${statusColors[status]}`}
+/* Small subcomponent to keep the dialog tidy - EXACT COPY from TitleDefense */
+function AssigneesPicker({
+  members,
+  pickedUid,
+  setPickedUid,
+  assignees,
+  setAssignees,
+  onAssignTeam,
+  hasTeamAssignee,
+  hasIndividualAssignees,
+  isFinalDefenseAllowed, // Add this prop
+}) {
+  return (
+    <>
+      <div className="flex gap-2">
+        <select
+          className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+            hasTeamAssignee || !isFinalDefenseAllowed
+              ? "border-neutral-300 bg-neutral-100 text-neutral-500 cursor-not-allowed" 
+              : "border-neutral-300"
+          }`}
+          value={pickedUid}
+          onChange={(e) => setPickedUid(e.target.value)}
+          disabled={hasTeamAssignee || !isFinalDefenseAllowed}
         >
-          {status}
-        </option>
-      ))}
-    </select>
-  ) : (
-    <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium ${
-        statusColors[value] || "bg-neutral-200"
-      }`}
-    >
-      {value}
-    </span>
+          <option value="">Select member</option>
+          {members.map((m) => (
+            <option 
+              key={m.uid} 
+              value={m.uid}
+              disabled={hasTeamAssignee || !isFinalDefenseAllowed}
+            >
+              {m.name}
+            </option>
+          ))}
+          <option 
+            value="team"
+            disabled={hasIndividualAssignees || !isFinalDefenseAllowed}
+          >
+            Team
+          </option>
+        </select>
+        <button
+          type="button"
+          onClick={() => {
+            if (!pickedUid) return;
+            
+            if (pickedUid === "team") {
+              onAssignTeam();
+            } else {
+              const found = members.find((m) => m.uid === pickedUid);
+              if (found && !assignees.some((a) => a.uid === found.uid))
+                setAssignees((a) => [...a, found]);
+            }
+            setPickedUid("");
+          }}
+          disabled={!pickedUid || hasTeamAssignee || !isFinalDefenseAllowed}
+          className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <PlusCircle className="w-4 h-4" /> Add
+        </button>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {assignees.map((a) => (
+          <span
+            key={a.uid}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-neutral-100 border border-neutral-200"
+          >
+            {a.name}
+            <button
+              className="p-0.5 hover:bg-neutral-200 rounded-full"
+              onClick={() =>
+                setAssignees((arr) => arr.filter((x) => x.uid !== a.uid))
+              }
+              disabled={!isFinalDefenseAllowed}
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        ))}
+      </div>
+      {(hasTeamAssignee || hasIndividualAssignees) && (
+        <p className="text-xs text-neutral-500 mt-1">
+          {hasTeamAssignee 
+            ? "Team assignment includes all members. Remove team assignment to assign individuals." 
+            : "Individual members assigned. Remove all individuals to assign team."}
+        </p>
+      )}
+    </>
   );
-};
-const RevisionSelect = ({ value, onChange, disabled }) => (
-  <select
-    className={`text-[12px] leading-tight font-medium border border-neutral-300 rounded-lg px-2.5 py-0.5 bg-white ${
-      disabled ? "opacity-60 cursor-not-allowed" : ""
-    }`}
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    disabled={disabled}
-  >
-    <option>No Revision</option>
-    <option>Revision 1</option>
-    <option>Revision 2</option>
-    <option>Revision 3</option>
-  </select>
-);
+}
 
-/* ============================ Main (Classic UI) ============================ */
+/* ============================ Main Component ============================ */
 const FinalDefense = ({ onBack }) => {
-  const handleBack = () =>
-    typeof onBack === "function" ? onBack() : window.history.back();
-
-  const mode = "team";
-  const isTeam = mode === "team";
+  const [activeTab, setActiveTab] = useState("team"); // "team" or "adviser"
+  const mode = activeTab; // Use activeTab as mode
 
   const [q, setQ] = useState("");
-  const [page, setPage] = useState(1);
-  const [menuOpenId, setMenuOpenId] = useState(null);
-  const [editingModal, setEditingModal] = useState(null); // {seedMember, existingTask}
-  const [deletingId, setDeletingId] = useState(null);
+  const [filterStatus, setFilterStatus] = useState("All Status");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  const pageSize = 10;
+  const [menuOpenId, setMenuOpenId] = useState(null);
+  const [editingModal, setEditingModal] = useState(null);
+  const [editDueDateTime, setEditDueDateTime] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [optimistic, setOptimistic] = useState({});
 
   const pmUid = auth.currentUser?.uid || localStorage.getItem("uid") || "";
   const [pmProfile, setPmProfile] = useState(null);
@@ -578,12 +1644,10 @@ const FinalDefense = ({ onBack }) => {
   const [members, setMembers] = useState([]);
   const [tasks, setTasks] = useState([]);
 
-  /* ===== Oral Defense gate state ===== */
-  const [oralGate, setOralGate] = useState({
-    byTeam: new Map(), // teamId -> { total, completed, allDuePassed, teamName }
-    canCreate: false,
-  });
-  const gateRef = useRef(null);
+  // State for oral defense verdict and methodology
+  const [oralDefenseVerdict, setOralDefenseVerdict] = useState(null);
+  const [oralDefenseMethodology, setOralDefenseMethodology] = useState(null);
+  const [loadingVerdict, setLoadingVerdict] = useState(true);
 
   // PM profile
   useEffect(() => {
@@ -650,174 +1714,328 @@ const FinalDefense = ({ onBack }) => {
     return () => unsubTeams && unsubTeams();
   }, [pmUid]);
 
-  // Tasks (Final Defense list)
+  // Check Oral Defense verdict and methodology for PM's teams
   useEffect(() => {
-    if (!pmUid) return;
-    const qRef = query(
-      collection(db, TASKS_COLLECTION),
-      where("createdBy.uid", "==", pmUid)
-    );
-    const unsub = onSnapshot(qRef, (snap) => {
-      const list = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => {
-          const aTs = a?.updatedAt?.toDate?.() ?? a?.createdAt?.toDate?.() ?? 0;
-          const bTs = b?.updatedAt?.toDate?.() ?? b?.createdAt?.toDate?.() ?? 0;
-          return bTs - aTs;
-        });
-
-      setTasks(list);
-      setPage(1);
-    });
-    return () => unsub && unsub();
-  }, [pmUid]);
-
-  /* ===== ORAL DEFENSE GATE (restored) =====
-     For each team: total oral tasks, number completed, and whether all due dates passed.
-     Gate opens only when every team you manage satisfies (completed == total) AND (all due dates passed).
-  */
-  useEffect(() => {
-    if (!teams.length) {
-      setOralGate({ byTeam: new Map(), canCreate: false });
+    if (!pmUid || teams.length === 0) {
+      setLoadingVerdict(false);
       return;
     }
 
-    const teamIds = teams.map((t) => t.id);
-    const chunks = [];
-    for (let i = 0; i < teamIds.length; i += 10)
-      chunks.push(teamIds.slice(i, i + 10));
+    setLoadingVerdict(true);
+    
+    // Get team IDs for the PM
+    const teamIds = teams.map(team => team.id);
+    
+    const unsubscribe = onSnapshot(
+      query(
+        collection(db, "oralDefenseSchedules"), 
+        where("teamId", "in", teamIds)
+      ),
+      (snapshot) => {
+        let approved = false;
+        let methodology = null;
+        
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.verdict === "Approved") {
+            approved = true;
+            // Get methodology from oral defense - assuming it's stored in the schedule
+            methodology = data.methodology || methodology;
+          }
+        });
 
-    const unsubs = chunks.map((ids) =>
-      onSnapshot(
-        query(collection(db, ORAL_COLLECTION), where("team.id", "in", ids)),
-        (snap) => {
-          const map = new Map(oralGate.byTeam); // copy
-          const now = Date.now();
-
-          // init buckets
-          ids.forEach((id) => {
-            const team = teams.find((t) => t.id === id);
-            map.set(id, {
-              teamName: team?.name || "Team",
-              total: 0,
-              completed: 0,
-              allDuePassed: true,
-            });
-          });
-
-          snap.docs.forEach((d) => {
-            const task = d.data();
-            const tId = task?.team?.id;
-            if (!tId || !map.has(tId)) return;
-
-            const rec = map.get(tId);
-            rec.total += 1;
-
-            const status = (task?.status || "").toLowerCase();
-            if (status === "completed") rec.completed += 1;
-
-            const dueMs = task?.dueAtMs ?? toMs(task?.dueDate, task?.dueTime);
-
-            // If a task has no due date/time, treat as NOT passed.
-            if (!Number.isFinite(dueMs) || dueMs > now)
-              rec.allDuePassed = false;
-          });
-
-          // compute canCreate across all teams
-          const canCreateAll = Array.from(map.values()).every(
-            (r) => r.total > 0 && r.completed === r.total && r.allDuePassed
+        // If no methodology found in schedule, check oral defense tasks
+        if (approved && !methodology) {
+          const tasksQuery = query(
+            collection(db, "oralDefenseTasks"),
+            where("createdBy.uid", "==", pmUid),
+            where("taskManager", "==", "Project Manager")
           );
-
-          setOralGate({ byTeam: map, canCreate: canCreateAll });
+          
+          onSnapshot(tasksQuery, (tasksSnapshot) => {
+            if (!tasksSnapshot.empty) {
+              const firstTask = tasksSnapshot.docs[0].data();
+              methodology = firstTask.methodology || methodology;
+              setOralDefenseMethodology(methodology);
+            }
+            setOralDefenseVerdict(approved ? "Approved" : "Not Approved");
+            setLoadingVerdict(false);
+          });
+        } else {
+          setOralDefenseMethodology(methodology);
+          setOralDefenseVerdict(approved ? "Approved" : "Not Approved");
+          setLoadingVerdict(false);
         }
-      )
+      },
+      (error) => {
+        console.error("Error fetching oral defense verdict:", error);
+        setOralDefenseVerdict("Not Approved");
+        setLoadingVerdict(false);
+      }
     );
 
-    return () => unsubs.forEach((u) => u && u());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teams.map((t) => t.id).join("|")]);
+    return () => unsubscribe();
+  }, [pmUid, teams]);
 
-  const rowsTeam = useMemo(() => {
-    const out = [];
-    const teamTasks = tasks.filter((t) => t.taskManager === "Project Manager");
-    for (const t of teamTasks) {
-      const assignees =
-        t.assignees && t.assignees.length
-          ? t.assignees
-          : [{ uid: "", name: "Team" }];
-      assignees.forEach((a, idx) => {
-        out.push({
-          key: `${t.id}:${a.uid || idx}`,
-          taskId: t.id,
-          memberUid: a.uid || "",
-          memberName: a.name || "Team",
-          type: t?.type || "--",
-          task: t?.task || "--",
-          created: t?.createdAt?.toDate?.()?.toLocaleDateString?.() || "--",
-          due: t?.dueDate || "--",
-          time: t?.dueTime || "--",
-          revision: t?.revision || "No Revision",
-          status: t?.status || "To Do",
-          phase: t?.phase || "--",
-          existingTask: t,
-          teamId: t?.team?.id || null,
-          teamName: t?.team?.name || "No Team",
+  // Tasks - Only fetch active tasks (not completed) - UPDATED TO MATCH ORAL DEFENSE
+  useEffect(() => {
+    if (!pmUid) return;
+    const unsub = onSnapshot(
+      query(
+        collection(db, TASKS_COLLECTION),
+        where("createdBy.uid", "==", pmUid),
+      ),
+      async (snap) => {
+        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        console.log("Fetched Final Defense tasks:", docs); // DEBUG
+        setTasks(docs);
+
+        // Auto-update overdue tasks - MATCHES ORAL DEFENSE BEHAVIOR
+        const now = Date.now();
+        const updates = docs
+          .filter(
+            (t) =>
+              typeof t.dueAtMs === "number" &&
+              t.dueAtMs < now &&
+              (t.status || "") !== "Completed" &&
+              (t.status || "") !== "Missed"
+          )
+          .map((t) =>
+            updateDoc(doc(db, TASKS_COLLECTION, t.id), { status: "Missed" })
+          );
+
+        if (updates.length > 0) {
+          console.log(`Auto-updated ${updates.length} missed tasks`);
+          await Promise.allSettled(updates);
+        }
+
+        // clear optimistic overlays - MATCHES ORAL DEFENSE BEHAVIOR
+        setOptimistic((prev) => {
+          const next = { ...prev };
+          const memberWithTask = new Set();
+          for (const t of snap.docs) {
+            const data = t.data();
+            (data.assignees || []).forEach((a) => {
+              if (a?.uid) memberWithTask.add(a.uid);
+            });
+          }
+          for (const k of Object.keys(next)) {
+            if (memberWithTask.has(k)) delete next[k];
+          }
+          return next;
         });
-      });
-    }
-    // placeholders for members without a task yet
-    members.forEach((m, idx) => {
-      if (!out.some((r) => r.memberUid === m.uid)) {
-        out.push({
-          key: `placeholder:${m.uid || idx}`,
-          taskId: null,
-          memberUid: m.uid,
-          memberName: m.name,
-          type: "--",
-          task: "--",
-          created: "--",
-          due: "--",
-          time: "--",
-          revision: "--",
-          status: "--",
-          phase: "--",
-          existingTask: null,
-          teamId: teams[0]?.id ?? null,
-          teamName: teams[0]?.name ?? "No Team",
+      }
+    );
+    return () => unsub && unsub();
+  }, [pmUid]);
+
+  const lockedMethodology = useMemo(() => {
+    if (!tasks.length) return oralDefenseMethodology;
+    const m = tasks.map((t) => t.methodology).find((x) => !!x);
+    return m || oralDefenseMethodology;
+  }, [tasks, oralDefenseMethodology]);
+
+  // Get filter options based on active tab
+  const filterOptions = useMemo(() => {
+    return activeTab === "team" ? FILTER_OPTIONS_TEAM : FILTER_OPTIONS_ADVISER;
+  }, [activeTab]);
+
+  // Check if final defense is allowed (oral defense must be approved)
+  const isFinalDefenseAllowed = oralDefenseVerdict === "Approved";
+
+  // Helper function to get team name for adviser tasks
+  const getTeamNameForAdviser = useMemo(() => {
+    if (teams.length === 0 || !pmProfile) return "Team";
+    
+    // Get the PM's last name
+    const pmNameParts = pmProfile.name.split(' ');
+    const pmLastName = pmNameParts[pmNameParts.length - 1];
+    
+    return `${pmLastName}, Et Al`;
+  }, [teams, pmProfile]);
+
+  // FIXED: Rows computation - properly handle team tasks
+  const rowsTeam = useMemo(() => {
+    console.log("Computing rowsTeam with tasks:", tasks); // DEBUG
+    
+    const rowsWithTasks = [];
+
+    // Get all Project Manager tasks that are not completed
+    const pmTasks = tasks.filter(t => 
+      t.taskManager === "Project Manager" && 
+      (t.status || "To Do") !== "Completed"
+    );
+
+    console.log("PM Tasks:", pmTasks); // DEBUG
+
+    // Process each PM task
+    pmTasks.forEach(t => {
+      // Check if this is a team task
+      const isTeamTask = t.isTeamTask === true || 
+                        (t.assignees && t.assignees.some(a => a.uid === 'team' || a.name === 'Team'));
+      
+      console.log(`Task ${t.id}: isTeamTask = ${isTeamTask}, assignees =`, t.assignees); // DEBUG
+
+      if (isTeamTask) {
+        // This is a team task - show as single row
+        const base = {
+          key: `team-${t.id}`,
+          memberUid: 'team',
+          memberName: "Team",
+          taskId: t.id,
+          type: t.type || "--",
+          task: t.task || "--",
+          subtasks: t.subtasks || "--",
+          elements: t.elements || "--",
+          created: formatDateMonthDayYear(t?.createdAt?.toDate?.()?.toISOString()?.split("T")[0]) || "--",
+          due: displayDueDate(t?.dueDate, false),
+          time: displayDueTime(t?.dueTime, false),
+          revision: t.revision || "No Revision",
+          status: t.status || "To Do",
+          phase: t.phase || "--",
+          methodology: t.methodology || "--",
+          existingTask: t,
+          isTeamTask: true,
+          canManage: isFinalDefenseAllowed, // PM can manage team tasks only if final defense is allowed
+        };
+
+        const opt = optimistic['team'];
+        if (opt) {
+          if (opt.type !== undefined) base.type = opt.type || "--";
+          if (opt.task !== undefined) base.task = opt.task || "--";
+          if (opt.due !== undefined) base.due = displayDueDate(opt.due, false) || "--";
+          if (opt.time !== undefined) base.time = displayDueTime(opt.time, false) || "--";
+          if (opt.status !== undefined) base.status = opt.status || "To Do";
+        }
+
+        console.log("Adding team task row:", base); // DEBUG
+        rowsWithTasks.push(base);
+      } else {
+        // This is an individual task - show per assignee
+        const assignees = t.assignees || [];
+        console.log(`Individual task ${t.id} has ${assignees.length} assignees`); // DEBUG
+        
+        assignees.forEach((a) => {
+          const base = {
+            key: `${t.id}-${a.uid}`,
+            memberUid: a.uid,
+            memberName: a.name,
+            taskId: t.id,
+            type: t.type || "--",
+            task: t.task || "--",
+            subtasks: t.subtasks || "--",
+            elements: t.elements || "--",
+            created: formatDateMonthDayYear(t?.createdAt?.toDate?.()?.toISOString()?.split("T")[0]) || "--",
+            due: displayDueDate(t.dueDate, false),
+            time: displayDueTime(t.dueTime, false),
+            revision: t.revision || "No Revision",
+            status: t.status || "To Do",
+            phase: t.phase || "--",
+            methodology: t.methodology || "--",
+            existingTask: t,
+            isTeamTask: false,
+            canManage: isFinalDefenseAllowed, // PM can manage individual tasks only if final defense is allowed
+          };
+
+          const opt = optimistic[a.uid];
+          if (opt) {
+            if (opt.type !== undefined) base.type = opt.type || "--";
+            if (opt.task !== undefined) base.task = opt.task || "--";
+            if (opt.due !== undefined) base.due = displayDueDate(opt.due, false) || "--";
+            if (opt.time !== undefined) base.time = displayDueTime(opt.time, false) || "--";
+            if (opt.status !== undefined) base.status = opt.status || "To Do";
+          }
+
+          console.log("Adding individual task row:", base); // DEBUG
+          rowsWithTasks.push(base);
         });
       }
     });
-    return out;
-  }, [tasks, members, teams]);
 
-  const baseRows = rowsTeam;
+    console.log("Final rowsWithTasks:", rowsWithTasks); // DEBUG
+    return rowsWithTasks;
+  }, [tasks, optimistic, isFinalDefenseAllowed]);
+
+  const rowsAdviser = useMemo(() => {
+    const adviserTasks = tasks.filter((t) => t.taskManager === "Adviser" && (t.status || "To Do") !== "Completed");
+    return adviserTasks.map((t, idx) => {
+      const base = {
+        key: t.id,
+        taskId: t.id,
+        memberUid: "",
+        memberName: getTeamNameForAdviser, // Use the formatted team name instead of "Team"
+        type: t?.type || "--",
+        task: t?.task || "--",
+        subtasks: t?.subtasks || "--",
+        elements: t?.elements || "--",
+        created: formatDateMonthDayYear(t?.createdAt?.toDate?.()?.toISOString()?.split("T")[0]) || "--",
+        due: displayDueDate(t?.dueDate, true), // Always show "--" for adviser tasks
+        time: displayDueTime(t?.dueTime, true), // Always show "--" for adviser tasks
+        revision: t?.revision || "No Revision",
+        status: t?.status || "To Do",
+        phase: t?.phase || "--",
+        methodology: t?.methodology || "--",
+        existingTask: t,
+        teamId: t?.team?.id || `no-team-${idx}`,
+        teamName: t?.team?.name || "No Team",
+        isTeamTask: true,
+        // FIXED: Set canManage based on final defense allowance
+        canManage: isFinalDefenseAllowed // PM can manage adviser tasks status only if final defense is allowed
+      };
+
+      const opt = optimistic['adviser'];
+      if (opt) {
+        if (opt.status !== undefined) base.status = opt.status || "To Do";
+      }
+
+      return base;
+    });
+  }, [tasks, isFinalDefenseAllowed, getTeamNameForAdviser, optimistic]);
+
+  const baseRows = activeTab === "team" ? rowsTeam : rowsAdviser;
 
   const qLocal = q.trim().toLowerCase();
   const filtered = useMemo(() => {
-    if (!qLocal) return baseRows;
-    return baseRows.filter(
-      (r) =>
-        (r.memberName || "").toLowerCase().includes(qLocal) ||
-        (r.type || "").toLowerCase().includes(qLocal) ||
-        (r.task || "").toLowerCase().includes(qLocal) ||
-        (r.created || "").toLowerCase().includes(qLocal) ||
-        (r.due || "").toLowerCase().includes(qLocal) ||
-        (r.time || "").toLowerCase().includes(qLocal) ||
-        String(r.revision || "")
-          .toLowerCase()
-          .includes(qLocal) ||
-        String(r.status || "")
-          .toLowerCase()
-          .includes(qLocal) ||
-        (r.phase || "").toLowerCase().includes(qLocal)
-    );
-  }, [qLocal, baseRows]);
+    let result = baseRows;
+    
+    // Apply search filter
+    if (qLocal) {
+      result = result.filter(
+        (r) =>
+          (r.memberName || "").toLowerCase().includes(qLocal) ||
+          (r.type || "").toLowerCase().includes(qLocal) ||
+          (r.task || "").toLowerCase().includes(qLocal) ||
+          (r.subtasks || "").toLowerCase().includes(qLocal) ||
+          (r.elements || "").toLowerCase().includes(qLocal) ||
+          (r.created || "").toLowerCase().includes(qLocal) ||
+          (r.due || "").toLowerCase().includes(qLocal) ||
+          (r.time || "").toLowerCase().includes(qLocal) ||
+          String(r.revision || "")
+            .toLowerCase()
+            .includes(qLocal) ||
+          String(r.status || "")
+            .toLowerCase()
+            .includes(qLocal) ||
+          (r.phase || "").toLowerCase().includes(qLocal) ||
+          (r.methodology || "").toLowerCase().includes(qLocal)
+      );
+    }
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
+    // Apply status filter
+    if (filterStatus !== "All Status") {
+      result = result.filter(r => r.status === filterStatus);
+    }
 
-  // Firestore update helpers for inline cells
+    return result;
+  }, [qLocal, baseRows, filterStatus]);
+
+  // Firestore update helpers for inline cells - UPDATED TO MATCH ORAL DEFENSE
   const updateTaskRow = async (row, patch) => {
+    if (!isFinalDefenseAllowed) {
+      alert("Final defense is not available yet. Please ensure oral defense is approved.");
+      return;
+    }
+
     if (row.taskId) {
       await updateDoc(doc(db, TASKS_COLLECTION, row.taskId), {
         ...patch,
@@ -846,288 +2064,377 @@ const FinalDefense = ({ onBack }) => {
     await addDoc(collection(db, TASKS_COLLECTION), { ...base, ...patch });
   };
 
-  // Inline edit actions
-  const saveStatus = async (row, newStatus) =>
-    updateTaskRow(row, { status: newStatus || "To Do" });
-  const saveRevision = async (row, newRev) =>
-    updateTaskRow(row, { revision: newRev || "No Revision" });
-  const saveDue = async (row, newDate) => {
-    const hasTime = row.time && row.time !== "null";
-    const dueAtMs =
-      newDate && hasTime
-        ? new Date(`${newDate}T${row.time}:00`).getTime()
-        : null;
-    await updateTaskRow(row, {
-      dueDate: newDate || null,
-      dueAtMs,
-      ...(newDate ? {} : { dueTime: null }),
-    });
-  };
-  const saveTime = async (row, newTime) => {
-    const dueAtMs =
-      row.due && row.due !== "null" && newTime
-        ? new Date(`${row.due}T${newTime}:00`).getTime()
-        : null;
-    await updateTaskRow(row, { dueTime: newTime || null, dueAtMs });
-  };
+  // Inline edit actions - UPDATED TO MATCH ORAL DEFENSE REAL-TIME BEHAVIOR
+  const saveStatus = async (row, newStatus) => {
+    if (!isFinalDefenseAllowed) {
+      alert("Final defense is not available yet. Please ensure oral defense is approved.");
+      return;
+    }
 
-  /* Open Create/Edit with gate check */
-  const scrollToGate = () => {
+    const memberUid = row.isTeamTask ? 'team' : row.memberUid;
+    
+    // Set optimistic update immediately
+    setOptimistic((prev) => ({
+      ...prev,
+      [memberUid]: { ...(prev[memberUid] || {}), status: newStatus || "To Do" },
+    }));
+
+    // If marking as completed, set completedAt timestamp
+    const updates = { status: newStatus || "To Do" };
+    if (newStatus === "Completed") {
+      updates.completedAt = serverTimestamp();
+    }
+
     try {
-      gateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    } catch {}
+      await updateTaskRow(row, updates);
+    } catch (error) {
+      // Revert optimistic update on error
+      setOptimistic((prev) => {
+        const next = { ...prev };
+        delete next[memberUid]?.status;
+        if (Object.keys(next[memberUid] || {}).length === 0) {
+          delete next[memberUid];
+        }
+        return next;
+      });
+      console.error("Error updating status:", error);
+    }
   };
 
-  const openCreateForMember = (row) => {
-    if (!oralGate.canCreate) {
-      scrollToGate();
+  const openEditTask = (row) => {
+    if (!isFinalDefenseAllowed) {
+      alert("Final defense is not available yet. Please ensure oral defense is approved.");
       return;
     }
-    setEditingModal({
-      seedMember: row.memberUid
-        ? { uid: row.memberUid, name: row.memberName }
-        : null,
-      existingTask: null,
+    setEditingModal({ 
+      seedMember: null, 
+      existingTask: row.existingTask,
+      rowData: row, // Pass the row data to the dialog
+      mode: activeTab
     });
   };
-  const openCreateEmpty = () => {
-    if (!oralGate.canCreate) {
-      scrollToGate();
+
+  const handleDeleteClick = (taskId) => {
+    if (!isFinalDefenseAllowed) {
+      alert("Final defense is not available yet. Please ensure oral defense is approved.");
       return;
     }
-    setEditingModal({ seedMember: null, existingTask: null });
-  };
-  const openEditTask = (row) =>
-    setEditingModal({ seedMember: null, existingTask: row.existingTask });
-  const askDelete = (row) => setDeletingId(row.taskId);
-  const doDelete = async () => {
-    if (!deletingId) return;
-    await deleteDoc(doc(db, TASKS_COLLECTION, deletingId));
-    setDeletingId(null);
+    setDeletingId(taskId);
+    setShowDeleteConfirm(true);
+    setMenuOpenId(null);
   };
 
-  /* ---------- UI ---------- */
+  const deleteTask = async () => {
+    if (!deletingId) return;
+    try {
+      await deleteDoc(doc(db, TASKS_COLLECTION, deletingId));
+      setShowDeleteConfirm(false);
+      setDeletingId(null);
+    } catch (error) {
+      console.error("Error deleting task:", error);
+    }
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuOpenId && !event.target.closest('.dropdown-container')) {
+        setMenuOpenId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [menuOpenId]);
+
   return (
     <div className="p-4 md:p-6">
-      {/* Back button (classic) */}
-      <div className="flex items-center gap-2 mb-3">
-        <button
-          onClick={handleBack}
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-neutral-300 hover:bg-neutral-50"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Back to Tasks
-        </button>
-      </div>
-
-      {/* ===== GATE BANNER (restored) ===== */}
-      {!oralGate.canCreate && (
-        <div
-          ref={gateRef}
-          className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4"
-        >
-          <div className="flex items-start gap-2 text-amber-900 font-semibold">
-            <AlertCircle className="w-5 h-5 mt-0.5" />
-            <span>Oral Defense Completion Required</span>
-          </div>
-          <div className="mt-2 text-[14px] text-amber-900">
-            Final Defense tasks can only be created when:
-            <ul className="list-disc pl-5 mt-1 space-y-0.5">
-              <li>All Oral Defense tasks are completed</li>
-              <li>All Oral Defense due dates have passed</li>
-            </ul>
-          </div>
-
-          {/* Per-team progress line(s), e.g., "david, Et Al — 0/0" */}
-          <div className="mt-3 space-y-2">
-            {Array.from(oralGate.byTeam.entries()).map(([teamId, rec]) => (
-              <div
-                key={teamId}
-                className="flex items-center justify-between rounded-lg border border-amber-300 px-3 py-2 text-amber-900"
-              >
-                <div className="truncate font-medium">{rec.teamName}</div>
-                <div className="ml-3 shrink-0 inline-flex items-center gap-2">
-                  <span className="text-sm">
-                    {rec.completed}/{rec.total}
-                  </span>
-                  {!rec.allDuePassed && <AlertCircle className="w-4 h-4" />}
-                </div>
-              </div>
-            ))}
-            {oralGate.byTeam.size === 0 && (
-              <div className="rounded-lg border border-amber-300 px-3 py-2 text-amber-900">
-                No Oral Defense tasks found.
-              </div>
-            )}
+      {/* Oral Defense Approval Banner */}
+      {!loadingVerdict && oralDefenseVerdict !== "Approved" && (
+        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-yellow-800 mb-1">
+                Oral Defense Not Approved
+              </h3>
+              <p className="text-yellow-700 text-sm">
+                Final Defense tasks cannot be created or managed until your team receives an "Approved" verdict on Oral Defense.
+              </p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Toolbar — classic arrangement */}
-      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
-        <div className="flex items-center gap-2 flex-1">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-300 bg-white flex-1">
-            <Search className="w-4 h-4 text-neutral-500" />
-            <input
-              className="flex-1 outline-none text-sm"
-              placeholder="Search members or tasks"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
+      {/* Toolbar — Create Task and Search on left */}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
           <button
-            onClick={openCreateEmpty}
-            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white shadow ${
-              !oralGate.canCreate ? "opacity-60 cursor-not-allowed" : ""
+            onClick={() => {
+              if (!isFinalDefenseAllowed) {
+                alert("Oral defense must be approved before creating final defense tasks.");
+                return;
+              }
+              setEditingModal({ seedMember: null, existingTask: null, mode: activeTab })
+            }}
+            disabled={!isFinalDefenseAllowed}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white shadow transition-all ${
+              isFinalDefenseAllowed ? "hover:scale-105 active:scale-95" : "opacity-50 cursor-not-allowed"
             }`}
             style={{ backgroundColor: MAROON }}
-            aria-disabled={!oralGate.canCreate}
+            title={!isFinalDefenseAllowed ? "Final defense not available yet" : ""}
           >
             <PlusCircle className="w-4 h-4" />
             <span className="text-sm">Create Task</span>
           </button>
+
+          {/* Reduced width search */}
+          <div className="w-[180px]">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-300 bg-white transition-colors focus-within:border-[#6A0F14] focus-within:ring-1 focus-within:ring-[#6A0F14]">
+              <Search className="w-4 h-4 text-neutral-500" />
+              <input
+                className="flex-1 outline-none text-sm bg-transparent"
+                placeholder="Search..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center">
-          <button className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-50">
+        {/* Filter - Keep original UI */}
+        <div className="relative">
+          <button
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-50"
+          >
             <SlidersHorizontal className="w-4 h-4" />
             <span className="text-sm">Filter</span>
           </button>
+
+          {isFilterOpen && (
+            <div className="absolute right-0 top-10 z-50 w-48 bg-white border border-neutral-200 rounded-lg shadow-lg py-1">
+              {filterOptions.map((status) => (
+                <button
+                  key={status}
+                  onClick={() => {
+                    setFilterStatus(status);
+                    setIsFilterOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 ${
+                    filterStatus === status ? "bg-neutral-100 font-medium" : ""
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Classic table */}
-      <div className="w-full overflow-auto rounded-xl border border-neutral-200 bg-white">
+      {/* Modern Tab Design */}
+      <div className="flex mb-6 border-b border-neutral-200">
+        <button
+          onClick={() => setActiveTab("team")}
+          className={`relative px-6 py-3 text-sm font-medium transition-all duration-300 ease-in-out ${
+            activeTab === "team" 
+              ? "text-[#6A0F14] font-semibold" 
+              : "text-neutral-600 hover:text-neutral-800"
+          }`}
+        >
+          Team Tasks
+          {activeTab === "team" && (
+            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#6A0F14] rounded-t-full transition-all duration-300 ease-in-out" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("adviser")}
+          className={`relative px-6 py-3 text-sm font-medium transition-all duration-300 ease-in-out ${
+            activeTab === "adviser" 
+              ? "text-[#6A0F14] font-semibold" 
+              : "text-neutral-600 hover:text-neutral-800"
+          }`}
+        >
+          Adviser Tasks
+          {activeTab === "adviser" && (
+            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#6A0F14] rounded-t-full transition-all duration-300 ease-in-out" />
+          )}
+        </button>
+      </div>
+
+      {/* Table - FIXED: Restore proper responsive table container */}
+      <div className="w-full overflow-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 text-neutral-700">
             <tr>
-              <th className="text-left p-3">NO</th>
-              <th className="text-left p-3">Member</th>
-              <th className="text-left p-3">Task Type</th>
-              <th className="text-left p-3">Task</th>
-              <th className="text-left p-3">Date Created</th>
-              <th className="text-left p-3">
-                <div className="inline-flex items-center gap-1">
-                  <CalendarDays className="w-4 h-4" />
-                  Due Date
-                </div>
-              </th>
-              <th className="text-left p-3">
-                <div className="inline-flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  Time
-                </div>
-              </th>
-              <th className="text-left p-3">Revision NO</th>
-              <th className="text-left p-3">Status</th>
-              <th className="text-left p-3">Project Phase</th>
-              <th className="text-right p-3">Actions</th>
+              <th className="text-left p-3 whitespace-nowrap">NO</th>
+              <th className="text-left p-3 whitespace-nowrap">Assigned</th>
+              <th className="text-left p-3 whitespace-nowrap">Task Type</th>
+              <th className="text-left p-3 whitespace-nowrap">Task</th>
+              <th className="text-left p-3 whitespace-nowrap">Subtasks</th>
+              <th className="text-left p-3 whitespace-nowrap">Elements</th>
+              <th className="text-left p-3 whitespace-nowrap">Date Created</th>
+              <th className="text-left p-3 whitespace-nowrap">Due Date</th>
+              <th className="text-left p-3 whitespace-nowrap">Time</th>
+              <th className="text-left p-3 whitespace-nowrap">Revision NO</th>
+              <th className="text-left p-3 whitespace-nowrap">Status</th>
+              <th className="text-left p-3 whitespace-nowrap">Methodology</th>
+              <th className="text-left p-3 whitespace-nowrap">Project Phase</th>
+              <th className="text-right p-3 whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((row, idx) => {
-              const rowNo = (page - 1) * pageSize + idx + 1;
+            {filtered.map((row, idx) => {
+              const rowNo = idx + 1;
+              const currentRevisionCount = parseRevCount(row.revision);
+              const hasMaxRevisions = currentRevisionCount >= 10;
+              const isMissed = row.status === "Missed";
+              const isAdviserTask = activeTab === "adviser";
+              
+              // Check if adviser task has due date and time set
+              const hasDueDateTime = isAdviserTask ? hasDueDateAndTime(row.existingTask) : true;
+              
               return (
-                <tr key={row.key} className="border-t border-neutral-200">
-                  <td className="p-3 align-top">{rowNo}</td>
-                  <td className="p-3 align-top">
+                <tr key={row.key} className="border-t border-neutral-200 hover:bg-neutral-50 transition-colors">
+                  <td className="p-3 align-top whitespace-nowrap">{rowNo}</td>
+                  <td className="p-3 align-top whitespace-nowrap">
                     <div className="font-medium">{row.memberName}</div>
                   </td>
-                  <td className="p-3 align-top">{row.type}</td>
-                  <td className="p-3 align-top">{row.task}</td>
-                  <td className="p-3 align-top">{row.created}</td>
+                  <td className="p-3 align-top whitespace-nowrap">{row.type}</td>
+                  <td className="p-3 align-top whitespace-nowrap">{row.task}</td>
+                  <td className="p-3 align-top whitespace-nowrap">{row.subtasks}</td>
+                  <td className="p-3 align-top whitespace-nowrap">{row.elements}</td>
+                  <td className="p-3 align-top whitespace-nowrap">{row.created}</td>
 
-                  {/* Due date inline edit */}
-                  <td className="p-3 align-top">
-                    <input
-                      type="date"
-                      className="w-[150px] bg-white border border-neutral-300 rounded px-2 py-1 text-sm"
-                      value={row.due === "--" ? "" : row.due}
-                      onChange={(e) => saveDue(row, e.target.value)}
-                    />
+                  {/* Due date - static display */}
+                  <td className="p-3 align-top whitespace-nowrap">
+                    <span>{row.due}</span>
                   </td>
 
-                  {/* Time inline edit */}
-                  <td className="p-3 align-top">
-                    <input
-                      type="time"
-                      step={isTeam ? 600 : 1200}
-                      className="w-[120px] bg-white border border-neutral-300 rounded px-2 py-1 text-sm"
-                      value={row.time === "--" ? "" : row.time}
-                      onChange={(e) =>
-                        saveTime(
-                          row,
-                          snapTimeTo(e.target.value, isTeam ? 10 : 20)
-                        )
-                      }
-                    />
+                  {/* Time - static display with 12-hour format */}
+                  <td className="p-3 align-top whitespace-nowrap">
+                    <span>{row.time}</span>
                   </td>
 
-                  <td className="p-3 align-top">
-                    <RevisionSelect
-                      value={row.revision || "No Revision"}
-                      onChange={(v) => saveRevision(row, v)}
-                    />
+                  {/* Revision - display only (not editable) */}
+                  <td className="p-3 align-top whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <RevisionPill value={row.revision} />
+                      {hasMaxRevisions && (
+                        <span className="text-xs text-red-600 font-medium" title="Maximum revisions reached - create new task">
+                          MAX
+                        </span>
+                      )}
+                    </div>
                   </td>
 
-                  <td className="p-3 align-top">
-                    <StatusBadge
-                      value={row.status || "To Do"}
-                      isEditable={true}
-                      onChange={(v) => saveStatus(row, v)}
-                    />
+                  {/* Status - Team tasks can go up to "Completed", adviser tasks only up to "To Review" */}
+                  {/* UPDATED: REAL-TIME STATUS UPDATES LIKE ORAL DEFENSE */}
+                  <td className="p-3 align-top whitespace-nowrap">
+                    {isMissed ? (
+                      <StatusBadgeFinalDefense
+                        value={row.status || "Missed"}
+                        isEditable={false}
+                        disabled={true}
+                      />
+                    ) : (
+                      <StatusBadgeFinalDefense
+                        value={row.status || "To Do"}
+                        isEditable={row.canManage && hasDueDateTime && isFinalDefenseAllowed}
+                        onChange={(v) => saveStatus(row, v)}
+                        statusOptions={isAdviserTask ? STATUS_OPTIONS_ADVISER : STATUS_OPTIONS_TEAM}
+                      />
+                    )}
+                    {isAdviserTask && !hasDueDateTime && (
+                      <div className="text-xs text-neutral-500 mt-1">
+                        Set due date/time to enable status
+                      </div>
+                    )}
+                    {!isFinalDefenseAllowed && (
+                      <div className="text-xs text-yellow-600 mt-1">
+                        Final defense not available
+                      </div>
+                    )}
                   </td>
 
-                  <td className="p-3 align-top">{row.phase}</td>
+                  {/* Methodology column */}
+                  <td className="p-3 align-top whitespace-nowrap">{row.methodology}</td>
 
-                  <td className="p-3 align-top text-right">
-                    <div className="relative inline-block">
+                  <td className="p-3 align-top whitespace-nowrap">{row.phase}</td>
+
+                  <td className="p-3 align-top text-right whitespace-nowrap">
+                    {/* Different menu options for team vs adviser tasks */}
+                    <div className="relative inline-block dropdown-container">
                       <button
-                        className="p-1.5 rounded-md hover:bg-neutral-100"
-                        onClick={() =>
+                        className={`p-1.5 rounded-md transition-colors ${
+                          isFinalDefenseAllowed ? "hover:bg-neutral-100" : "opacity-50 cursor-not-allowed"
+                        }`}
+                        onClick={() => {
+                          if (!isFinalDefenseAllowed) {
+                            alert("Oral defense must be approved before managing final defense tasks.");
+                            return;
+                          }
                           setMenuOpenId(menuOpenId === row.key ? null : row.key)
-                        }
+                        }}
+                        disabled={!isFinalDefenseAllowed}
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
                       {menuOpenId === row.key && (
-                        <div className="absolute right-0 mt-1 w-40 rounded-md border border-neutral-200 bg-white shadow-lg z-10">
-                          {row.taskId ? (
-                            <>
+                        <div className="absolute right-0 z-50 mt-1 w-40 rounded-md border border-neutral-200 bg-white shadow-lg animate-in fade-in-0 zoom-in-95">
+                          <div className="flex flex-col">
+                            {/* For team tasks: Show Edit option, for adviser tasks: Hide Edit option */}
+                            {!isAdviserTask && (
                               <button
-                                className="w-full text-left px-3 py-2 hover:bg-neutral-50"
+                                className={`w-full text-left px-3 py-2 ${
+                                  hasMaxRevisions || !isFinalDefenseAllowed
+                                    ? "text-neutral-400 cursor-not-allowed" 
+                                    : "hover:bg-neutral-50"
+                                }`}
                                 onClick={() => {
+                                  if (!isFinalDefenseAllowed) {
+                                    alert("Final defense is not available yet. Please ensure oral defense is approved.");
+                                    return;
+                                  }
+                                  if (hasMaxRevisions) {
+                                    alert("Maximum revisions reached (10). Please create a new task instead of editing this one.");
+                                    return;
+                                  }
                                   setMenuOpenId(null);
-                                  openEditTask(row);
+                                  setEditDueDateTime({
+                                    existingTask: row.existingTask,
+                                    rowData: row, // Pass row data to the dialog
+                                    isFinalDefenseAllowed: isFinalDefenseAllowed,
+                                    lockedMethodology: lockedMethodology // Pass locked methodology
+                                  });
                                 }}
+                                disabled={hasMaxRevisions || !isFinalDefenseAllowed}
+                                title={hasMaxRevisions ? "Maximum revisions reached - create new task" : !isFinalDefenseAllowed ? "Final defense not available yet" : ""}
                               >
                                 Edit
                               </button>
-                              <button
-                                className="w-full text-left px-3 py-2 hover:bg-neutral-50 text-red-600"
-                                onClick={() => {
-                                  setMenuOpenId(null);
-                                  askDelete(row);
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </>
-                          ) : (
+                            )}
                             <button
-                              className={`w-full text-left px-3 py-2 hover:bg-neutral-50 ${
-                                !oralGate.canCreate
-                                  ? "opacity-60 cursor-not-allowed"
-                                  : ""
-                              }`}
+                              className="w-full text-left px-3 py-2 hover:bg-neutral-50"
                               onClick={() => {
                                 setMenuOpenId(null);
-                                openCreateForMember(row);
+                                openEditTask(row);
                               }}
                             >
-                              Create Task
+                              View
                             </button>
-                          )}
+                            {/* UPDATED: Show Delete for both team and adviser tasks */}
+                            <button
+                              className="w-full text-left px-3 py-2 hover:bg-neutral-50 text-red-600"
+                              onClick={() => handleDeleteClick(row.taskId)}
+                              disabled={!isFinalDefenseAllowed}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1136,10 +2443,10 @@ const FinalDefense = ({ onBack }) => {
               );
             })}
 
-            {pageRows.length === 0 && (
+            {filtered.length === 0 && (
               <tr>
-                <td colSpan={11} className="p-6 text-center text-neutral-500">
-                  No members found.
+                <td colSpan={14} className="p-6 text-center text-neutral-500">
+                  No {activeTab === "team" ? "team" : "adviser"} tasks found.
                 </td>
               </tr>
             )}
@@ -1147,91 +2454,50 @@ const FinalDefense = ({ onBack }) => {
         </table>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between mt-4">
-        <div className="text-sm text-neutral-600">
-          Page {page} of {totalPages}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded border border-neutral-300 hover:bg-neutral-50 disabled:opacity-50"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-          >
-            <ChevronLeft className="w-4 h-4" /> Previous
-          </button>
-          <button
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded border border-neutral-300 hover:bg-neutral-50 disabled:opacity-50"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-          >
-            Next <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Modal: Create/Edit */}
+      {/* Create/Edit Task Modal */}
       {editingModal && (
         <EditTaskDialog
           open={!!editingModal}
           onClose={() => setEditingModal(null)}
-          onSaved={() => {}}
-          pm={pmProfile}
+          onSaved={() => setEditingModal(null)}
+          pm={pmProfile || { uid: pmUid, name: "Project Manager" }}
           teams={teams}
           members={members}
-          seedMember={editingModal.seedMember}
-          existingTask={editingModal.existingTask}
-          mode={mode}
-          lockedMethodology={
-            tasks.length
-              ? tasks.map((t) => t.methodology).find(Boolean) || null
-              : null
-          }
+          seedMember={editingModal?.seedMember || null}
+          existingTask={editingModal?.existingTask || null}
+          mode={editingModal?.mode || activeTab}
+          lockedMethodology={lockedMethodology}
+          rowData={editingModal?.rowData} // Pass row data to the dialog
+          isFinalDefenseAllowed={isFinalDefenseAllowed} // Pass final defense allowance status
         />
       )}
 
-      {/* Confirm delete */}
-      {deletingId && (
-        <div className="fixed inset-0 z-50">
-          <div
-            className="absolute inset-0 bg-black/30"
-            onClick={() => setDeletingId(null)}
-          />
-          <div className="relative z-10 mx-auto mt-24 w-[420px] max-w-[95vw]">
-            <div className="bg-white rounded-xl border border-neutral-200 shadow-2xl overflow-hidden">
-              <div
-                className="h-[2px] w-full"
-                style={{ backgroundColor: MAROON }}
-              />
-              <div className="p-5">
-                <div className="flex items-center gap-2 mb-2 text-red-700">
-                  <Trash2 className="w-5 h-5" />
-                  <div className="font-semibold">Delete Task</div>
-                </div>
-                <div className="text-sm text-neutral-700">
-                  Are you sure you want to delete this task? This action cannot
-                  be undone.
-                </div>
-                <div className="flex justify-end gap-2 mt-4">
-                  <button
-                    className="px-4 py-2 rounded-md border border-neutral-300 hover:bg-neutral-50"
-                    onClick={() => setDeletingId(null)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="px-4 py-2 rounded-md text-white"
-                    style={{ backgroundColor: MAROON }}
-                    onClick={doDelete}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Edit Due Date & Time Modal */}
+      {editDueDateTime && (
+        <EditDueDateTimeDialog
+          open={!!editDueDateTime}
+          onClose={() => setEditDueDateTime(null)}
+          onSaved={() => setEditDueDateTime(null)}
+          existingTask={editDueDateTime.existingTask}
+          rowData={editDueDateTime.rowData} // Pass row data to the dialog
+          isFinalDefenseAllowed={isFinalDefenseAllowed} // Pass final defense allowance status
+          lockedMethodology={editDueDateTime.lockedMethodology} // Pass locked methodology
+        />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationDialog
+        open={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeletingId(null);
+        }}
+        onConfirm={deleteTask}
+        title="Delete Task?"
+        message="Are you sure you want to delete this task? This action cannot be undone."
+        confirmText="Yes, Delete"
+        cancelText="No, Cancel"
+      />
     </div>
   );
 };

@@ -354,11 +354,9 @@ export default function ProjectManagerProfile() {
               {/* Names are always read-only now */}
               <Field label="First Name">{userDoc.firstName || "-"}</Field>
 
-              <Field label="Middle Name">
+              <Field label="Middle Initial">
                 {userDoc.middleName
-                  ? `${userDoc.middleName} (${(
-                      userDoc.middleName[0] || ""
-                    ).toUpperCase()}.)`
+                  ? `${(userDoc.middleName[0] || "").toUpperCase()}.`
                   : "-"}
               </Field>
 

@@ -75,14 +75,14 @@
                   "elements": []
                 },
                 {
-                  "task": "4. Polish: Chapter 4",
+                  "task": "Polish: Chapter 4",
                   "subtasks": [
                     {
-                      "subtask": "1. Methodology",
+                      "subtask": "Methodology",
                       "elements": []
                     },
                     {
-                      "subtask": "2.Environment",
+                      "subtask": "Environment",
                       "elements": [
                         "Locale",
                         "Population of the Study",
@@ -123,7 +123,10 @@
                       "elements": [
                         "Software",
                         "Hardware Specification",
-                        "Program Specification"
+                        "Program Specification",
+                        "Programming Environment",
+                        "Development Diagram",
+                        "Test Plan"
                       ]
                     },
                     {
@@ -148,6 +151,68 @@
                   "elements": []
                 },
                 {
+                  "task": "Verification and Testing",
+                  "subtasks": [
+                    {
+                      "subtask": "Unit Testing",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Integration Testing",
+                      "elements": [
+                        "Compatibility Testing",
+                        "Performance Testing",
+                        "Stress Testing",
+                        "Load Testing"
+                      ]
+                    },
+                    {
+                      "subtask": "System Testing",
+                      "elements": [
+                        "System Function",
+                        "Test Data",
+                        "Test Result and Observations"
+                      ]
+                    },
+                    {
+                      "subtask": "Acceptance Testing",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Implementation Plan",
+                  "subtasks": [
+                    {
+                      "subtask": "Physical Environment",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Interfaces",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Functionality",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Data",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Security",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Installation Process",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
                   "task": "Complete: Chapter 5",
                   "subtasks": [
                     {
@@ -155,30 +220,17 @@
                       "elements": []
                     },
                     {
-                      "subtask": "Recomendations",
-                      "elements": []
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "Appendices",
-                  "subtasks": [
-                    {
-                      "subtask": "Appendix F",
+                      "subtask": "Recommendations",
                       "elements": []
                     },
                     {
-                      "subtask": "Appendix G",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Appendix H",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Appendix I",
-                      "elements": []
+                      "subtask": "Appendices",
+                      "elements": [
+                        "Appendix F",
+                        "Appendix G",
+                        "Appendix H",
+                        "Appendix I"
+                      ]
                     }
                   ],
                   "elements": []
@@ -213,13 +265,65 @@
                   "elements": []
                 },
                 {
-                  "task": "12. Manuscript Submission",
+                  "task": "Manuscript Submission",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "13. Manuscript Submission for AI and Plagiarism Check",
+                  "task": "Manuscript Submission for AI and Plagiarism Check",
                   "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "System Development",
+              "tasks": [
+                {
+                  "task": "UI Development",
+                  "subtasks": []
+                },
+                {
+                  "task": "Database Implementation",
+                  "subtasks": []
+                },
+                {
+                  "task": "Functionality Implementation",
+                  "subtasks": []
+                },
+                {
+                  "task": "Bug Fixing",
+                  "subtasks": []
+                }
+              ]
+            },
+            {
+              "type": "Discussion & Review",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
                   "elements": []
                 }
               ]
@@ -227,96 +331,370 @@
           ]
         },
         {
-          "phase": "System Development",
+          "phase": "Test",
           "taskTypes": [
             {
-              "type": "Development",
-              "tasks": [
-                {
-                  "task": "UI Development",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Database Implementation",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Functionality Implementation",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Bug Fixing",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            },
-            {
-              "type": "Test",
+              "type": "System Development",
               "tasks": [
                 {
                   "task": "System QA",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "1.Unit Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Integration Testing",
                   "subtasks": [
-                    {
-                      "subtask": "Compatibility Testing",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Performance Testing",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Stress Testing",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Load Testing",
-                      "elements": []
-                    }
+                    "Unit Testing",
+                    "Compatibility Testing",
+                    "Performance Testing",
+                    "Stress Testing",
+                    "Load Testing",
+                    "Concurrent Testing",
+                    "Pacing Time",
+                    "Response Time",
+                    "Network Testing"
                   ],
                   "elements": []
                 },
                 {
-                  "task": "System Testing",
-                  "subtasks": [
-                    {
-                      "subtask": "System Function",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Test Data",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Test Result and Observations",
-                      "elements": []
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "Acceptance Testing",
+                  "task": "Bug Fixing and Final Adjustments",
                   "subtasks": [],
                   "elements": []
                 }
               ]
             },
             {
-              "type": "Implementation Plan",
+              "type": "Discussion & Review",
               "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Deploy",
+          "taskTypes": [
+            {
+              "type": "System Development",
+              "tasks": [
+                {
+                  "task": "Deploy the System",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "Discussion & Review",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Review",
+          "taskTypes": [
+            {
+              "type": "System Development",
+              "tasks": [
+                {
+                  "task": "Gather Target Users/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Review Users Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Gather Users/Client Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Update System Functionalities",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Re-Defense Planning",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Feedback Integration",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "Discussion & Review",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "methodology": "Extreme Programming (XP)",
+      "projectPhases": [
+        {
+          "phase": "Coding",
+          "taskTypes": [
+            {
+              "type": "Documentation",
+              "tasks": [
+                {
+                  "task": "Polish: Chapter 1",
+                  "subtasks": [
+                    {
+                      "subtask": "Introduction",
+                      "elements": [
+                        "Project Context",
+                        "Background of the Study",
+                        "Policies and Procedures"
+                      ]
+                    },
+                    {
+                      "subtask": "Objectives",
+                      "elements": [
+                        "General Objectives",
+                        "Specific Objectives"
+                      ]
+                    },
+                    {
+                      "subtask": "Scope and Limitation",
+                      "elements": [
+                        "Scope",
+                        "Limitation"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Polish: Chapter 2",
+                  "subtasks": [
+                    {
+                      "subtask": "Related Theories",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Related Literature",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Polish: Chapter 3",
+                  "subtasks": [
+                    {
+                      "subtask": "Implementation",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Polish: Chapter 4",
+                  "subtasks": [
+                    {
+                      "subtask": "Methodology",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Environment",
+                      "elements": [
+                        "Locale",
+                        "Population of the Study",
+                        "Organizational Chart/Profile"
+                      ]
+                    },
+                    {
+                      "subtask": "Requirement Specification",
+                      "elements": [
+                        "Operational Feasibility [Fishbone Diagram]",
+                        "Operational Feasibility [Functional Decomposition Diagram]",
+                        "Technical Feasibility",
+                        "Schedule Feasibility",
+                        "Economic Feasibility",
+                        "Requirements Modeling [Context Diagram]",
+                        "Requirements Modeling [Data Flow Diagram]",
+                        "Requirements Modeling [System Flowchart]",
+                        "Requirements Modeling [Program Flowchart]",
+                        "Requirements Modeling [Use Case Diagram]",
+                        "Requirements Modeling [Use Class Diagram]",
+                        "Requirements Modeling [Sequence Diagram]",
+                        "Requirements Modeling [Activity Diagram]",
+                        "Risk Assessment/Analysis"
+                      ]
+                    },
+                    {
+                      "subtask": "Design",
+                      "elements": [
+                        "Output and User-interface Design Forms",
+                        "Data Design",
+                        "System Architecture [Network Model]",
+                        "System Architecture [Network Topology]",
+                        "System Architecture [Network Security]"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Software",
+                        "Hardware Specification",
+                        "Program Specification",
+                        "Programming Environment",
+                        "Development Diagram",
+                        "Test Plan"
+                      ]
+                    },
+                    {
+                      "subtask": "Programming Environment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Verification and Testing",
+                  "subtasks": [
+                    {
+                      "subtask": "Unit Testing",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Integration Testing",
+                      "elements": [
+                        "Compatibility Testing",
+                        "Performance Testing",
+                        "Stress Testing",
+                        "Load Testing"
+                      ]
+                    },
+                    {
+                      "subtask": "System Testing",
+                      "elements": [
+                        "System Function",
+                        "Test Data",
+                        "Test Result and Observations"
+                      ]
+                    },
+                    {
+                      "subtask": "Acceptance Testing",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
                 {
                   "task": "Implementation Plan",
                   "subtasks": [
@@ -347,50 +725,193 @@
                   "task": "Installation Process",
                   "subtasks": [],
                   "elements": []
+                },
+                {
+                  "task": "Complete: Chapter 5",
+                  "subtasks": [
+                    {
+                      "subtask": "Conclusion",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Recommendations",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Appendices",
+                      "elements": [
+                        "Appendix F",
+                        "Appendix G",
+                        "Appendix H",
+                        "Appendix I"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Finalize Supporting Sections",
+                  "subtasks": [
+                    {
+                      "subtask": "References",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Resource Person",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Appendices",
+                      "elements": [
+                        "Appendix A",
+                        "Appendix B",
+                        "Appendix C",
+                        "Appendix D",
+                        "Appendix E"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Final Manuscript Revision (Post-Defense)",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Manuscript Submission",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Manuscript Submission for AI and Plagiarism Check",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "System Development",
+              "tasks": [
+                {
+                  "task": "Development Environment Setup & Pair Assignment",
+                  "subtasks": []
+                },
+                {
+                  "task": "User Interface Coding with Customer Collaboration",
+                  "subtasks": []
+                },
+                {
+                  "task": "Incremental Database Development",
+                  "subtasks": []
+                },
+                {
+                  "task": "Test-Driven Feature Development",
+                  "subtasks": []
+                },
+                {
+                  "task": "Continuous Integration",
+                  "subtasks": []
+                },
+                {
+                  "task": "Bug Fixing",
+                  "subtasks": []
+                }
+              ]
+            },
+            {
+              "type": "Discussion & Review",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
+                  "elements": []
                 }
               ]
             }
           ]
         },
         {
-          "phase": "Deploy",
+          "phase": "Test",
           "taskTypes": [
             {
-              "type": "Deploy",
+              "type": "System Development",
               "tasks": [
+                {
+                  "task": "System QA",
+                  "subtasks": [
+                    "Unit Testing",
+                    "Compatibility Testing",
+                    "Performance Testing",
+                    "Stress Testing",
+                    "Load Testing",
+                    "Concurrent Testing",
+                    "Pacing Time",
+                    "Response Time",
+                    "Network Testing"
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Bug Fixing and Final Adjustments",
+                  "subtasks": [],
+                  "elements": []
+                },
                 {
                   "task": "Deploy the System",
                   "subtasks": [],
                   "elements": []
                 }
               ]
-            }
-          ]
-        },
-        {
-          "phase": "Review",
-          "taskTypes": [
+            },
             {
-              "type": "Review",
+              "type": "Discussion & Review",
               "tasks": [
                 {
-                  "task": "Gather Target Users/Client",
+                  "task": "Capstone Meeting",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "9.Review Users Feedback",
+                  "task": "Adviser Consultation",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "Gather Users/Client Feedback",
+                  "task": "Meeting with the User/Client",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "11. Update System Functionalities",
-                  "subtasks": [],
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
                   "elements": []
                 }
               ]
@@ -398,11 +919,31 @@
           ]
         },
         {
-          "phase": "Defense",
+          "phase": "Listening",
           "taskTypes": [
             {
-              "type": "Defense",
+              "type": "System Development",
               "tasks": [
+                {
+                  "task": "Engage Customer & Stakeholders",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Collaborate on Feedback Review",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Conduct Iterative Requirement Gathering",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Refine Features Based on Customer Input",
+                  "subtasks": [],
+                  "elements": []
+                },
                 {
                   "task": "Final Defense",
                   "subtasks": [],
@@ -419,14 +960,9 @@
                   "elements": []
                 }
               ]
-            }
-          ]
-        },
-        {
-          "phase": "Discussion & Review",
-          "taskTypes": [
+            },
             {
-              "type": "Meetings",
+              "type": "Discussion & Review",
               "tasks": [
                 {
                   "task": "Capstone Meeting",
@@ -442,35 +978,16 @@
                   "task": "Meeting with the User/Client",
                   "subtasks": [],
                   "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "Final Defense Preparation",
-          "taskTypes": [
-            {
-              "type": "Preparation",
-              "tasks": [
-                {
-                  "task": "System Testing Request Letter",
-                  "subtasks": [],
-                  "elements": []
                 },
                 {
-                  "task": "PowerPoint Presentation",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Mock Defense",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Manuscript Printing",
-                  "subtasks": [],
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
                   "elements": []
                 }
               ]
@@ -480,10 +997,10 @@
       ]
     },
     {
-      "methodology": "Extreme Programming (XP)",
+      "methodology": "Rapid Application Development (RAD)",
       "projectPhases": [
         {
-          "phase": "Coding",
+          "phase": "Construction",
           "taskTypes": [
             {
               "type": "Documentation",
@@ -554,14 +1071,14 @@
                   "elements": []
                 },
                 {
-                  "task": "4. Polish: Chapter 4",
+                  "task": "Polish: Chapter 4",
                   "subtasks": [
                     {
-                      "subtask": "1. Methodology",
+                      "subtask": "Methodology",
                       "elements": []
                     },
                     {
-                      "subtask": "2.Environment",
+                      "subtask": "Environment",
                       "elements": [
                         "Locale",
                         "Population of the Study",
@@ -602,7 +1119,10 @@
                       "elements": [
                         "Software",
                         "Hardware Specification",
-                        "Program Specification"
+                        "Program Specification",
+                        "Programming Environment",
+                        "Development Diagram",
+                        "Test Plan"
                       ]
                     },
                     {
@@ -627,6 +1147,68 @@
                   "elements": []
                 },
                 {
+                  "task": "Verification and Testing",
+                  "subtasks": [
+                    {
+                      "subtask": "Unit Testing",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Integration Testing",
+                      "elements": [
+                        "Compatibility Testing",
+                        "Performance Testing",
+                        "Stress Testing",
+                        "Load Testing"
+                      ]
+                    },
+                    {
+                      "subtask": "System Testing",
+                      "elements": [
+                        "System Function",
+                        "Test Data",
+                        "Test Result and Observations"
+                      ]
+                    },
+                    {
+                      "subtask": "Acceptance Testing",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Implementation Plan",
+                  "subtasks": [
+                    {
+                      "subtask": "Physical Environment",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Interfaces",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Functionality",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Data",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Security",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Installation Process",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
                   "task": "Complete: Chapter 5",
                   "subtasks": [
                     {
@@ -636,28 +1218,15 @@
                     {
                       "subtask": "Recommendations",
                       "elements": []
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "Appendices",
-                  "subtasks": [
-                    {
-                      "subtask": "Appendix F",
-                      "elements": []
                     },
                     {
-                      "subtask": "Appendix G",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Appendix H",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Appendix I",
-                      "elements": []
+                      "subtask": "Appendices",
+                      "elements": [
+                        "Appendix F",
+                        "Appendix G",
+                        "Appendix H",
+                        "Appendix I"
+                      ]
                     }
                   ],
                   "elements": []
@@ -692,12 +1261,12 @@
                   "elements": []
                 },
                 {
-                  "task": "12. Manuscript Submission",
+                  "task": "Manuscript Submission",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "13. Manuscript Submission for AI and Plagiarism Check",
+                  "task": "Manuscript Submission for AI and Plagiarism Check",
                   "subtasks": [],
                   "elements": []
                 }
@@ -707,100 +1276,354 @@
               "type": "System Development",
               "tasks": [
                 {
-                  "task": "Development Environment Setup & Pair Assignment",
-                  "subtasks": [],
-                  "elements": []
+                  "task": "UI Development",
+                  "subtasks": []
                 },
                 {
-                  "task": "User Interface Coding with Customer Collaboration",
-                  "subtasks": [],
-                  "elements": []
+                  "task": "Database Implementation",
+                  "subtasks": []
                 },
                 {
-                  "task": "Incremental Database Development",
-                  "subtasks": [],
-                  "elements": []
+                  "task": "Functionality Implementation",
+                  "subtasks": []
                 },
                 {
-                  "task": "Test-Driven Feature Development",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Continuous Integration",
-                  "subtasks": [],
-                  "elements": []
+                  "task": "Conduct Iterative Internal Testing",
+                  "subtasks": []
                 },
                 {
                   "task": "Bug Fixing",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            },
-            {
-              "type": "Testing",
-              "tasks": [
+                  "subtasks": []
+                },
                 {
                   "task": "System QA",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "1.Unit Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "2. Integration Testing",
                   "subtasks": [
-                    {
-                      "subtask": "Compatibility Testing",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Performance Testing",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Stress Testing",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Load Testing",
-                      "elements": []
-                    }
+                    "Unit Testing",
+                    "Compatibility Testing",
+                    "Performance Testing",
+                    "Stress Testing",
+                    "Load Testing",
+                    "Concurrent Testing",
+                    "Pacing Time",
+                    "Response Time",
+                    "Network Testing"
                   ],
                   "elements": []
                 },
                 {
-                  "task": "3.System Testing",
-                  "subtasks": [
-                    {
-                      "subtask": "System Function",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Test Data",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Test Result and Observations",
-                      "elements": []
-                    }
-                  ],
+                  "task": "Apply Rapid Fixes Based on Test Results",
+                  "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "Acceptance Testing",
+                  "task": "Bug Fixing and Final Adjustments",
                   "subtasks": [],
                   "elements": []
                 }
               ]
             },
             {
-              "type": "Implementation Plan",
+              "type": "Discussion & Review",
               "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "phase": "Cutover",
+          "taskTypes": [
+            {
+              "type": "System Development",
+              "tasks": [
+                {
+                  "task": "Deploy the System",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Train End Users for System Usage",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Evaluate Final User Feedback for Transition Readiness",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Gather Users/Client Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Update System Functionalities",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Re-Defense Planning",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Feedback Integration",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "Discussion & Review",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
+                  "elements": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "methodology": "Prototyping",
+      "projectPhases": [
+        {
+          "phase": "Refining Prototype",
+          "taskTypes": [
+            {
+              "type": "Documentation",
+              "tasks": [
+                {
+                  "task": "Refine UI & Functionalities based on Panel Feedback",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Polish: Chapter 1",
+                  "subtasks": [
+                    {
+                      "subtask": "Introduction",
+                      "elements": [
+                        "Project Context",
+                        "Background of the Study",
+                        "Policies and Procedures",
+                        "Users Position"
+                      ]
+                    },
+                    {
+                      "subtask": "Objectives",
+                      "elements": [
+                        "General Objectives",
+                        "Specific Objectives"
+                      ]
+                    },
+                    {
+                      "subtask": "Scope and Limitation",
+                      "elements": [
+                        "Scope",
+                        "Limitation"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Polish: Chapter 2",
+                  "subtasks": [
+                    {
+                      "subtask": "Related Theories",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Related Literature",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Polish: Chapter 3",
+                  "subtasks": [
+                    {
+                      "subtask": "Implementation",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Hardware",
+                        "Software",
+                        "Peopleware"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Polish: Chapter 4",
+                  "subtasks": [
+                    {
+                      "subtask": "Methodology",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Environment",
+                      "elements": [
+                        "Locale",
+                        "Population of the Study",
+                        "Organizational Chart/Profile"
+                      ]
+                    },
+                    {
+                      "subtask": "Requirement Specification",
+                      "elements": [
+                        "Operational Feasibility [Fishbone Diagram]",
+                        "Operational Feasibility [Functional Decomposition Diagram]",
+                        "Technical Feasibility",
+                        "Schedule Feasibility",
+                        "Economic Feasibility",
+                        "Requirements Modeling [Context Diagram]",
+                        "Requirements Modeling [Data Flow Diagram]",
+                        "Requirements Modeling [System Flowchart]",
+                        "Requirements Modeling [Program Flowchart]",
+                        "Requirements Modeling [Use Case Diagram]",
+                        "Requirements Modeling [Use Class Diagram]",
+                        "Requirements Modeling [Sequence Diagram]",
+                        "Requirements Modeling [Activity Diagram]",
+                        "Risk Assessment/Analysis"
+                      ]
+                    },
+                    {
+                      "subtask": "Design",
+                      "elements": [
+                        "Output and User-interface Design Forms",
+                        "Data Design",
+                        "System Architecture [Network Model]",
+                        "System Architecture [Network Topology]",
+                        "System Architecture [Network Security]"
+                      ]
+                    },
+                    {
+                      "subtask": "Development",
+                      "elements": [
+                        "Software",
+                        "Hardware Specification",
+                        "Program Specification",
+                        "Programming Environment",
+                        "Development Diagram",
+                        "Test Plan"
+                      ]
+                    },
+                    {
+                      "subtask": "Programming Environment",
+                      "elements": [
+                        "Front End",
+                        "Back End",
+                        "Programming Considerations and Issues"
+                      ]
+                    },
+                    {
+                      "subtask": "Development Diagram",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Test Plan",
+                      "elements": [
+                        "Test Data"
+                      ]
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Verification and Testing",
+                  "subtasks": [
+                    {
+                      "subtask": "Unit Testing",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Integration Testing",
+                      "elements": [
+                        "Compatibility Testing",
+                        "Performance Testing",
+                        "Stress Testing",
+                        "Load Testing"
+                      ]
+                    },
+                    {
+                      "subtask": "System Testing",
+                      "elements": [
+                        "System Function",
+                        "Test Data",
+                        "Test Result and Observations"
+                      ]
+                    },
+                    {
+                      "subtask": "Acceptance Testing",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
                 {
                   "task": "Implementation Plan",
                   "subtasks": [
@@ -817,26 +1640,21 @@
                       "elements": []
                     },
                     {
-                      "subtask": "4.Data",
+                      "subtask": "Data",
                       "elements": []
                     },
                     {
-                      "subtask": "5.Security",
+                      "subtask": "Security",
                       "elements": []
                     }
                   ],
                   "elements": []
                 },
                 {
-                  "task": "7.Installation Process",
+                  "task": "Installation Process",
                   "subtasks": [],
                   "elements": []
-                }
-              ]
-            },
-            {
-              "type": "Finalize",
-              "tasks": [
+                },
                 {
                   "task": "Complete: Chapter 5",
                   "subtasks": [
@@ -847,28 +1665,15 @@
                     {
                       "subtask": "Recommendations",
                       "elements": []
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "Appendices",
-                  "subtasks": [
-                    {
-                      "subtask": "Appendix F",
-                      "elements": []
                     },
                     {
-                      "subtask": "Appendix G",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Appendix H",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Appendix I",
-                      "elements": []
+                      "subtask": "Appendices",
+                      "elements": [
+                        "Appendix F",
+                        "Appendix G",
+                        "Appendix H",
+                        "Appendix I"
+                      ]
                     }
                   ],
                   "elements": []
@@ -896,62 +1701,118 @@
                     }
                   ],
                   "elements": []
+                },
+                {
+                  "task": "Final Manuscript Revision (Post-Defense)",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Manuscript Submission",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Manuscript Submission for AI and Plagiarism Check",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "Discussion & Review",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
+                  "elements": []
                 }
               ]
             }
           ]
         },
         {
-          "phase": "Deploy",
+          "phase": "Implement Product & Maintain",
           "taskTypes": [
             {
-              "type": "Deploy",
+              "type": "System Development",
               "tasks": [
+                {
+                  "task": "UI Development",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Database Implementation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Implement Core Functional Modules",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Perform System Maintenance and Issue Resolution",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "System QA",
+                  "subtasks": [
+                    "Unit Testing",
+                    "Compatibility Testing",
+                    "Performance Testing",
+                    "Stress Testing",
+                    "Load Testing",
+                    "Concurrent Testing",
+                    "Pacing Time",
+                    "Response Time",
+                    "Network Testing"
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Bug Fixing and Final Adjustments",
+                  "subtasks": [],
+                  "elements": []
+                },
                 {
                   "task": "Deploy the System",
                   "subtasks": [],
                   "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "Listening",
-          "taskTypes": [
-            {
-              "type": "Customer Collaboration",
-              "tasks": [
+                },
                 {
-                  "task": "Engage Customer & Stakeholders",
+                  "task": "Conduct Post-Deployment User Feedback Review",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "Collaborate on Feedback Review",
+                  "task": "Review Users Feedback",
                   "subtasks": [],
                   "elements": []
                 },
-                {
-                  "task": "Conduct Iterative Requirement Gathering",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Refine Features Based on Customer Input",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "Defense",
-          "taskTypes": [
-            {
-              "type": "Defense",
-              "tasks": [
                 {
                   "task": "Final Defense",
                   "subtasks": [],
@@ -968,14 +1829,9 @@
                   "elements": []
                 }
               ]
-            }
-          ]
-        },
-        {
-          "phase": "Discussion & Review",
-          "taskTypes": [
+            },
             {
-              "type": "Meetings",
+              "type": "Discussion & Review",
               "tasks": [
                 {
                   "task": "Capstone Meeting",
@@ -991,35 +1847,16 @@
                   "task": "Meeting with the User/Client",
                   "subtasks": [],
                   "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "Final Defense Preparation",
-          "taskTypes": [
-            {
-              "type": "Preparation",
-              "tasks": [
-                {
-                  "task": "System Testing Request Letter",
-                  "subtasks": [],
-                  "elements": []
                 },
                 {
-                  "task": "PowerPoint Presentation",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Mock Defense",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Manuscript Printing",
-                  "subtasks": [],
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
                   "elements": []
                 }
               ]
@@ -1029,10 +1866,10 @@
       ]
     },
     {
-      "methodology": "Rapid Application Development (RAD)",
+      "methodology": "Spiral",
       "projectPhases": [
         {
-          "phase": "Construction",
+          "phase": "Engineering",
           "taskTypes": [
             {
               "type": "Documentation",
@@ -1070,11 +1907,11 @@
                   "task": "Polish: Chapter 2",
                   "subtasks": [
                     {
-                      "subtask": "1.Related Theories",
+                      "subtask": "Related Theories",
                       "elements": []
                     },
                     {
-                      "subtask": "2.Related Literature",
+                      "subtask": "Related Literature",
                       "elements": []
                     }
                   ],
@@ -1103,14 +1940,14 @@
                   "elements": []
                 },
                 {
-                  "task": "4. Polish: Chapter 4",
+                  "task": "Polish: Chapter 4",
                   "subtasks": [
                     {
-                      "subtask": "1. Methodology",
+                      "subtask": "Methodology",
                       "elements": []
                     },
                     {
-                      "subtask": "2.Environment",
+                      "subtask": "Environment",
                       "elements": [
                         "Locale",
                         "Population of the Study",
@@ -1151,7 +1988,10 @@
                       "elements": [
                         "Software",
                         "Hardware Specification",
-                        "Program Specification"
+                        "Program Specification",
+                        "Programming Environment",
+                        "Development Diagram",
+                        "Test Plan"
                       ]
                     },
                     {
@@ -1176,18 +2016,80 @@
                   "elements": []
                 },
                 {
+                  "task": "Verification and Testing",
+                  "subtasks": [
+                    {
+                      "subtask": "Unit Testing",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Integration Testing",
+                      "elements": [
+                        "Compatibility Testing",
+                        "Performance Testing",
+                        "Stress Testing",
+                        "Load Testing"
+                      ]
+                    },
+                    {
+                      "subtask": "System Testing",
+                      "elements": [
+                        "System Function",
+                        "Test Data",
+                        "Test Result and Observations"
+                      ]
+                    },
+                    {
+                      "subtask": "Acceptance Testing",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Implementation Plan",
+                  "subtasks": [
+                    {
+                      "subtask": "Physical Environment",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Interfaces",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Functionality",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Data",
+                      "elements": []
+                    },
+                    {
+                      "subtask": "Security",
+                      "elements": []
+                    }
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Installation Process",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
                   "task": "Complete: Chapter 5",
                   "subtasks": [
                     {
-                      "subtask": "1.Conclusion",
+                      "subtask": "Conclusion",
                       "elements": []
                     },
                     {
-                      "subtask": "2.Recomendations",
+                      "subtask": "Recommendations",
                       "elements": []
                     },
                     {
-                      "subtask": "3.Appendices",
+                      "subtask": "Appendices",
                       "elements": [
                         "Appendix F",
                         "Appendix G",
@@ -1199,18 +2101,18 @@
                   "elements": []
                 },
                 {
-                  "task": "10.Finalize Supporting Sections",
+                  "task": "Finalize Supporting Sections",
                   "subtasks": [
                     {
-                      "subtask": "1.References",
+                      "subtask": "References",
                       "elements": []
                     },
                     {
-                      "subtask": "2. Resource Person",
+                      "subtask": "Resource Person",
                       "elements": []
                     },
                     {
-                      "subtask": "3.Appendices",
+                      "subtask": "Appendices",
                       "elements": [
                         "Appendix A",
                         "Appendix B",
@@ -1223,12 +2125,12 @@
                   "elements": []
                 },
                 {
-                  "task": "11. Final Manuscript Revision (Post-Defense)",
+                  "task": "Final Manuscript Revision (Post-Defense)",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "12. Manuscript Submission",
+                  "task": "Manuscript Submission",
                   "subtasks": [],
                   "elements": []
                 },
@@ -1243,954 +2145,54 @@
               "type": "System Development",
               "tasks": [
                 {
-                  "task": "UI Development",
+                  "task": "User Interface Construction",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "2.Database Implementation",
+                  "task": "Database Design & Integration",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "3.Functionality Implementation",
+                  "task": "Feature Development & Integration",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "4.Conduct Iterative Internal Testing",
+                  "task": "System Debugging & Correction",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "5.Bug Fixing",
+                  "task": "System QA",
+                  "subtasks": [
+                    "Unit Testing",
+                    "Compatibility Testing",
+                    "Performance Testing",
+                    "Stress Testing",
+                    "Load Testing",
+                    "Concurrent Testing",
+                    "Pacing Time",
+                    "Response Time",
+                    "Network Testing"
+                  ],
+                  "elements": []
+                },
+                {
+                  "task": "Bug Fixing and Final Adjustments",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "6.System QA",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "1.Unit Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "2.Compatibility Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "3.Performance Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "4.Stress Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "5.Load Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "6.Concurrent Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "7.Pacing Time",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "8.Response Time",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "9.Network Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "7.Apply Rapid Fixes Based on Test Results",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "8.Bug Fixing and Final Adjustments",
+                  "task": "Deploy the System",
                   "subtasks": [],
                   "elements": []
                 }
               ]
-            }
-          ]
-        },
-        {
-          "phase": "Cutover",
-          "taskTypes": [
+            },
             {
-              "type": "Cutover Activities",
-              "tasks": [
-                {
-                  "task": "9.Deploy the System",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "10.Train End Users for System Usage",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "11.Evaluate Final User Feedback for Transition Readiness",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "12.Gather Users/Client Feedback",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "13.Update System Functionalities",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "14.Final Defense",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "15.Final Re-Defense Planning",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "16.Final Defense Feedback Integration",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "Discussion & Review",
-          "taskTypes": [
-            {
-              "type": "Meetings",
-              "tasks": [
-                {
-                  "task": "1.Capstone Meeting",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "2.Adviser Consultation",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Meeting with the User/Client",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "Final Defense Preparation",
-          "taskTypes": [
-            {
-              "type": "Preparation",
-              "tasks": [
-                {
-                  "task": "1.System Testing Request Letter",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "PowerPoint Presentation",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Mock Defense",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Manuscript Printing",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "methodology": "Prototyping",
-      "projectPhases": [
-        {
-          "phase": "Refining Prototype",
-          "taskTypes": [
-            {
-              "type": "Documentation",
-              "tasks": [
-                {
-                  "task": "Refine UI & Functionalities based on Panel Feedback",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "Polish: Chapter 1",
-                  "subtasks": [
-                    {
-                      "subtask": "1.Introduction",
-                      "elements": [
-                        "Project Context",
-                        "Background of the Study",
-                        "Policies and Procedures",
-                        "Users Position"
-                      ]
-                    },
-                    {
-                      "subtask": "2.Objectives",
-                      "elements": [
-                        "General Objectives",
-                        "Specific Objectives"
-                      ]
-                    },
-                    {
-                      "subtask": "3.Scope and Limitation",
-                      "elements": [
-                        "Scope",
-                        "Limitation"
-                      ]
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "Polish: Chapter 2",
-                  "subtasks": [
-                    {
-                      "subtask": "1.Related Theories",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "2.Related Literature",
-                      "elements": []
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "Polish: Chapter 3",
-                  "subtasks": [
-                    {
-                      "subtask": "1.Implementation",
-                      "elements": [
-                        "Hardware",
-                        "Software",
-                        "Peopleware"
-                      ]
-                    },
-                    {
-                      "subtask": "2.Development",
-                      "elements": [
-                        "Hardware",
-                        "Software",
-                        "Peopleware"
-                      ]
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "5. Polish: Chapter 4",
-                  "subtasks": [
-                    {
-                      "subtask": "1. Methodology",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "2.Environment",
-                      "elements": [
-                        "Locale",
-                        "Population of the Study",
-                        "Organizational Chart/Profile"
-                      ]
-                    },
-                    {
-                      "subtask": "Requirement Specification",
-                      "elements": [
-                        "Operational Feasibility [Fishbone Diagram]",
-                        "Operational Feasibility [Functional Decomposition Diagram]",
-                        "Technical Feasibility",
-                        "Schedule Feasibility",
-                        "Economic Feasibility",
-                        "Requirements Modeling [Context Diagram]",
-                        "Requirements Modeling [Data Flow Diagram]",
-                        "Requirements Modeling [System Flowchart]",
-                        "Requirements Modeling [Program Flowchart]",
-                        "Requirements Modeling [Use Case Diagram]",
-                        "Requirements Modeling [Use Class Diagram]",
-                        "Requirements Modeling [Sequence Diagram]",
-                        "Requirements Modeling [Activity Diagram]",
-                        "Risk Assessment/Analysis"
-                      ]
-                    },
-                    {
-                      "subtask": "Design",
-                      "elements": [
-                        "Output and User-interface Design Forms",
-                        "Data Design",
-                        "System Architecture [Network Model]",
-                        "System Architecture [Network Topology]",
-                        "System Architecture [Network Security]"
-                      ]
-                    },
-                    {
-                      "subtask": "Development",
-                      "elements": [
-                        "Software",
-                        "Hardware Specification",
-                        "Program Specification"
-                      ]
-                    },
-                    {
-                      "subtask": "Programming Environment",
-                      "elements": [
-                        "Front End",
-                        "Back End",
-                        "Programming Considerations and Issues"
-                      ]
-                    },
-                    {
-                      "subtask": "Development Diagram",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Test Plan",
-                      "elements": [
-                        "Test Data"
-                      ]
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "10.Complete: Chapter 5",
-                  "subtasks": [
-                    {
-                      "subtask": "1.Conclusion",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "2.Recomendations",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "3.Appendices",
-                      "elements": [
-                        "Appendix F",
-                        "Appendix G",
-                        "Appendix H",
-                        "Appendix I"
-                      ]
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "11.Finalize Supporting Sections",
-                  "subtasks": [
-                    {
-                      "subtask": "1.References",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "2.Resource Person",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "3.Appendices",
-                      "elements": [
-                        "Appendix A",
-                        "Appendix B",
-                        "Appendix C",
-                        "Appendix D",
-                        "Appendix E"
-                      ]
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "12. Final Manuscript Revision (Post-Defense)",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "13.Manuscript Submission",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "14.Manuscript Submission for AI and Plagiarism Check",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "Implement Product & Maintain",
-          "taskTypes": [
-            {
-              "type": "System Development",
-              "tasks": [
-                {
-                  "task": "1.UI Development",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "2.Database Implementation",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "3.Implement Core Functional Modules",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "4.Perform System Maintenance and Issue Resolution",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "5.System QA",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "1.Unit Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "2.Compatibility Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "3.Performance Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "4.Stress Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "5.Load Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "6.Concurrent Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "7.Pacing Time",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "8.Response Time",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "9.Network Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "6.Bug Fixing and Final Adjustments",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "7.Deploy the System",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "8.Conduct Post-Deployment User Feedback Review",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "9.Review Users Feedback",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "10.Update System Functionalities",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "11.Final Defense",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "12.Final Re-Defense Planning",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "13.Final Defense Feedback Integration",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "Discussion & Review",
-          "taskTypes": [
-            {
-              "type": "Meetings",
-              "tasks": [
-                {
-                  "task": "1.Capstone Meeting",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "2.Adviser Consultation",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "3.Meeting with the User/Client",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "Final Defense Preparation",
-          "taskTypes": [
-            {
-              "type": "Preparation",
-              "tasks": [
-                {
-                  "task": "1.System Testing Request Letter",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "2.PowerPoint Presentation",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "3.Mock Defense",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "4.Manuscript Printing",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "methodology": "Spiral",
-      "projectPhases": [
-        {
-          "phase": "Engineering",
-          "taskTypes": [
-            {
-              "type": "Documentation",
-              "tasks": [
-                {
-                  "task": "1.Polish: Chapter 1",
-                  "subtasks": [
-                    {
-                      "subtask": "1.Introduction",
-                      "elements": [
-                        "Project Context",
-                        "Background of the Study",
-                        "Policies and Procedures",
-                        "Users Position"
-                      ]
-                    },
-                    {
-                      "subtask": "2.Objectives",
-                      "elements": [
-                        "General Objectives",
-                        "Specific Objectives"
-                      ]
-                    },
-                    {
-                      "subtask": "3.Scope and Limitation",
-                      "elements": [
-                        "Scope",
-                        "Limitation"
-                      ]
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "2.Polish: Chapter 2",
-                  "subtasks": [
-                    {
-                      "subtask": "1.Related Theories",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "2.Related Literature",
-                      "elements": []
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "3.Polish: Chapter 3",
-                  "subtasks": [
-                    {
-                      "subtask": "1.Implementation",
-                      "elements": [
-                        "Hardware",
-                        "Software",
-                        "Peopleware"
-                      ]
-                    },
-                    {
-                      "subtask": "2.Development",
-                      "elements": [
-                        "Hardware",
-                        "Software",
-                        "Peopleware"
-                      ]
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "4. Polish: Chapter 4",
-                  "subtasks": [
-                    {
-                      "subtask": "1. Methodology",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "2.Environment",
-                      "elements": [
-                        "Locale",
-                        "Population of the Study",
-                        "Organizational Chart/Profile"
-                      ]
-                    },
-                    {
-                      "subtask": "Requirement Specification",
-                      "elements": [
-                        "Operational Feasibility [Fishbone Diagram]",
-                        "Operational Feasibility [Functional Decomposition Diagram]",
-                        "Technical Feasibility",
-                        "Schedule Feasibility",
-                        "Economic Feasibility",
-                        "Requirements Modeling [Context Diagram]",
-                        "Requirements Modeling [Data Flow Diagram]",
-                        "Requirements Modeling [System Flowchart]",
-                        "Requirements Modeling [Program Flowchart]",
-                        "Requirements Modeling [Use Case Diagram]",
-                        "Requirements Modeling [Use Class Diagram]",
-                        "Requirements Modeling [Sequence Diagram]",
-                        "Requirements Modeling [Activity Diagram]",
-                        "Risk Assessment/Analysis"
-                      ]
-                    },
-                    {
-                      "subtask": "Design",
-                      "elements": [
-                        "Output and User-interface Design Forms",
-                        "Data Design",
-                        "System Architecture [Network Model]",
-                        "System Architecture [Network Topology]",
-                        "System Architecture [Network Security]"
-                      ]
-                    },
-                    {
-                      "subtask": "Development",
-                      "elements": [
-                        "Software",
-                        "Hardware Specification",
-                        "Program Specification"
-                      ]
-                    },
-                    {
-                      "subtask": "Programming Environment",
-                      "elements": [
-                        "Front End",
-                        "Back End",
-                        "Programming Considerations and Issues"
-                      ]
-                    },
-                    {
-                      "subtask": "Development Diagram",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "Test Plan",
-                      "elements": [
-                        "Test Data"
-                      ]
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "9.Complete: Chapter 5",
-                  "subtasks": [
-                    {
-                      "subtask": "1.Conclusion",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "2.Recomendations",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "3.Appendices",
-                      "elements": [
-                        "Appendix F",
-                        "Appendix G",
-                        "Appendix H",
-                        "Appendix I"
-                      ]
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "10.Finalize Supporting Sections",
-                  "subtasks": [
-                    {
-                      "subtask": "1.References",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "2.Resource Person",
-                      "elements": []
-                    },
-                    {
-                      "subtask": "3.Appendices",
-                      "elements": [
-                        "Appendix A",
-                        "Appendix B",
-                        "Appendix C",
-                        "Appendix D",
-                        "Appendix E"
-                      ]
-                    }
-                  ],
-                  "elements": []
-                },
-                {
-                  "task": "11. Final Manuscript Revision (Post-Defense)",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "12. Manuscript Submission",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "13.Manuscript Submission for AI and Plagiarism Check",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "System Development",
-          "taskTypes": [
-            {
-              "type": "Development",
-              "tasks": [
-                {
-                  "task": "1.User Interface Construction",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "2.Database Design & Integration",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "3.Feature Development & Integration",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "4.System Debugging & Correction",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "5.System QA",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "1.Unit Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "2.Compatibility Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "3.Performance Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "4.Stress Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "5.Load Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "6.Concurrent Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "7.Pacing Time",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "8.Response Time",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "9.Network Testing",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "6.Bug Fixing and Final Adjustments",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "7.Deploy the System",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "Evaluate",
-          "taskTypes": [
-            {
-              "type": "Evaluation & Feedback",
-              "tasks": [
-                {
-                  "task": "8.Gather Target Users/Client",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "9.Analyze User and Stakeholder Feedback",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "10.Collect Feedback through Evaluation Methods",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "11.Implement Revisions Based on Evaluation Results",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "12.Final Defense",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "13.Final Re-Defense Planning",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "14.Final Defense Feedback Integration",
-                  "subtasks": [],
-                  "elements": []
-                },
-                {
-                  "task": "15.Manuscript Submission for AI and Plagiarism Check",
-                  "subtasks": [],
-                  "elements": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "phase": "Discussion & Review",
-          "taskTypes": [
-            {
-              "type": "Meetings",
+              "type": "Discussion & Review",
               "tasks": [
                 {
                   "task": "Capstone Meeting",
@@ -2206,35 +2208,87 @@
                   "task": "Meeting with the User/Client",
                   "subtasks": [],
                   "elements": []
+                },
+                {
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
+                  "elements": []
                 }
               ]
             }
           ]
         },
         {
-          "phase": "Final Defense Preparation",
+          "phase": "Evaluate",
           "taskTypes": [
             {
-              "type": "Preparation",
+              "type": "System Development",
               "tasks": [
                 {
-                  "task": "System Testing Request Letter",
+                  "task": "Gather Target Users/Client",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "PowerPoint Presentation",
+                  "task": "Collect Feedback through Evaluation Methods",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "Mock Defense",
+                  "task": "Implement Revisions Based on Evaluation Results",
                   "subtasks": [],
                   "elements": []
                 },
                 {
-                  "task": "Manuscript Printing",
+                  "task": "Final Defense",
                   "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Re-Defense Planning",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Feedback Integration",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "Discussion & Review",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Meeting with the User/Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Final Defense Preparation",
+                  "subtasks": [
+                    "System Testing",
+                    "Request Letter",
+                    "PowerPoint Presentation",
+                    "Mock Defense",
+                    "Manuscript Printing"
+                  ],
                   "elements": []
                 }
               ]

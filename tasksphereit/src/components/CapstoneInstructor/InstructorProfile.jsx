@@ -435,7 +435,7 @@ export default function InstructorProfile() {
                 )}
               </Field>
 
-              <Field label="Middle Name">
+              <Field label="Middle Initial">
                 {!editMode ? (
                   userDoc.middleName ? (
                     `${userDoc.middleName} (${(

@@ -664,7 +664,7 @@ export default function FinalDefense() {
         all: "All Schedule",
         Pending: "Pending",
         Approved: "Approved",
-        "Re-Defense": "Re-Defense",
+        "Re-Oral": "Re-Oral",
         Failed: "Failed",
       },
       inputValue: "all",
@@ -817,7 +817,7 @@ export default function FinalDefense() {
     const verdictColor = (v) => {
       const s = String(v || "").toLowerCase();
       if (s === "approved") return [34, 139, 34];
-      if (s === "re-defense") return [217, 168, 30];
+      if (s === "re-oral") return [217, 168, 30];
       if (s === "failed") return [106, 15, 20]; // MAROON color for Failed
       return [106, 15, 20]; // Pending/others
     };
@@ -1040,7 +1040,7 @@ export default function FinalDefense() {
             >
               <option>Pending</option>
               <option>Approved</option>
-              <option>Re-Defense</option>
+              <option>Re-Oral</option>
               <option>Failed</option>
             </select>
             <ChevronDown
@@ -1183,16 +1183,16 @@ export default function FinalDefense() {
                     </button>
                     <button
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 ${
-                        filterVerdict === "Re-Defense"
+                        filterVerdict === "Re-Oral"
                           ? "bg-neutral-50 font-medium"
                           : ""
                       }`}
                       onClick={() => {
-                        setFilterVerdict("Re-Defense");
+                        setFilterVerdict("Re-Oral");
                         setFilterOpen(false);
                       }}
                     >
-                      Re-Defense
+                      Re-Oral
                     </button>
                     <button
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 ${
@@ -1376,7 +1376,7 @@ export default function FinalDefense() {
                         >
                           <option>Pending</option>
                           <option>Approved</option>
-                          <option>Re-Defense</option>
+                          <option>Re-Oral</option>
                           <option>Failed</option>
                         </select>
                         <ChevronDown

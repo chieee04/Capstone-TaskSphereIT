@@ -1009,9 +1009,12 @@ const InstructorTeams = () => {
 
                             if (newRole === "Project Manager") {
                               // ✅ Ensure PM is always part of member list
-                              setEtMemberIds((prev) =>
-                                prev.includes(uid) ? prev : [...prev, uid]
-                              );
+                              // ALWAYS keep old manager in the list
+setEtMemberIds(prev => {
+  if (prev.includes(etManagerId)) return prev;
+  return [...prev, etManagerId];
+});
+
 
                               setEtManagerId(uid);
 
@@ -1100,9 +1103,12 @@ const InstructorTeams = () => {
 
                                   if (newRole === "Project Manager") {
                                     // Ensure the promoted user remains in the member list (so the row remains visible)
-                                    setEtMemberIds((prev) =>
-                                      prev.includes(uid) ? prev : [...prev, uid]
-                                    );
+                                    // ALWAYS keep old manager in the list
+setEtMemberIds(prev => {
+  if (prev.includes(etManagerId)) return prev;
+  return [...prev, etManagerId];
+});
+
 
                                     setEtManagerId(uid);
 

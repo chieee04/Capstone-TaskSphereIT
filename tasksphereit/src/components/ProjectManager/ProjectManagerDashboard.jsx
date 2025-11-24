@@ -25,7 +25,7 @@ const COLORS = {
   inprogress: "#7C9C3B",
   toreview: "#6FA8DC",
   completed: "#8E5BAA",
-  missed: "#E5534B",
+  missed: "#3B0304", // Updated missed color
 };
 
 // No static sample datasets; everything loads from Firestore.
@@ -45,7 +45,7 @@ const Card = ({ children, className = "" }) => (
 );
 
 const UpcomingCard = ({ item }) => (
-  <div className="w-[300px]">
+  <div className="w-full min-w-[200px] max-w-[280px] flex-shrink-0">
     <div className="rounded-xl shadow-sm border border-neutral-200 bg-white overflow-hidden">
       <div
         className="px-4 py-2 text-white text-sm font-semibold flex items-center gap-2"
@@ -63,29 +63,133 @@ const UpcomingCard = ({ item }) => (
   </div>
 );
 
+// Carousel Component for Upcoming Tasks
+const UpcomingTasksCarousel = ({ tasks }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(3);
+
+  // Update visible count based on screen size
+  useEffect(() => {
+    const updateVisibleCount = () => {
+      if (window.innerWidth < 640) {
+        setVisibleCount(1);
+      } else if (window.innerWidth < 1024) {
+        setVisibleCount(2);
+      } else {
+        setVisibleCount(3);
+      }
+    };
+
+    updateVisibleCount();
+    window.addEventListener('resize', updateVisibleCount);
+    return () => window.removeEventListener('resize', updateVisibleCount);
+  }, []);
+
+  const maxIndex = Math.max(0, tasks.length - visibleCount);
+
+  const nextSlide = () => {
+    setCurrentIndex(current => Math.min(current + 1, maxIndex));
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex(current => Math.max(current - 1, 0));
+  };
+
+  if (tasks.length === 0) {
+    return (
+      <div className="text-center py-8 text-neutral-500">
+        No upcoming tasks.
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      {/* Carousel Container */}
+      <div className="flex items-center gap-2 sm:gap-4">
+        {/* Previous Button */}
+        {tasks.length > visibleCount && currentIndex > 0 && (
+          <button
+            onClick={prevSlide}
+            className="h-8 w-8 sm:h-10 sm:w-10 grid place-items-center rounded-full border border-neutral-300 bg-white hover:bg-neutral-50 shadow-sm transition-all duration-200 hover:scale-105 z-10 flex-shrink-0"
+            style={{ color: MAROON }}
+          >
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+        )}
+
+        {/* Cards Container */}
+        <div className="flex-1 overflow-hidden">
+          <div 
+            className="flex gap-3 sm:gap-4 transition-transform duration-300 ease-in-out"
+            style={{ 
+              transform: `translateX(-${currentIndex * (100 / visibleCount)}%)`
+            }}
+          >
+            {tasks.map((task, index) => (
+              <div key={index} className="flex-shrink-0" style={{ width: `${100 / visibleCount}%` }}>
+                <UpcomingCard item={task} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Next Button */}
+        {tasks.length > visibleCount && currentIndex < maxIndex && (
+          <button
+            onClick={nextSlide}
+            className="h-8 w-8 sm:h-10 sm:w-10 grid place-items-center rounded-full border border-neutral-300 bg-white hover:bg-neutral-50 shadow-sm transition-all duration-200 hover:scale-105 z-10 flex-shrink-0"
+            style={{ color: MAROON }}
+          >
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Dots Indicator */}
+      {tasks.length > visibleCount && (
+        <div className="flex justify-center mt-4 gap-1">
+          {Array.from({ length: maxIndex + 1 }).map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                index === currentIndex ? 'scale-125' : 'scale-100'
+              }`}
+              style={{
+                backgroundColor: index === currentIndex ? MAROON : '#D1D5DB'
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Legend = ({ items }) => (
-  <ul className="space-y-3">
+  <ul className="space-y-3 w-full">
     {items.map((it) => (
       <li key={it.key} className="flex items-center gap-3 text-sm">
         <span
-          className="inline-block w-3 h-3 rounded-full border border-black/10"
+          className="inline-block w-3 h-3 rounded-full border border-black/10 flex-shrink-0"
           style={{ backgroundColor: it.color }}
         />
-        <span className="text-neutral-700">{it.label}</span>
+        <span className="text-neutral-700 whitespace-nowrap">{it.label}</span>
       </li>
     ))}
   </ul>
 );
 
 // ---- charts --------------------------------------------------------------
-const WeeklyBarChart = ({ data, maxY = 20, width = 560, height = 260 }) => {
+const WeeklyBarChart = ({ data, maxY = 20, width = 560, height = 360 }) => {
   const padding = { top: 16, right: 16, bottom: 30, left: 40 };
   const innerW = width - padding.left - padding.right;
   const innerH = height - padding.top - padding.bottom;
   const barW = innerW / data.length - 22;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[260px]">
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[360px]">
       {/* axes */}
       <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + innerH} stroke="#BDBDBD" strokeWidth="1" />
       <line x1={padding.left} y1={padding.top + innerH} x2={padding.left + innerW} y2={padding.top + innerH} stroke="#BDBDBD" strokeWidth="1" />
@@ -138,7 +242,7 @@ const Donut = ({ segments, centerText = "40%" }) => {
 
   return (
     <div className="relative grid place-items-center">
-      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
+      <svg viewBox={`0 0 ${size} ${size}`} width="100%" height="auto" className="max-w-[280px] md:max-w-[320px] lg:max-w-[360px]">
         <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#EEE" strokeWidth={stroke} />
           {arcs.map((a) => (
@@ -164,15 +268,10 @@ const Donut = ({ segments, centerText = "40%" }) => {
 };
 
 /* ============================
-   Simple Calendar (Month view)
+   Enhanced Calendar with functional navigation and consistent height
    ============================ */
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-// sample events to mimic your screenshot
-// Calendar events are loaded live (tasks + schedules)
-// shape: { date: 'yyyy-mm-dd', title: string, pill?: boolean }
-const SAMPLE_EVENTS = [];
 
 function ymd(d) {
   const y = d.getFullYear();
@@ -182,17 +281,13 @@ function ymd(d) {
 }
 
 function buildMonthMatrix(year, monthIndex) {
-  // monthIndex: 0..11
   const first = new Date(year, monthIndex, 1);
-  const startDay = first.getDay(); // 0..6 Sun..Sat
+  const startDay = first.getDay();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
 
   const cells = [];
-  // preceding blanks
   for (let i = 0; i < startDay; i++) cells.push(null);
-  // month days
   for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, monthIndex, d));
-  // pad to 6 rows * 7 cols = 42 cells
   while (cells.length % 7 !== 0) cells.push(null);
   while (cells.length < 42) cells.push(null);
 
@@ -201,28 +296,116 @@ function buildMonthMatrix(year, monthIndex) {
   return matrix;
 }
 
+function buildWeekMatrix(startDate) {
+  const matrix = [];
+  const weekDays = [];
+  
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(startDate);
+    day.setDate(startDate.getDate() + i);
+    weekDays.push(day);
+  }
+  matrix.push(weekDays);
+  return matrix;
+}
+
+function buildDayMatrix(day) {
+  return [[day]];
+}
+
 const CalendarCard = ({ pmUid }) => {
-  // default to current month
-  const [view, setView] = useState("month"); // "month" | "week" | "day" (only month visual here)
+  const [view, setView] = useState("month");
   const [cursor, setCursor] = useState(new Date());
-  const [events, setEvents] = useState(SAMPLE_EVENTS);
+  const [events, setEvents] = useState([]);
 
-  const title = `${monthNames[cursor.getMonth()]} ${cursor.getFullYear()}`;
-  const matrix = useMemo(
-    () => buildMonthMatrix(cursor.getFullYear(), cursor.getMonth()),
-    [cursor]
-  );
-
-  const goPrev = () => {
-    if (view === "month") setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
+  // Get the appropriate title based on current view
+  const getTitle = () => {
+    if (view === "month") {
+      return `${monthNames[cursor.getMonth()]} ${cursor.getFullYear()}`;
+    } else if (view === "week") {
+      const startOfWeek = new Date(cursor);
+      startOfWeek.setDate(cursor.getDate() - cursor.getDay());
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      
+      if (startOfWeek.getMonth() === endOfWeek.getMonth()) {
+        return `${monthNames[startOfWeek.getMonth()]} ${startOfWeek.getDate()} - ${endOfWeek.getDate()}, ${startOfWeek.getFullYear()}`;
+      } else {
+        return `${monthNames[startOfWeek.getMonth()]} ${startOfWeek.getDate()} - ${monthNames[endOfWeek.getMonth()]} ${endOfWeek.getDate()}, ${startOfWeek.getFullYear()}`;
+      }
+    } else {
+      // day view
+      return `${monthNames[cursor.getMonth()]} ${cursor.getDate()}, ${cursor.getFullYear()}`;
+    }
   };
+
+  // Build the appropriate matrix based on current view
+  const matrix = useMemo(() => {
+    if (view === "month") {
+      return buildMonthMatrix(cursor.getFullYear(), cursor.getMonth());
+    } else if (view === "week") {
+      const startOfWeek = new Date(cursor);
+      startOfWeek.setDate(cursor.getDate() - cursor.getDay());
+      return buildWeekMatrix(startOfWeek);
+    } else {
+      // day view
+      return buildDayMatrix(cursor);
+    }
+  }, [cursor, view]);
+
+  // Navigation functions
+  const goPrev = () => {
+    const newDate = new Date(cursor);
+    if (view === "month") {
+      newDate.setMonth(cursor.getMonth() - 1);
+    } else if (view === "week") {
+      newDate.setDate(cursor.getDate() - 7);
+    } else {
+      // day view
+      newDate.setDate(cursor.getDate() - 1);
+    }
+    setCursor(newDate);
+  };
+
   const goNext = () => {
-    if (view === "month") setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
+    const newDate = new Date(cursor);
+    if (view === "month") {
+      newDate.setMonth(cursor.getMonth() + 1);
+    } else if (view === "week") {
+      newDate.setDate(cursor.getDate() + 7);
+    } else {
+      // day view
+      newDate.setDate(cursor.getDate() + 1);
+    }
+    setCursor(newDate);
+  };
+
+  const goToday = () => {
+    setCursor(new Date());
+  };
+
+  // Get date range for event filtering based on current view
+  const getDateRange = () => {
+    if (view === "month") {
+      const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+      const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+      return { start: ymd(start), end: ymd(end) };
+    } else if (view === "week") {
+      const startOfWeek = new Date(cursor);
+      startOfWeek.setDate(cursor.getDate() - cursor.getDay());
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      return { start: ymd(startOfWeek), end: ymd(endOfWeek) };
+    } else {
+      // day view
+      return { start: ymd(cursor), end: ymd(cursor) };
+    }
   };
 
   useEffect(() => {
     let alive = true;
     if (!pmUid) return;
+    
     (async () => {
       try {
         // Find teams managed by this PM
@@ -235,7 +418,7 @@ const CalendarCard = ({ pmUid }) => {
         }
         const teamIds = pmTeams.map((t) => t.id);
 
-        // Helper to chunk fetch schedules by teamId (IN up to 10)
+        // Helper to chunk fetch schedules by teamId
         const fetchByTeam = async (collName) => {
           if (teamIds.length === 0) return [];
           const arr = [];
@@ -247,7 +430,7 @@ const CalendarCard = ({ pmUid }) => {
           return arr;
         };
 
-        // Load tasks created by PM (for due dates)
+        // Load tasks created by PM
         const taskDefs = ["titleDefenseTasks", "oralDefenseTasks", "finalDefenseTasks", "finalRedefenseTasks"];
         const taskSnaps = await Promise.all(
           taskDefs.map((c) => getDocs(query(collection(db, c), where("createdBy.uid", "==", pmUid))))
@@ -264,12 +447,8 @@ const CalendarCard = ({ pmUid }) => {
           fetchByTeam("finalRedefenseSchedules").catch(() => []),
         ]);
 
-        // Month window boundaries
-        const y = cursor.getFullYear();
-        const m = cursor.getMonth() + 1;
-        const start = `${y}-${String(m).padStart(2, "0")}-01`;
-        const endDate = new Date(y, m, 0).getDate();
-        const end = `${y}-${String(m).padStart(2, "0")}-${String(endDate).padStart(2, "0")}`;
+        // Get current view's date range
+        const { start, end } = getDateRange();
         const between = (d) => d >= start && d <= end;
 
         const taskEvents = tasks
@@ -295,13 +474,80 @@ const CalendarCard = ({ pmUid }) => {
       }
     })();
     return () => { alive = false; };
-  }, [pmUid, cursor]);
+  }, [pmUid, cursor, view]);
+
+  // Calculate cell height based on view to maintain consistent calendar height
+  const getCellHeight = () => {
+    if (view === "month") {
+      return "min-h-[60px] md:min-h-[80px] lg:min-h-[92px]"; // Responsive heights
+    } else if (view === "week") {
+      return "min-h-[300px] md:min-h-[400px] lg:min-h-[552px]"; // Responsive heights
+    } else {
+      return "min-h-[300px] md:min-h-[400px] lg:min-h-[552px]"; // Responsive heights
+    }
+  };
+
+  // Render appropriate grid based on view
+  const renderGrid = () => {
+    const { start } = getDateRange();
+    const isCurrentMonth = (date) => {
+      if (view === "month") {
+        return date && date.getMonth() === cursor.getMonth();
+      }
+      return true; // For week and day views, all dates are "current"
+    };
+
+    return (
+      <div className={`grid ${view === "day" ? "grid-cols-1" : view === "week" ? "grid-cols-7" : "grid-cols-7"} gap-px bg-neutral-200 rounded-lg overflow-hidden`}>
+        {matrix.flat().map((cell, i) => {
+          const isBlank = !cell;
+          const cellYmd = cell ? ymd(cell) : "";
+          const dayEvents = events.filter((e) => e.date === cellYmd);
+          const isToday = cellYmd === ymd(new Date());
+
+          return (
+            <div
+              key={`cell-${i}`}
+              className={`${getCellHeight()} bg-white relative ${isBlank ? "bg-neutral-50" : ""} ${
+                !isCurrentMonth(cell) ? "opacity-50" : ""
+              }`}
+            >
+              {/* date number */}
+              {!isBlank && (
+                <div className={`absolute top-1 right-1 md:top-2 md:right-2 text-xs ${
+                  isToday ? "bg-maroon text-white rounded-full w-5 h-5 md:w-6 md:h-6 flex items-center justify-center" : "text-neutral-500"
+                }`}>
+                  {cell.getDate()}
+                </div>
+              )}
+
+              {/* events - with adjusted positioning for week and day views */}
+              <div className={`absolute left-1 right-1 ${
+                view === "month" ? "top-6 md:top-8 lg:top-10 max-h-8 md:max-h-10 lg:max-h-12" : "top-8 md:top-10 lg:top-12 max-h-[280px] md:max-h-[380px] lg:max-h-[500px]"
+              } space-y-1 overflow-y-auto`}>
+                {dayEvents.map((e, idx) => (
+                  <div
+                    key={idx}
+                    className="text-[10px] md:text-[11px] text-white px-1 md:px-2 py-0.5 rounded truncate"
+                    style={{ background: MAROON }}
+                    title={e.title}
+                  >
+                    {e.title}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
-    <Card>
+    <Card className="w-full">
       {/* Header controls */}
-      <div className="px-5 pt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="px-3 md:px-5 pt-3 md:pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
+        <div className="flex items-center gap-2 order-2 sm:order-1">
           <button
             className="h-8 w-8 grid place-items-center rounded-md text-white"
             style={{ background: MAROON }}
@@ -320,18 +566,19 @@ const CalendarCard = ({ pmUid }) => {
           </button>
 
           <button
-            disabled
-            className="ml-3 h-8 px-3 rounded-md text-sm font-medium bg-neutral-200 text-neutral-500 cursor-not-allowed"
+            className="ml-2 h-8 px-3 rounded-md text-sm font-medium text-white"
+            style={{ background: MAROON }}
+            onClick={goToday}
           >
             Today
           </button>
         </div>
 
-        <div className="text-sm font-semibold" style={{ color: MAROON }}>
-          {title}
+        <div className="text-sm font-semibold order-1 sm:order-2" style={{ color: MAROON }}>
+          {getTitle()}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 order-3">
           {["Month", "Week", "Day"].map((label) => {
             const key = label.toLowerCase();
             const active = view === key;
@@ -339,10 +586,9 @@ const CalendarCard = ({ pmUid }) => {
               <button
                 key={key}
                 onClick={() => setView(key)}
-                className={`h-8 px-4 rounded-md text-sm font-medium border ${active
-                    ? "text-white"
-                    : "text-neutral-700 bg-white"
-                  }`}
+                className={`h-8 px-2 sm:px-4 rounded-md text-xs sm:text-sm font-medium border ${
+                  active ? "text-white" : "text-neutral-700 bg-white"
+                }`}
                 style={{
                   background: active ? MAROON : undefined,
                   borderColor: active ? MAROON : "#e5e7eb",
@@ -355,56 +601,20 @@ const CalendarCard = ({ pmUid }) => {
         </div>
       </div>
 
-      <div className="px-5 mt-3 h-[2px] w-full" style={{ background: MAROON }} />
+      <div className="px-3 md:px-5 mt-2 md:mt-3 h-[2px] w-full" style={{ background: MAROON }} />
 
       {/* Grid */}
-      <div className="p-5">
-        {/* Weekday headers */}
-        <div className="grid grid-cols-7 text-xs text-neutral-500 mb-2">
-          {dayNames.map((d) => (
-            <div key={d} className="text-center">{d}</div>
-          ))}
-        </div>
+      <div className="p-3 md:p-5">
+        {/* Weekday headers - only show for month and week views */}
+        {view !== "day" && (
+          <div className="grid grid-cols-7 text-xs text-neutral-500 mb-1 md:mb-2">
+            {dayNames.map((d) => (
+              <div key={d} className="text-center text-xs">{d}</div>
+            ))}
+          </div>
+        )}
 
-        <div className="grid grid-cols-7 gap-px bg-neutral-200 rounded-lg overflow-hidden">
-          {matrix.flat().map((cell, i) => {
-            const id = `cell-${i}`;
-            const isBlank = !cell;
-            const cellYmd = cell ? ymd(cell) : "";
-            const dayEvents = (events || []).filter((e) => e.date === cellYmd);
-
-            return (
-              <div
-                key={id}
-                className={`min-h-[92px] bg-white relative ${isBlank ? "bg-neutral-50" : ""}`}
-              >
-                {/* date number */}
-                {!isBlank && (
-                  <div className="absolute top-2 right-2 text-xs text-neutral-500">
-                    {cell.getDate()}
-                  </div>
-                )}
-
-                {/* purple person pill*/}
-                {/* reserved for future person pills */}
-
-                {/* maroon event chips */}
-                <div className="absolute left-3 right-3 top-10 space-y-1">
-                  {dayEvents
-                    .map((e, idx) => (
-                      <div
-                        key={idx}
-                        className="text-[11px] text-white px-2 py-0.5 rounded"
-                        style={{ background: MAROON }}
-                      >
-                        {e.title}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {renderGrid()}
       </div>
     </Card>
   );
@@ -585,7 +795,7 @@ const ProjectManagerDashboard = () => {
           { key: "missed", label: "Missed", pct: pct(counts.missed), color: COLORS.missed },
         ]);
 
-        // Recent tasks
+        // Recent tasks - Only show 4 tasks
         const recent = all
           .map((t, i) => ({
             createdKey: t.createdAt?.toMillis?.() || 0,
@@ -601,7 +811,7 @@ const ProjectManagerDashboard = () => {
           }))
           .filter((x) => x.createdKey > 0)
           .sort((a, b) => b.createdKey - a.createdKey)
-          .slice(0, 10)
+          .slice(0, 4)
           .map((x, i) => ({ no: i + 1, ...x }));
         if (recent.length > 0) setRecentTasks(recent);
       } catch (e) {
@@ -611,58 +821,59 @@ const ProjectManagerDashboard = () => {
   }, [pmUid]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8 w-full">
       {/* UPCOMING */}
-      <section className="space-y-3">
+      <section className="space-y-3 w-full">
         <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
           UPCOMING TASKS
         </h3>
-        <div className="flex flex-wrap gap-5">
-          {upcoming.map((u, i) => (
-            <UpcomingCard key={i} item={u} />
-          ))}
-        </div>
+        <UpcomingTasksCarousel tasks={upcoming} />
       </section>
 
       {/* BOTTOM ROW: Weekly Summary + Team Progress */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full">
         {/* Weekly Summary */}
-        <Card>
-          <div className="px-6 pt-5">
+        <Card className="w-full">
+          <div className="px-4 md:px-6 pt-4 md:pt-5">
             <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
               WEEKLY SUMMARY
             </h3>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-12 gap-6">
-              <div className="col-span-12 xl:col-span-8">
+          <div className="p-4 md:p-6 w-full">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 md:gap-6 w-full">
+              <div className="xl:col-span-8 w-full">
                 <WeeklyBarChart data={weekly} />
               </div>
-              <div className="col-span-12 xl:col-span-4">
-                <Legend items={weekly} />
+              <div className="xl:col-span-4 flex items-center justify-center w-full">
+                <div className="w-full flex justify-center">
+                  <Legend items={weekly} />
+                </div>
               </div>
             </div>
           </div>
         </Card>
 
         {/* Team Progress */}
-        <Card>
-          <div className="px-6 pt-5">
+        <Card className="w-full">
+          <div className="px-4 md:px-6 pt-4 md:pt-5">
             <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
               TEAM PROGRESS
             </h3>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-12 gap-6 items-center">
-              <div className="col-span-12 xl:col-span-8">
-                <Donut
-  segments={donut}
-  centerText={`${(donut.find((d) => d.key === "completed")?.pct || 0)}%`}
-/>
-
+          <div className="p-4 md:p-6 w-full">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 md:gap-6 items-center w-full">
+              <div className="xl:col-span-8 flex justify-center w-full">
+                <div className="w-full max-w-[280px] md:max-w-[320px] lg:max-w-[360px]">
+                  <Donut
+                    segments={donut}
+                    centerText={`${(donut.find((d) => d.key === "completed")?.pct || 0)}%`}
+                  />
+                </div>
               </div>
-              <div className="col-span-12 xl:col-span-4">
-                <Legend items={donut} />
+              <div className="xl:col-span-4 flex items-center justify-center w-full">
+                <div className="w-full flex justify-center">
+                  <Legend items={donut} />
+                </div>
               </div>
             </div>
           </div>
@@ -670,60 +881,61 @@ const ProjectManagerDashboard = () => {
       </section>
 
       {/* RECENT TASKS CREATED */}
-      <section className="space-y-3">
+      <section className="space-y-3 w-full">
         <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
           RECENT TASKS CREATED
         </h3>
 
-        <div className="bg-white border border-neutral-200 rounded-[20px] shadow overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="bg-white border border-neutral-200 rounded-[20px] shadow overflow-hidden w-full">
+          <div className="overflow-x-auto w-full">
+            {/* FIXED: Remove min-w-[800px] constraint */}
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-neutral-600">
-                  <th className="py-3 pl-6 pr-3 w-16">NO</th>
-                  <th className="py-3 pr-3">Assigned</th>
-                  <th className="py-3 pr-3">Task</th>
-                  <th className="py-3 pr-3">Subtask</th>
-                  <th className="py-3 pr-3">Element</th>
-                  <th className="py-3 pr-3">
-                    <div className="inline-flex items-center gap-2">
+                  <th className="py-3 pl-4 md:pl-6 pr-2 md:pr-3 w-12">NO</th>
+                  <th className="py-3 pr-2 md:pr-3">Assigned</th>
+                  <th className="py-3 pr-2 md:pr-3">Task</th>
+                  <th className="py-3 pr-2 md:pr-3 hidden sm:table-cell">Subtask</th>
+                  <th className="py-3 pr-2 md:pr-3">Element</th>
+                  <th className="py-3 pr-2 md:pr-3 hidden lg:table-cell">
+                    <div className="inline-flex items-center gap-2 whitespace-nowrap">
                       <CalendarDays className="w-4 h-4" /> Date Created
                     </div>
                   </th>
-                  <th className="py-3 pr-3">
-                    <div className="inline-flex items-center gap-2">
+                  <th className="py-3 pr-2 md:pr-3">
+                    <div className="inline-flex items-center gap-2 whitespace-nowrap">
                       <CalendarDays className="w-4 h-4" /> Due Date
                     </div>
                   </th>
-                  <th className="py-3 pr-3">
-                    <div className="inline-flex items-center gap-2">
+                  <th className="py-3 pr-2 md:pr-3 hidden md:table-cell">
+                    <div className="inline-flex items-center gap-2 whitespace-nowrap">
                       <Clock className="w-4 h-4" /> Time
                     </div>
                   </th>
-                  <th className="py-3 pr-3">Status</th>
-                  <th className="py-3 pr-6">Project Phase</th>
+                  <th className="py-3 pr-2 md:pr-3">Status</th>
+                  <th className="py-3 pr-4 md:pr-6 hidden xl:table-cell">Project Phase</th>
                 </tr>
               </thead>
               <tbody>
                 {recentTasks.map((r) => (
                   <tr key={r.no} className="border-t border-neutral-200">
-                    <td className="py-3 pl-6 pr-3">{r.no}.</td>
-                    <td className="py-3 pr-3">{r.assigned}</td>
-                    <td className="py-3 pr-3">{r.task}</td>
-                    <td className="py-3 pr-3">{r.subtask}</td>
-                    <td className="py-3 pr-3">{r.element}</td>
-                    <td className="py-3 pr-3">{r.created}</td>
-                    <td className="py-3 pr-3">{r.due}</td>
-                    <td className="py-3 pr-3">{r.time}</td>
-                    <td className="py-3 pr-3">
+                    <td className="py-3 pl-4 md:pl-6 pr-2 md:pr-3">{r.no}.</td>
+                    <td className="py-3 pr-2 md:pr-3">{r.assigned}</td>
+                    <td className="py-3 pr-2 md:pr-3">{r.task}</td>
+                    <td className="py-3 pr-2 md:pr-3 hidden sm:table-cell">{r.subtask}</td>
+                    <td className="py-3 pr-2 md:pr-3">{r.element}</td>
+                    <td className="py-3 pr-2 md:pr-3 hidden lg:table-cell">{r.created}</td>
+                    <td className="py-3 pr-2 md:pr-3">{r.due}</td>
+                    <td className="py-3 pr-2 md:pr-3 hidden md:table-cell">{r.time}</td>
+                    <td className="py-3 pr-2 md:pr-3">
                       <span
-                        className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold text-white"
+                        className="inline-flex items-center rounded-full px-2 md:px-3 py-1 text-xs font-semibold text-white whitespace-nowrap"
                         style={{ backgroundColor: statusColor(r.status) }}
                       >
                         {r.status}
                       </span>
                     </td>
-                    <td className="py-3 pr-6">{r.phase}</td>
+                    <td className="py-3 pr-4 md:pr-6 hidden xl:table-cell">{r.phase}</td>
                   </tr>
                 ))}
 
@@ -741,7 +953,7 @@ const ProjectManagerDashboard = () => {
       </section>
 
       {/* CALENDAR */}
-      <section className="space-y-3">
+      <section className="space-y-3 w-full">
         <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
           CALENDAR
         </h3>
@@ -763,8 +975,3 @@ const ProjectManagerDashboard = () => {
 };
 
 export default ProjectManagerDashboard;
-
-
-
-
-

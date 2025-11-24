@@ -27,6 +27,40 @@ export const isPM = (r) =>
   ["project manager", "project_manager", "pm", "manager"].includes(roleKey(r));
 export const isMember = (r) => ["member", "student"].includes(roleKey(r));
 export const isAdviser = (r) => ["adviser", "advisor"].includes(roleKey(r));
+export const updateTeamsForUser = async (user) => {
+  if (!user.uid) {
+    console.warn("User has no UID. Cannot update teams.");
+    return;
+  }
+
+  // Find all teams where this user is the PM
+  const q = query(
+    collection(db, "teams"),
+    where("manager.uid", "==", user.uid) // <-- FIXED: use UID, not Firestore doc ID
+  );
+
+  const teamsSnap = await getDocs(q);
+
+  const batch = writeBatch(db);
+
+  teamsSnap.forEach((teamDoc) => {
+    const newTeamName = `${user.lastName}, Et Al`;
+
+    batch.update(teamDoc.ref, {
+      name: newTeamName,
+      manager: {
+        uid: user.uid, // still UID
+        fullName: `${user.firstName} ${user.middleName || ""} ${user.lastName}`
+          .replace(/\s+/g, " ")
+          .trim(),
+      },
+      updatedAt: new Date().toISOString(),
+    });
+  });
+
+  await batch.commit();
+};
+
 
 /* ---------- main hook ---------- */
 export function useInstructorTeams() {

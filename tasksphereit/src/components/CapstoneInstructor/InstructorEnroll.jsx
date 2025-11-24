@@ -327,6 +327,7 @@ const InstructorEnroll = () => {
     setEditingId(u.id);
     setForm({
       id: u.id,
+      uid: u.uid,
       email: u.email || "",
       lastName: u.lastName || "",
       firstName: u.firstName || "",

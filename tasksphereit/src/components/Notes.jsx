@@ -20,6 +20,8 @@ import {
   Link as LinkIcon,
   Image as ImageIcon,
   Download,
+  FileText,
+  ClipboardList,
 } from "lucide-react";
 import Swal from "sweetalert2";
 
@@ -44,7 +46,7 @@ import {
 /* ===== Supabase ===== */
 import { supabase } from "../config/supabase"; // Make sure you have this config file
 
-const MAROON = "#6A0F14";
+const MAROON = "#3B0304";
 
 /* ---------------- Helpers ---------------- */
 const plainPreview = (html, max = 120) => {
@@ -52,6 +54,24 @@ const plainPreview = (html, max = 120) => {
   tmp.innerHTML = html || "";
   const text = tmp.textContent || tmp.innerText || "";
   return text.length > max ? `${text.slice(0, max)}…` : text;
+};
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return "No date";
+  
+  try {
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    if (isNaN(date.getTime())) return "Invalid date";
+    
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit'
+    });
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "Invalid date";
+  }
 };
 
 const roleRoutingMap = {
@@ -156,65 +176,112 @@ const downloadImage = async (imageUrl, imageName) => {
   }
 };
 
-/* ---------------- Modals ---------------- */
-function Modal({ title, children, onClose }) {
+/* ---------------- Confirmation Dialog ---------------- */
+function ConfirmationDialog({
+  open,
+  onClose,
+  onConfirm,
+  title = "Confirmation",
+  message = "Are you sure you want to proceed?",
+  confirmText = "Yes",
+  cancelText = "No",
+}) {
+  if (!open) return null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/30"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div className="relative max-h-[90vh] w-[min(900px,92vw)] overflow-auto rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-semibold">{title}</h3>
-          <button
-            className="p-2 rounded-md hover:bg-neutral-100 cursor-pointer"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overscroll-contain">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-2xl border border-neutral-200">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+              {title}
+            </h3>
+            <p className="text-neutral-600">{message}</p>
+          </div>
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-neutral-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+            >
+              {cancelText}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onConfirm();
+                onClose();
+              }}
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow hover:bg-[#4A0405]"
+              style={{ backgroundColor: MAROON }}
+            >
+              {confirmText}
+            </button>
+          </div>
         </div>
-        {children}
       </div>
     </div>
   );
 }
 
-function ConfirmModal({
-  title = "Confirm",
-  message,
-  confirmText = "Confirm",
-  onConfirm,
-  onCancel,
-}) {
+/* ---------------- Modals ---------------- */
+function Modal({ title, children, onClose }) {
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const handleClose = () => {
+    if (hasChanges) {
+      setShowExitConfirm(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleConfirmExit = () => {
+    setShowExitConfirm(false);
+    onClose();
+  };
+
+  // Function to set changes from child components
+  const setChanges = (hasChanges) => {
+    setHasChanges(hasChanges);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/30"
-        onClick={onCancel}
-        aria-hidden
-      />
-      <div className="relative w-[min(420px,92vw)] rounded-2xl border border-neutral-200 bg-white p-5 shadow-2xl">
-        <h3 className="text-base font-semibold mb-2">{title}</h3>
-        <p className="text-sm text-neutral-700 mb-4">{message}</p>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 rounded-lg border border-neutral-300 text-sm hover:bg-neutral-100 cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 rounded-lg text-sm text-white cursor-pointer bg-[#6A0F14]"
-          >
-            {confirmText}
-          </button>
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div
+          className="absolute inset-0 bg-black/30"
+          onClick={handleClose}
+          aria-hidden
+        />
+        <div className="relative max-h-[90vh] w-[min(900px,92vw)] overflow-auto rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xl">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-base font-semibold">{title}</h3>
+            <button
+              className="p-2 rounded-md hover:bg-neutral-100 cursor-pointer"
+              onClick={handleClose}
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          {React.cloneElement(children, { setChanges })}
         </div>
       </div>
-    </div>
+
+      {/* Exit Confirmation */}
+      <ConfirmationDialog
+        open={showExitConfirm}
+        onClose={() => setShowExitConfirm(false)}
+        onConfirm={handleConfirmExit}
+        title="Discard Changes?"
+        message="Are you sure you want to exit? Any unsaved changes will be lost."
+        confirmText="Yes, Exit"
+        cancelText="No, Stay"
+      />
+    </>
   );
 }
 
@@ -222,7 +289,7 @@ function ConfirmModal({
 const Toolbar = ({ onCmd, onInsertLink, onAttachImage, active }) => {
   const baseBtn =
     "inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-md border border-neutral-300 hover:bg-neutral-100 cursor-pointer select-none";
-  const activeBtn = "bg-[#6A0F14] text-white border-[#6A0F14]";
+  const activeBtn = "bg-[#3B0304] text-white border-[#3B0304]";
   const group = "flex items-center gap-2";
 
   const h = (cmd) => (e) => {
@@ -390,19 +457,54 @@ function NoteCard({ note, index, onEdit, onAskDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="relative w-64">
+    <div className="relative w-full">
       <div
-        className="relative h-56 bg-white border border-neutral-200 rounded-2xl shadow-[0_6px_12px_rgba(0,0,0,0.12)] overflow-hidden hover:translate-y-[-2px] transition-transform cursor-pointer"
+        className="relative h-80 bg-white border border-neutral-200 rounded-2xl shadow-[0_6px_12px_rgba(0,0,0,0.12)] overflow-hidden transition-all duration-300 hover:translate-y-[-8px] hover:shadow-[0_12px_24px_rgba(0,0,0,0.18)] cursor-pointer group"
         onClick={() => onEdit(note)}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === "Enter" && onEdit(note)}
       >
-        <div className="absolute left-0 top-0 h-full w-8 bg-[#6A0F14]" />
-        <div className="absolute bottom-0 left-0 right-0 h-5 bg-[#6A0F14]" />
+        {/* Left colored accent */}
+        <div className="absolute left-0 top-0 h-full w-2 sm:w-3 md:w-8 bg-[#3B0304] group-hover:bg-[#2A0203] transition-colors duration-300" />
+        
+        {/* Content area */}
+        <div className="pl-4 sm:pl-6 md:pl-12 pr-3 sm:pr-4 pt-6 sm:pt-8 pb-4 sm:pb-6 flex h-full flex-col items-center text-center">
+          {/* Large note icon */}
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-full bg-[#3B0304]/10 group-hover:bg-[#3B0304]/15 transition-colors duration-300">
+            <FileText className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 text-[#3B0304]" />
+          </div>
 
+          {/* Note title */}
+          <h3 className="font-semibold text-base sm:text-lg mb-2 sm:mb-3 line-clamp-2 text-[#3B0304] group-hover:text-[#2A0203] transition-colors duration-300 px-2">
+            {note.title || `Note ${index + 1}`}
+          </h3>
+
+          {/* Preview text */}
+          <p className="text-xs sm:text-sm text-neutral-600 flex-1 overflow-hidden line-clamp-4 px-2">
+            {plainPreview(note.content, 120)}
+          </p>
+
+          {/* Date information */}
+          <div className="mt-3 pt-3 border-t border-neutral-200 w-full">
+            <div className="text-xs text-neutral-500 space-y-1">
+              <div className="flex justify-between">
+                <span>Created:</span>
+                <span className="font-medium">{formatDate(note.createdAt)}</span>
+              </div>
+              {note.updatedAt && (
+                <div className="flex justify-between">
+                  <span>Updated:</span>
+                  <span className="font-medium">{formatDate(note.updatedAt)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Menu button */}
         <button
-          className="absolute top-3 right-3 z-10 p-1.5 rounded-md hover:bg-neutral-100 cursor-pointer"
+          className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 p-1.5 rounded-md hover:bg-neutral-100 cursor-pointer transition-colors duration-200"
           onClick={(e) => {
             e.stopPropagation();
             setMenuOpen((o) => !o);
@@ -412,26 +514,14 @@ function NoteCard({ note, index, onEdit, onAskDelete }) {
           <MoreVertical className="w-4 h-4 text-neutral-600" />
         </button>
 
-        <div className="pl-10 pr-4 pt-4 pb-8 flex h-full">
-          <div className="flex flex-col justify-between w-full">
-            <div>
-              <h3 className="font-semibold mb-2 line-clamp-1">
-                {note.title || `Note ${index + 1}`}
-              </h3>
-              <p className="text-sm text-neutral-600 whitespace-pre-line line-clamp-5">
-                {plainPreview(note.content, 160)}
-              </p>
-            </div>
-          </div>
-        </div>
-
+        {/* Dropdown menu */}
         {menuOpen && (
           <div
-            className="absolute right-3 top-12 z-20 w-32 rounded-lg border border-neutral-200 bg-white shadow-lg"
+            className="absolute right-2 sm:right-3 top-10 sm:top-12 z-20 w-28 sm:w-32 rounded-lg border border-neutral-200 bg-white shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              className="block w-full px-4 py-2 text-left text-sm hover:bg-neutral-50 cursor-pointer"
+              className="block w-full px-3 sm:px-4 py-2 text-left text-xs sm:text-sm hover:bg-neutral-50 cursor-pointer transition-colors duration-200"
               onClick={() => {
                 setMenuOpen(false);
                 onEdit(note);
@@ -440,7 +530,7 @@ function NoteCard({ note, index, onEdit, onAskDelete }) {
               Edit
             </button>
             <button
-              className="block w-full px-4 py-2 text-left text-sm hover:bg-neutral-50 cursor-pointer"
+              className="block w-full px-3 sm:px-4 py-2 text-left text-xs sm:text-sm hover:bg-neutral-50 cursor-pointer transition-colors duration-200"
               onClick={() => {
                 setMenuOpen(false);
                 onAskDelete(note);
@@ -456,7 +546,7 @@ function NoteCard({ note, index, onEdit, onAskDelete }) {
 }
 
 /* ---------------- Form (contenteditable) ---------------- */
-function NoteForm({ existing, onSave, onCancel }) {
+function NoteForm({ existing, onSave, onCancel, setChanges }) {
   const [title, setTitle] = useState(existing?.title || "");
   const [content, setContent] = useState(existing?.content || "");
   const [focused, setFocused] = useState(false);
@@ -478,6 +568,18 @@ function NoteForm({ existing, onSave, onCancel }) {
   const editorRef = useRef(null);
   const selectionRef = useRef(null);
   const fileInputRef = useRef(null);
+
+  // Track changes for exit confirmation
+  useEffect(() => {
+    const hasUnsavedChanges = 
+      title !== (existing?.title || "") ||
+      content !== (existing?.content || "") ||
+      newImages.length > 0 ||
+      imagesToDelete.length > 0 ||
+      JSON.stringify(attachedImages) !== JSON.stringify(existing?.attachedImages || []);
+    
+    setChanges?.(hasUnsavedChanges);
+  }, [title, content, newImages, imagesToDelete, attachedImages, existing, setChanges]);
 
   const normalizeEditorHTML = () => {
     const el = editorRef.current;
@@ -644,7 +746,7 @@ function NoteForm({ existing, onSave, onCancel }) {
         closeButton:
           "!text-white !text-2xl !top-4 !right-4 !hover:text-gray-300",
         denyButton:
-          "!bg-[#6A0F14] !border-[#6A0F14] !text-white !hover:bg-[#5a0e12]",
+          "!bg-[#3B0304] !border-[#3B0304] !text-white !hover:bg-[#2A0203]",
       },
       preDeny: () => {
         downloadImage(imageUrl, imageName);
@@ -717,10 +819,21 @@ function NoteForm({ existing, onSave, onCancel }) {
       const allAttachedImages = [...attachedImages, ...uploadedImages];
 
       // Call onSave with the complete data
-      onSave({
+      await onSave({
         title: title.trim(),
         content,
         attachedImages: allAttachedImages,
+      });
+
+      // Show success message
+      Swal.fire({
+        icon: "success",
+        title: existing ? "Note Updated" : "Note Created",
+        text: existing 
+          ? "Your note has been successfully updated."
+          : "Your note has been successfully created.",
+        confirmButtonColor: MAROON,
+        timer: 2000,
       });
     } catch (error) {
       console.error("Save error:", error);
@@ -785,7 +898,7 @@ function NoteForm({ existing, onSave, onCancel }) {
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6A0F14]/30"
+          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3B0304]/30"
           placeholder="Enter a descriptive title"
           required
         />
@@ -801,7 +914,7 @@ function NoteForm({ existing, onSave, onCancel }) {
         <div
           ref={editorRef}
           className={`min-h-[220px] p-3 text-sm outline-none bg-white ${
-            focused ? "ring-2 ring-[#6A0F14]/30" : ""
+            focused ? "ring-2 ring-[#3B0304]/30" : ""
           }`}
           contentEditable
           suppressContentEditableWarning
@@ -871,7 +984,7 @@ function NoteForm({ existing, onSave, onCancel }) {
                   onClick={() =>
                     viewImage(image.url || image.previewUrl, image.name)
                   }
-                  className="text-sm text-[#6A0F14] hover:underline cursor-pointer flex-1 text-left truncate"
+                  className="text-sm text-[#3B0304] hover:underline cursor-pointer flex-1 text-left truncate"
                   title={image.name}
                 >
                   {image.name}
@@ -895,17 +1008,9 @@ function NoteForm({ existing, onSave, onCancel }) {
 
       <div className="flex justify-end gap-2 pt-2">
         <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          className="inline-flex items-center gap-1 px-4 py-2 rounded-lg border border-neutral-300 text-sm hover:bg-neutral-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Cancel
-        </button>
-        <button
           type="submit"
           disabled={saving}
-          className="inline-flex items-center gap-1 px-4 py-2 rounded-lg text-sm text-white shadow hover:shadow-md cursor-pointer bg-[#6A0F14] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1 px-4 py-2 rounded-lg text-sm text-white shadow hover:shadow-md cursor-pointer bg-[#3B0304] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {saving ? "Saving..." : existing ? "Save Changes" : "Create Note"}
         </button>
@@ -1051,8 +1156,23 @@ function Notes() {
 
       // Delete note from Firebase
       await deleteDoc(doc(db, `notes/${roleDocId}/${subColName}/${note.id}`));
+      
+      // Show success message
+      Swal.fire({
+        icon: "success",
+        title: "Note Deleted",
+        text: "Your note has been successfully deleted.",
+        confirmButtonColor: MAROON,
+        timer: 2000,
+      });
     } catch (e) {
-      alert(e.message || "Failed to delete note");
+      console.error("Delete error:", e);
+      Swal.fire({
+        icon: "error",
+        title: "Delete Failed",
+        text: e.message || "Failed to delete note. Please try again.",
+        confirmButtonColor: MAROON,
+      });
     } finally {
       setConfirmDelete(null);
     }
@@ -1084,7 +1204,8 @@ function Notes() {
       setShowForm(false);
       setEditingNote(null);
     } catch (e) {
-      alert(e.message || "Failed to save note");
+      console.error("Save error:", e);
+      throw e; // Re-throw to be caught in NoteForm
     }
   };
 
@@ -1092,17 +1213,20 @@ function Notes() {
 
   return (
     <div className="space-y-4">
-      {/* header */}
-      <div className="flex items-center gap-2">
-        <Plus className="w-5 h-5" />
-        <h2 className="text-lg font-semibold">Notes</h2>
+      {/* ===== Title + underline ===== */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
+          <ClipboardList className="w-5 h-5" />
+          <span>Notes</span>
+        </div>
+        {/* Divider with rounded edges */}
+        <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
-      <div className="h-[2px] w-full bg-[#6A0F14]" />
 
       <button
-        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-white shadow hover:shadow-md cursor-pointer ${
+        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-white shadow hover:shadow-md cursor-pointer transition-all duration-300 hover:translate-y-[-2px] hover:bg-[#2A0203] ${
           anyModalOpen ? "opacity-60 pointer-events-none" : ""
-        } bg-[#6A0F14]`}
+        } bg-[#3B0304]`}
         onClick={handleCreate}
         disabled={anyModalOpen}
         aria-disabled={anyModalOpen}
@@ -1132,7 +1256,7 @@ function Notes() {
 
       {/* confirm delete */}
       {confirmDelete && (
-        <ConfirmModal
+        <ConfirmationDialog
           title="Delete Note"
           message="Are you sure you want to delete this note? This will also delete all attached images. This action cannot be undone."
           confirmText="Delete"
@@ -1151,7 +1275,7 @@ function Notes() {
       )}
 
       {/* grid */}
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {notes.map((note, idx) => (
           <NoteCard
             key={note.id}

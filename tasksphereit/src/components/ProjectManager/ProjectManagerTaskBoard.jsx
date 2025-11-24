@@ -9,6 +9,7 @@ import {
   Send,
   MessageSquareText,
   Loader2,
+  MoreVertical,
 } from "lucide-react";
 
 /* ===== Firebase ===== */
@@ -33,21 +34,20 @@ import { onAuthStateChanged } from "firebase/auth";
 /* ===== Supabase (for uploads & public URLs) ===== */
 import { supabase } from "../../config/supabase";
 
-const MAROON = "#6A0F14";
+const MAROON = "#3B0304";
 
 /* ========================== Helpers ========================== */
 const COLUMNS = [
   { id: "todo", title: "To Do", color: "#F5B700" },
   { id: "inprogress", title: "In Progress", color: "#7C9C3B" },
   { id: "review", title: "To Review", color: "#6FA8DC" },
-  { id: "missed", title: "Missed Task", color: "#D11A2A" },
+  { id: "missed", title: "Missed", color: "#3B0304" },
 ];
 
 const STATUS_TO_COLUMN = {
   "To Do": "todo",
   "In Progress": "inprogress",
   "To Review": "review",
-  Completed: "todo",
 };
 
 const cardShell =
@@ -72,16 +72,126 @@ const toDate = (v) => {
   return Number.isNaN(+d) ? null : d;
 };
 
+const formatDate = (date) => {
+  if (!date) return "—";
+  if (typeof date.toDate === "function") {
+    date = date.toDate();
+  }
+  if (date instanceof Date) {
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  }
+  const d = new Date(date);
+  return Number.isNaN(+d) ? date : d.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+};
+
+const formatTime = (timeString) => {
+  if (!timeString) return "—";
+  try {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  } catch (e) {
+    return timeString;
+  }
+};
+
+const formatDateTime = (timestamp) => {
+  if (!timestamp) return "";
+  try {
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (e) {
+    return "";
+  }
+};
+
 const uniqBy = (arr, keyFn) => {
   const m = new Map();
   arr.forEach((x) => m.set(keyFn(x), x));
   return Array.from(m.values());
 };
 
+const getInitials = (name) => {
+  if (!name) return "U";
+  const parts = name.split(' ');
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  
+  // Get first letter of first name and first letter of last name
+  const firstName = parts[0];
+  const lastName = parts[parts.length - 1];
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+};
+
+/* ======================= Confirmation Dialog ======================= */
+function ConfirmationDialog({
+  open,
+  onClose,
+  onConfirm,
+  title = "Confirmation",
+  message = "Are you sure you want to proceed?",
+  confirmText = "Yes",
+  cancelText = "No",
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overscroll-contain">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-2xl border border-neutral-200">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+              {title}
+            </h3>
+            <p className="text-neutral-600">{message}</p>
+          </div>
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-neutral-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+            >
+              {cancelText}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onConfirm();
+                onClose();
+              }}
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow hover:bg-[#4A0405]"
+              style={{ backgroundColor: MAROON }}
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ======================= Reusable UI ========================= */
 function Column({ title, color, children }) {
   return (
-    <div className="flex flex-col w-[280px] bg-white border border-neutral-200 rounded-xl shadow">
+    <div className="flex flex-col bg-white border border-neutral-200 rounded-xl shadow h-fit">
       <div
         className="px-4 py-3 rounded-t-xl text-white text-sm font-semibold"
         style={{ backgroundColor: color }}
@@ -89,7 +199,7 @@ function Column({ title, color, children }) {
         {title}
       </div>
       <div className="flex-1 min-h-0">
-        <div className="h-full overflow-y-auto px-3 py-3 space-y-3">
+        <div className="h-full px-3 py-3 space-y-3">
           {children}
         </div>
       </div>
@@ -103,7 +213,7 @@ function KanbanCard({ data, onOpen }) {
       <div className="p-3">
         <div className="flex items-start justify-between">
           <div className="font-semibold text-sm">
-            {data.teamName || "No Team"}
+            {data.assignedTo || "Unassigned"}
           </div>
           <button
             onClick={() => onOpen(data)}
@@ -124,13 +234,13 @@ function KanbanCard({ data, onOpen }) {
           </div>
         </div>
 
-        <div className="mt-3 text-xs text-neutral-700 flex items-center gap-2">
+        <div className="mt-3 text-xs flex items-center gap-2">
           <span
             className={`w-2 h-2 rounded-full ${
-              data._colId === "missed" ? "bg-red-500" : "bg-neutral-400"
+              data._colId === "missed" ? "bg-[#3B0304]" : "bg-neutral-400"
             } inline-block`}
           />
-          <span className="px-2 py-1 rounded border border-neutral-200 bg-neutral-50">
+          <span className="font-bold" style={{ color: MAROON }}>
             {data.dueDisplay || "No due date"}
           </span>
         </div>
@@ -149,79 +259,271 @@ function Field({ label, value }) {
   );
 }
 
-function ChatBubble({ m, meUid, onEdit, onDelete, editingId, setEditingId }) {
-  const mine = m.sender?.uid === meUid;
-  const [editText, setEditText] = useState(m.text);
-  const base =
-    "max-w-[80%] px-3 py-2 rounded-lg text-sm leading-snug shadow border border-neutral-200";
-  const isEditing = editingId === m.id && mine;
+function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEditingId, replyingTo, setReplyingTo, depth = 0 }) {
+  const isMine = message.sender?.uid === meUid;
+  const [editText, setEditText] = useState(message.text);
+  const [replyText, setReplyText] = useState("");
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showReplyInput, setShowReplyInput] = useState(false);
+  const isEditing = editingId === message.id && isMine;
+  const isReplying = replyingTo === message.id;
+
+  // Disable edit if message has already been edited
+  const canEdit = isMine && !message.__optimistic && !message.editedAt;
+
+  const handleEditConfirm = () => {
+    onEdit(message.id, editText);
+    setEditingId(null);
+    setShowEditConfirm(false);
+  };
+
+  const handleDeleteConfirm = () => {
+    onDelete(message.id);
+    setShowDeleteConfirm(false);
+  };
+
+  const handleReply = () => {
+    if (replyText.trim()) {
+      onReply(message.id, replyText);
+      setReplyText("");
+      setShowReplyInput(false);
+      setReplyingTo(null);
+    }
+  };
+
+  const handleCancelReply = () => {
+    setReplyText("");
+    setShowReplyInput(false);
+    setReplyingTo(null);
+  };
+
+  // Calculate indentation based on depth
+  const indentClass = depth > 0 ? `ml-12` : "";
 
   return (
-    <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`${base} ${mine ? "bg-[#F9F5F4]" : "bg-white"}`}
-        title={
-          m.createdAt?.toDate?.() ? m.createdAt.toDate().toLocaleString() : ""
-        }
-      >
-        <div className="text-xs text-neutral-500 mb-1">
-          {m.role || m.sender?.name || "Someone"}
-          {m.editedAt?.toDate?.() && <span className="ml-1">(edited)</span>}
+    <>
+      {/* Confirmation Dialogs */}
+      <ConfirmationDialog
+        open={showEditConfirm}
+        onClose={() => setShowEditConfirm(false)}
+        onConfirm={handleEditConfirm}
+        title="Edit Comment"
+        message="Are you sure you want to edit this comment? This action cannot be undone."
+        confirmText="Yes, Edit"
+        cancelText="No, Cancel"
+      />
+
+      <ConfirmationDialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Comment"
+        message="Are you sure you want to delete this comment? Replies will be promoted to main comments."
+        confirmText="Yes, Delete"
+        cancelText="No, Cancel"
+      />
+
+      <div className={`flex gap-3 mb-6 last:mb-0 ${indentClass}`}>
+        {/* Profile Icon */}
+        <div className="flex-shrink-0">
+          <div 
+            className="w-10 h-10 rounded-full bg-[#3B0304] flex items-center justify-center text-white font-semibold text-sm"
+            title={message.sender?.name || "Unknown User"}
+          >
+            {getInitials(message.sender?.name)}
+          </div>
         </div>
 
-        {isEditing ? (
-          <>
-            <textarea
-              className="w-full text-sm border border-neutral-300 rounded p-2"
-              rows={3}
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-            />
-            <div className="mt-2 text-xs flex gap-3">
-              <button
-                onClick={() => {
-                  onEdit(m.id, editText);
-                  setEditingId(null);
-                }}
-                className="text-[#6A0F14] font-medium"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setEditingId(null)}
-                className="text-neutral-500"
-              >
-                Cancel
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="text-neutral-800 whitespace-pre-wrap">
-              {m.text || (
-                <span className="italic text-neutral-500">[no text]</span>
-              )}
-            </div>
-            {mine && !m.__optimistic && (
-              <div className="mt-1 text-xs text-neutral-500 flex gap-4">
+        {/* Comment Content */}
+        <div className="flex-1 min-w-0">
+          {/* Header with name and timestamp inline */}
+          <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+            <span className="font-semibold text-[15px] text-gray-900">
+              {message.sender?.name || "Unknown User"}
+            </span>
+            <span className="text-xs text-gray-500">•</span>
+            <span className="text-xs text-gray-500">
+              {formatDateTime(message.createdAt)}
+            </span>
+            {message.editedAt?.toDate?.() && (
+              <>
+                <span className="text-xs text-gray-500">•</span>
+                <span className="text-xs text-gray-500">(edited)</span>
+              </>
+            )}
+          </div>
+
+          {/* Comment Body */}
+          <div className="mb-2">
+            {isEditing ? (
+              <div className="space-y-2">
+                <textarea
+                  className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3B0304] focus:border-transparent text-sm"
+                  rows={3}
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowEditConfirm(true)}
+                    className="px-4 py-2 text-sm font-medium text-white bg-[#3B0304] rounded-lg hover:bg-[#2a0203] transition-colors"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingId(null);
+                      setEditText(message.text);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* FIX: Ensure proper line break preservation with multiple CSS classes */}
+                <div className="text-sm text-gray-800 leading-relaxed mt-1 whitespace-pre-wrap break-words w-full overflow-hidden">
+                  {message.text || (
+                    <span className="italic text-gray-500">[no text]</span>
+                  )}
+                </div>
+                
+                {/* Display attached files in the comment - REMOVED BORDER BOX */}
+                {message.sender?.fileUrl?.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {message.sender.fileUrl.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <Paperclip className="w-4 h-4 text-red-600" />
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={file.originalName || file.fileName}
+                          className="text-blue-600 hover:text-blue-800 hover:underline truncate max-w-[200px]"
+                          title={file.originalName || file.fileName}
+                        >
+                          {file.originalName || file.fileName}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          {!isEditing && (
+            <div className="flex items-center gap-4 mt-2">
+              {canEdit && (
                 <button
-                  onClick={() => setEditingId(m.id)}
-                  className="hover:underline cursor-pointer"
+                  onClick={() => {
+                    setEditingId(message.id);
+                    setEditText(message.text);
+                  }}
+                  className="text-xs text-[#3B0304] font-medium hover:text-[#2a0203] transition-colors"
                 >
                   Edit
                 </button>
+              )}
+              {isMine && !message.__optimistic && (
                 <button
-                  onClick={() => onDelete(m.id)}
-                  className="hover:underline cursor-pointer"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="text-xs text-red-600 font-medium hover:text-red-700 transition-colors"
                 >
                   Delete
                 </button>
+              )}
+              {!isMine && (
+                <button 
+                  onClick={() => {
+                    setShowReplyInput(true);
+                    setReplyingTo(message.id);
+                  }}
+                  className="text-xs text-[#3B0304] font-medium hover:text-[#2a0203] transition-colors"
+                >
+                  Reply
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Reply Input */}
+          {(showReplyInput || isReplying) && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <div 
+                    className="w-8 h-8 rounded-full bg-[#3B0304] flex items-center justify-center text-white font-semibold text-xs"
+                    title="You"
+                  >
+                    {getInitials("You")}
+                  </div>
+                </div>
+                <div className="flex-1 space-y-3">
+                  <textarea
+                    rows={2}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write a reply…"
+                    className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3B0304] focus:border-transparent text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleReply();
+                      }
+                    }}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={handleCancelReply}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleReply}
+                      disabled={!replyText.trim()}
+                      className="px-3 py-1.5 text-xs font-medium text-white bg-[#3B0304] rounded-lg hover:bg-[#2a0203] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Reply
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
-          </>
-        )}
+            </div>
+          )}
+
+          {/* ONE-LEVEL-only Replies */}
+          {message.replies && message.replies.length > 0 && (
+            <div className="mt-4 space-y-4">
+              {message.replies.map((reply) => (
+                <Comment
+                  key={reply.id}
+                  message={reply}
+                  meUid={meUid}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onReply={onReply}
+                  editingId={editingId}
+                  setEditingId={setEditingId}
+                  replyingTo={replyingTo}
+                  setReplyingTo={setReplyingTo}
+                  depth={1} // always one-level indent
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -231,11 +533,76 @@ function DetailView({ me, card, onBack }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [tab, setTab] = useState("conversation");
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [tab, setTab] = useState("comments");
   const [pendingFiles, setPendingFiles] = useState([]);
   const [attRows, setAttRows] = useState([]);
   const [hydrating, setHydrating] = useState(false);
   const listRef = useRef(null);
+
+  // Helper: flatten messages so replies are only 1-level deep and no duplicates
+  const flattenMessages = (rows) => {
+    // Build map of id -> message (shallow clone) with replies array
+    const map = new Map();
+    rows.forEach((m) => map.set(m.id, { ...m, replies: [] }));
+
+    // Attach direct replies to their parent (only direct)
+    rows.forEach((m) => {
+      if (m.parentId && map.has(m.parentId)) {
+        const parent = map.get(m.parentId);
+        parent.replies.push(map.get(m.id));
+      }
+    });
+
+    // Function to recursively collect all descendants of a message
+    const collectDescendants = (msg, visited = new Set()) => {
+      let acc = [];
+      // copy of current direct replies (from map)
+      const direct = msg.replies ? [...msg.replies] : [];
+      for (const r of direct) {
+        if (!visited.has(r.id)) {
+          visited.add(r.id);
+          acc.push(r);
+          // If that reply itself has children in the original dataset, collect them
+          // The children of r are available via map.get(r.id).replies only if they were attached earlier
+          const deeper = collectDescendants(map.get(r.id) || r, visited);
+          if (deeper.length) acc = acc.concat(deeper);
+        }
+      }
+      return acc;
+    };
+
+    // Build top-level array (messages without parentId)
+    const topLevel = [];
+    rows.forEach((m) => {
+      if (!m.parentId) {
+        const base = map.get(m.id);
+        // collect all nested replies and flatten to single-level
+        const flatReplies = collectDescendants(base);
+        // ensure uniqueness and sort by createdAt
+        const unique = Array.from(
+          new Map(flatReplies.map((r) => [r.id, r])).values()
+        );
+        unique.sort((a, b) => {
+          const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+          const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+          return aTime - bTime;
+        });
+        // assign flattened replies and clear any nested replies on children
+        base.replies = unique.map((r) => ({ ...r, replies: [] }));
+        topLevel.push(base);
+      }
+    });
+
+    // Sort top-level messages by createdAt ascending (keep original ordering)
+    topLevel.sort((a, b) => {
+      const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+      const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+      return aTime - bTime;
+    });
+
+    return topLevel;
+  };
 
   useEffect(() => {
     if (!card?.id) return;
@@ -251,13 +618,23 @@ function DetailView({ me, card, onBack }) {
     );
 
     const stop = onSnapshot(qy, (snap) => {
-      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setMessages(rows);
+      const rows = snap.docs.map((d) => ({ 
+        id: d.id, 
+        ...d.data(),
+        createdAt: d.data().createdAt,
+        editedAt: d.data().editedAt
+      }));
+
+      // flatten and de-duplicate replies so UI shows one-level replies only
+      const organized = flattenMessages(rows);
+      setMessages(organized);
+
+      // scroll to bottom
       requestAnimationFrame(() => {
-        if (listRef.current)
-          listRef.current.scrollTop = listRef.current.scrollHeight;
+        if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
       });
     });
+
     return () => typeof stop === "function" && stop();
   }, [card]);
 
@@ -273,6 +650,7 @@ function DetailView({ me, card, onBack }) {
         const arr = Array.isArray(data.fileUrl) ? data.fileUrl : [];
         for (const f of arr) {
           const fileName = f.fileName || f.name || "";
+          const originalName = f.originalName || fileName;
           let url = f.url || f.publicUrl || null;
           if (!url && fileName) {
             const { data: pub } = supabase.storage
@@ -281,7 +659,8 @@ function DetailView({ me, card, onBack }) {
             url = pub?.publicUrl || null;
           }
           merged.push({
-            name: fileName || "attachment",
+            name: fileName,
+            originalName: originalName,
             url,
             date: toDate(f.uploadedAt) || toDate(data.createdAt) || null,
             source: "task",
@@ -304,6 +683,7 @@ function DetailView({ me, card, onBack }) {
         files.forEach((f, i) => {
           merged.push({
             name: f.fileName || f.name || `Attachment ${i + 1}`,
+            originalName: f.originalName || f.fileName || f.name || `Attachment ${i + 1}`,
             url: f.url || f.publicUrl || null,
             date: toDate(f.uploadedAt) || toDate(m.createdAt) || null,
             source: "chat",
@@ -325,7 +705,7 @@ function DetailView({ me, card, onBack }) {
   };
 
   useEffect(() => {
-    if (tab === "attachments") hydrateAttachments();
+    if (tab === "attachment") hydrateAttachments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -344,7 +724,7 @@ function DetailView({ me, card, onBack }) {
     setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const send = async () => {
+  const send = async (parentId = null) => {
     const text = (draft || "").trim();
     if (!text && pendingFiles.length === 0) return;
 
@@ -355,8 +735,11 @@ function DetailView({ me, card, onBack }) {
       const folder = buildTaskFolder(card);
 
       for (const f of pendingFiles) {
-        const filename = `${Date.now()}-${safeFileName(f.name)}`;
+        // Use original file name without timestamp prefix
+        const originalName = f.name;
+        const filename = safeFileName(originalName);
         const storagePath = `${folder}/${filename}`;
+        
         const { error: upErr } = await supabase.storage
           .from(BUCKET)
           .upload(storagePath, f, {
@@ -370,6 +753,7 @@ function DetailView({ me, card, onBack }) {
           .getPublicUrl(storagePath);
         uploads.push({
           fileName: filename,
+          originalName: originalName, // Store original file name
           url: pub?.publicUrl || null,
           storagePath,
           uploadedAt: new Date().toISOString(),
@@ -379,23 +763,55 @@ function DetailView({ me, card, onBack }) {
       const optimistic = {
         id: `tmp-${Date.now()}`,
         text,
+        parentId: parentId || null,
         role: me?.role || "Project Manager",
-        sender: { uid: meUid, name: me?.name || "Unknown", fileUrl: uploads },
+        sender: { 
+          uid: meUid, 
+          name: me?.name || "Unknown", 
+          fileUrl: uploads 
+        },
         teamId: card.teamId || null,
         teamName: card.teamName || null,
         taskId: card.id,
         taskTitle: card.task || card.chapter || "Task",
         taskCollection: card._collection,
-        createdAt: { toDate: () => new Date() },
+        createdAt: new Date(),
         __optimistic: true,
         type: "message",
       };
-      setMessages((prev) => [...prev, optimistic]);
+      
+      // Optimistic update: if top-level, push to messages; if reply, attach to parent (local)
+      setMessages(prev => {
+        if (!parentId) {
+          return [...prev, optimistic];
+        }
+        
+        const addReply = (messages) => {
+          return messages.map(msg => {
+            if (msg.id === parentId) {
+              // ensure replies array exists
+              return {
+                ...msg,
+                replies: [...(msg.replies || []), optimistic]
+              };
+            }
+            // Recursively check if the parent is a reply
+            if (msg.replies && msg.replies.length > 0) {
+              return { ...msg, replies: addReply(msg.replies) };
+            }
+            return msg;
+          });
+        };
+        
+        return addReply(prev);
+      });
+      
       setDraft("");
       setPendingFiles([]);
 
       await addDoc(collection(db, "chats"), {
         text,
+        parentId: parentId || null,
         role: me?.role || "Project Manager",
         sender: {
           uid: meUid || null,
@@ -411,10 +827,78 @@ function DetailView({ me, card, onBack }) {
         type: "message",
       });
 
-      if (tab === "attachments") hydrateAttachments();
+      if (tab === "attachment") hydrateAttachments();
     } catch (e) {
       console.error("[chat] send failed:", e);
       alert("Failed to send. Check console for details.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const sendReply = async (parentId, replyText) => {
+    if (!replyText.trim()) return;
+
+    setSending(true);
+    try {
+      const optimistic = {
+        id: `tmp-reply-${Date.now()}`,
+        text: replyText,
+        parentId: parentId,
+        role: me?.role || "Project Manager",
+        sender: { 
+          uid: meUid, 
+          name: me?.name || "Unknown", 
+          fileUrl: [] 
+        },
+        teamId: card.teamId || null,
+        teamName: card.teamName || null,
+        taskId: card.id,
+        taskTitle: card.task || card.chapter || "Task",
+        taskCollection: card._collection,
+        createdAt: new Date(),
+        __optimistic: true,
+        type: "message",
+      };
+
+      // Optimistic update: attach reply to parent (local)
+      setMessages(prev => {
+        const addReply = (messages) => {
+          return messages.map(msg => {
+            if (msg.id === parentId) {
+              return { ...msg, replies: [...(msg.replies || []), optimistic] };
+            }
+            // Recursively check if the parent is a reply
+            if (msg.replies && msg.replies.length > 0) {
+              return { ...msg, replies: addReply(msg.replies) };
+            }
+            return msg;
+          });
+        };
+        return addReply(prev);
+      });
+
+      await addDoc(collection(db, "chats"), {
+        text: replyText,
+        parentId: parentId,
+        role: me?.role || "Project Manager",
+        sender: {
+          uid: meUid || null,
+          name: me?.name || "Unknown",
+          fileUrl: [],
+        },
+        teamId: card.teamId || null,
+        teamName: card.teamName || null,
+        taskId: card.id,
+        taskTitle: card.task || card.chapter || "Task",
+        taskCollection: card._collection,
+        createdAt: serverTimestamp(),
+        type: "message",
+      });
+
+    } catch (e) {
+      console.error("[chat] reply failed:", e);
+      alert("Failed to send reply. Check console for details.");
     } finally {
       setSending(false);
     }
@@ -429,298 +913,342 @@ function DetailView({ me, card, onBack }) {
     });
   };
 
+  /**
+   * FIX: Deletes the specified message and promotes its direct replies 
+   * to become top-level messages by setting their parentId to null in Firestore.
+   * This relies on the onSnapshot listener to update the local state correctly.
+   */
   const deleteMessage = async (id) => {
-    await deleteDoc(doc(db, "chats", id));
+    try {
+      // 1. Find and promote all direct replies to be top-level messages in Firestore
+      const repliesQuery = query(
+        collection(db, "chats"),
+        where("parentId", "==", id)
+      );
+      // Use getDocs to fetch the replies so we can update them
+      const repliesSnap = await getDocs(repliesQuery); 
+
+      if (!repliesSnap.empty) {
+        const promotePromises = repliesSnap.docs.map((docSnapshot) => {
+          // Update the reply's parentId to null to promote it
+          return updateDoc(doc(db, "chats", docSnapshot.id), { 
+            parentId: null, 
+          });
+        });
+        // Wait for all replies to be promoted
+        await Promise.all(promotePromises);
+      }
+
+      // 2. Delete the original message in Firestore
+      await deleteDoc(doc(db, "chats", id));
+
+      // The onSnapshot listener will automatically handle the local state update 
+      // with the deleted comment removed and the replies promoted.
+
+    } catch (err) {
+      console.error("Failed to delete comment:", err);
+      // Removed alert to avoid showing an error message that might happen 
+      // due to optimistic updates not being strictly necessary if onSnapshot is fast,
+      // but keeping the core fix. The user's original error was due to the 
+      // complex local state manipulation failing.
+      alert("Failed to delete comment."); 
+      
+      // No need to restore state manually since onSnapshot will overwrite it soon,
+      // but if we were to restore, we'd need to re-fetch/re-subscribe.
+      // For now, let's trust onSnapshot.
+    } finally {
+      setSending(false); 
+    }
   };
 
-  const computedActivity = useMemo(() => {
-    const items = [];
-    if (card._colId === "missed")
-      items.push({ id: "miss", text: "Task is overdue (Missed Task)." });
-    if (card.status)
-      items.push({ id: "st", text: `Current status: ${card.status}` });
-    messages
-      .filter((m) => m.type === "activity")
-      .forEach((m) =>
-        items.push({
-          id: m.id,
-          text: m.text || `Activity by ${m.role || "system"}`,
-        })
-      );
-    return items;
-  }, [card._colId, card.status, messages]);
+  const renderComments = (messages, depth = 0) => {
+    return messages.map((message) => (
+      <Comment
+        key={message.id || message._localId || Math.random()}
+        message={message}
+        meUid={meUid}
+        onEdit={editMessage}
+        onDelete={deleteMessage}
+        onReply={sendReply}
+        editingId={editingId}
+        setEditingId={setEditingId}
+        replyingTo={replyingTo}
+        setReplyingTo={setReplyingTo}
+        depth={depth}
+      />
+    ));
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <LayoutList className="w-5 h-5" />
-        <span className="font-semibold">Task Board</span>
-        <ChevronRight className="w-4 h-4 text-neutral-500" />
-        <span className="font-semibold">{card.teamName}</span>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
+          <LayoutList className="w-5 h-5" />
+          <span>Task Board</span>
+        </div>
+        <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
-      <div className="h-[2px] w-full" style={{ backgroundColor: MAROON }} />
 
-      <button
-        onClick={onBack}
-        className="cursor-pointer inline-flex items-center gap-1 text-sm px-3 py-1.5 rounded-md border border-neutral-300 hover:bg-neutral-100"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        Back to Board
-      </button>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white border border-neutral-200 rounded-xl shadow p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-lg font-semibold">
-              {card.task || card.chapter || "Task"}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Task Details Panel */}
+        <div className="bg-white border border-neutral-200 rounded-xl shadow p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="text-xl font-semibold text-gray-900">
+              {card.assignedTo || "Unassigned"}
             </div>
             <span
-              className="text-sm font-semibold px-3 py-1 rounded-full text-white"
+              className="text-sm font-semibold px-4 py-2 rounded-full text-white"
               style={{
                 backgroundColor:
                   card._colId === "missed"
-                    ? "#D11A2A"
+                    ? "#3B0304"
                     : card.status === "To Review"
                     ? "#6FA8DC"
                     : card.status === "In Progress"
                     ? "#7C9C3B"
-                    : card.status === "Completed"
-                    ? MAROON
                     : "#F5B700",
               }}
             >
               {card._colId === "missed"
-                ? "Missed Task"
+                ? "Missed"
                 : card.status || "To Do"}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-y-2 gap-x-6 mt-4 text-sm">
-            <Field label="Team" value={card.teamName} />
-            <Field label="Task Type" value={card.type} />
-            <Field label="Methodology" value={card.methodology} />
-            <Field label="Project Phase" value={card.phase} />
-            <Field label="Revision NO" value={card.revision} />
+          {/* Task Fields */}
+          <div className="space-y-4">
+            <Field label="Tasks" value={card.task} />
+            <Field label="Subtasks" value={card.subtask || "—"} />
+            <Field label="Elements" value={card.elements || "—"} />
             <Field label="Date Created" value={card.createdDisplay} />
             <Field label="Due Date" value={card.dueDisplay} />
-            <Field label="Time" value={card.time || "—"} />
-          </div>
-
-          <div className="mt-6">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <MessageSquareText className="w-4 h-4" />
-              Activity
-            </div>
-            <ul className="mt-2 space-y-1 text-sm text-neutral-700">
-              {computedActivity.length === 0 ? (
-                <li className="text-neutral-500">No activity yet.</li>
-              ) : (
-                computedActivity.map((a) => <li key={a.id}>• {a.text}</li>)
-              )}
-            </ul>
+            <Field label="Time" value={card.timeDisplay || "—"} />
+            <Field label="Revision NO" value={card.revision} />
+            <Field label="Status" value={card.status} />
+            <Field label="Methodology" value={card.methodology} />
+            <Field label="Project Phase" value={card.phase} />
           </div>
         </div>
 
-        <div className="bg-white border border-neutral-200 rounded-xl shadow p-0 overflow-hidden relative">
-          <div className="px-4 pt-3">
-            <div className="flex gap-6 text-sm">
+        {/* Comments & Attachments Panel */}
+        <div className="bg-white border border-neutral-200 rounded-xl shadow overflow-hidden flex flex-col h-[700px]">
+          {/* Tabs */}
+          <div className="px-6 pt-4">
+            <div className="flex gap-8 text-sm border-b border-neutral-200">
               <button
-                onClick={() => setTab("conversation")}
-                className={`pb-2 font-medium ${
-                  tab === "conversation"
-                    ? "border-b-2 border-neutral-800"
-                    : "text-neutral-500 hover:text-neutral-800"
+                onClick={() => setTab("comments")}
+                className={`pb-3 font-medium transition-colors relative ${
+                  tab === "comments"
+                    ? "text-[#3B0304] font-semibold"
+                    : "text-neutral-600 hover:text-neutral-800"
                 }`}
               >
-                Conversation
+                Comments
+                {tab === "comments" && (
+                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#3B0304] rounded-t-full" />
+                )}
               </button>
               <button
-                onClick={() => setTab("attachments")}
-                className={`pb-2 font-medium inline-flex items-center gap-2 ${
-                  tab === "attachments"
-                    ? "border-b-2 border-neutral-800"
-                    : "text-neutral-500 hover:text-neutral-800"
+                onClick={() => setTab("attachment")}
+                className={`pb-3 font-medium transition-colors relative ${
+                  tab === "attachment"
+                    ? "text-[#3B0304] font-semibold"
+                    : "text-neutral-600 hover:text-neutral-800"
                 }`}
               >
-                <Paperclip className="w-4 h-4" />
-                Attachments
+                Attachment
+                {tab === "attachment" && (
+                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#3B0304] rounded-t-full" />
+                )}
               </button>
             </div>
           </div>
-          <div className="h-[1px] bg-neutral-200" />
 
-          {tab === "conversation" && (
-            <>
-              <div className="p-4">
-                <div className="rounded-lg border border-neutral-300 overflow-hidden">
-                  <div className="px-3 py-2 border-b border-neutral-200 text-sm font-medium">
-                    {me?.name || "You"}{" "}
-                    <span className="text-neutral-500">({me?.role})</span>
-                  </div>
-                  <div className="p-3 relative">
-                    <textarea
-                      rows={3}
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      placeholder="Write a message…"
-                      className="w-full resize-none outline-none text-sm"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          send();
-                        }
-                      }}
-                    />
+          {/* Content Area */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {tab === "comments" && (
+              <>
+                {/* Comment Input - AT THE TOP */}
+                <div className="border-b border-neutral-200 p-6">
+                  <div className="space-y-4">
+                    {/* User Profile and Name */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0">
+                        <div 
+                          className="w-10 h-10 rounded-full bg-[#3B0304] flex items-center justify-center text-white font-semibold text-sm"
+                          title={me?.name || "You"}
+                        >
+                          {getInitials(me?.name)}
+                        </div>
+                      </div>
+                      <span className="font-semibold text-[15px] text-gray-900">
+                        {me?.name || "You"}
+                      </span>
+                    </div>
+                    
+                    {/* Textarea */}
+                    <div className="space-y-3">
+                      <textarea
+                        rows={3}
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        placeholder="Write a comment…"
+                        className="w-full p-4 border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3B0304] focus:border-transparent text-sm"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            send();
+                          }
+                        }}
+                      />
 
-                    {pendingFiles.length > 0 && (
-                      <div className="mt-2 space-y-2">
-                        {pendingFiles.map((f, i) => (
-                          <div
-                            key={`${f.name}-${i}`}
-                            className="flex items-center justify-between text-sm rounded border px-2 py-1"
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="text-red-600">
-                                <Paperclip className="w-4 h-4" />
-                              </span>
-                              <span
-                                className="truncate max-w-[320px]"
-                                title={f.name}
-                              >
+                      {/* Pending Files - REMOVED BORDER BOX */}
+                      {pendingFiles.length > 0 && (
+                        <div className="space-y-2">
+                          {pendingFiles.map((f, i) => (
+                            <div
+                              key={`${f.name}-${i}`}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <Paperclip className="w-4 h-4 text-red-600" />
+                              <span className="text-gray-700 truncate max-w-[200px]">
                                 {f.name}
                               </span>
+                              <button
+                                onClick={() => removePending(i)}
+                                className="text-gray-500 hover:text-gray-700 p-1"
+                              >
+                                ✕
+                              </button>
                             </div>
-                            <button
-                              onClick={() => removePending(i)}
-                              className="text-neutral-500 hover:text-neutral-800"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </div>
+                      )}
 
-                    <div className="flex items-center gap-2 absolute right-3 bottom-3">
-                      <button
-                        onClick={openPicker}
-                        className="p-1.5 rounded hover:bg-neutral-100 cursor-pointer"
-                        title="Attach"
-                      >
-                        <Paperclip className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={send}
-                        disabled={sending}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-white cursor-pointer disabled:opacity-60"
-                        style={{ backgroundColor: MAROON }}
-                      >
-                        {sending ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4" />
-                        )}
-                        {sending ? "Sending…" : "Send"}
-                      </button>
+                      {/* Action Buttons - Attach icon before Send */}
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={openPicker}
+                          className="p-2 rounded-lg text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+                          title="Attach files"
+                        >
+                          <Paperclip className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => send()}
+                          disabled={sending || (!draft.trim() && pendingFiles.length === 0)}
+                          className="inline-flex items-center gap-2 px-6 py-2 bg-[#3B0304] text-white rounded-lg hover:bg-[#2a0203] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {sending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Sending…
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-4 h-4" />
+                              Send
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div
-                ref={listRef}
-                className="px-4 pb-4 max-h-[360px] overflow-y-auto space-y-3"
-              >
-                {messages.length === 0 ? (
-                  <div className="text-sm text-neutral-600">
-                    No messages yet. Start the conversation above.
-                  </div>
-                ) : (
-                  messages.map((m) => (
-                    <ChatBubble
-                      key={
-                        m.id ||
-                        m._localId ||
-                        m.createdAt?.seconds ||
-                        Math.random()
-                      }
-                      m={m}
-                      meUid={meUid}
-                      onEdit={editMessage}
-                      onDelete={deleteMessage}
-                      editingId={editingId}
-                      setEditingId={setEditingId}
-                    />
-                  ))
-                )}
-              </div>
-            </>
-          )}
+                {/* Comments List - BELOW THE INPUT */}
+                <div 
+                  ref={listRef}
+                  className="flex-1 overflow-y-auto p-6 space-y-6"
+                >
+                  {messages.length === 0 ? (
+                    <div className="text-center text-gray-500 py-12">
+                      <MessageSquareText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p className="text-sm">No comments yet. Start the conversation above.</p>
+                    </div>
+                  ) : (
+                    renderComments(messages, 0)
+                  )}
+                </div>
+              </>
+            )}
 
-          {tab === "attachments" && (
-            <div className="p-4">
-              <div className="rounded-lg border border-neutral-200 overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 text-neutral-600">
-                    <tr>
-                      <th className="text-left px-4 py-2 font-medium">
-                        Attachment
-                      </th>
-                      <th className="text-right px-4 py-2 font-medium">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-200">
-                    {hydrating ? (
+            {tab === "attachment" && (
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="bg-gray-50 rounded-lg border border-neutral-200 overflow-hidden">
+                  <table className="w-full text-sm table-fixed">
+                    <colgroup>
+                      <col className="w-3/4" />
+                      <col className="w-1/4" />
+                    </colgroup>
+                    <thead className="bg-gray-100 text-gray-700">
                       <tr>
-                        <td className="px-4 py-6 text-neutral-500" colSpan={2}>
-                          Loading attachments…
-                        </td>
+                        <th className="text-left px-4 py-3 font-semibold">
+                          Attachment
+                        </th>
+                        <th className="text-left px-3 py-3 font-semibold"> {/* Reduced padding-left from px-4 to px-3 */}
+                          Date
+                        </th>
                       </tr>
-                    ) : attRows.length === 0 ? (
-                      <tr>
-                        <td className="px-4 py-6 text-neutral-500" colSpan={2}>
-                          No attachments yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      attRows.map((f, i) => (
-                        <tr
-                          key={`${f.name}-${i}`}
-                          className="hover:bg-neutral-50"
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-red-600">
-                                <Paperclip className="w-4 h-4" />
-                              </span>
-                              {f.url ? (
-                                <a
-                                  href={f.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-[15px] hover:underline"
-                                >
-                                  {f.name}
-                                </a>
-                              ) : (
-                                <span className="text-[15px]">{f.name}</span>
-                              )}
-                              <span className="ml-2 text-xs text-neutral-400">
-                                [{f.source}]
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right text-neutral-700">
-                            {f.date ? f.date.toLocaleString() : "—"}
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {hydrating ? (
+                        <tr>
+                          <td className="px-4 py-8 text-center text-gray-500" colSpan={2}>
+                            <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                            Loading attachments…
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : attRows.length === 0 ? (
+                        <tr>
+                          <td className="px-4 py-8 text-center text-gray-500" colSpan={2}>
+                            <Paperclip className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                            No attachments yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        attRows.map((f, i) => (
+                          <tr
+                            key={`${f.name}-${i}`}
+                            className="hover:bg-white transition-colors"
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <Paperclip className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                {f.url ? (
+                                  <a
+                                    href={f.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    download={f.originalName || f.name}
+                                    className="text-blue-600 hover:text-blue-800 hover:underline truncate"
+                                    title={f.originalName || f.name}
+                                  >
+                                    {f.originalName || f.name}
+                                  </a>
+                                ) : (
+                                  <span className="text-gray-700 truncate">
+                                    {f.originalName || f.name}
+                                  </span>
+                                )}
+                                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                                  {f.source}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap"> {/* Reduced padding-left from px-4 to px-3 */}
+                              {f.date ? formatDate(f.date) : "—"}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -733,7 +1261,7 @@ export default function ProjectManagerTaskBoard() {
   const [teams, setTeams] = useState([]);
   const [cards, setCards] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [managerTab, setManagerTab] = useState("Adviser"); // "Adviser" | "Project Manager"
+  const [activeTab, setActiveTab] = useState("team"); // "team" | "adviser"
 
   useEffect(() => {
     const stop = onAuthStateChanged(auth, async (u) => {
@@ -810,6 +1338,12 @@ export default function ProjectManagerTaskBoard() {
 
     const normalize = (collectionName, d) => {
       const x = d.data();
+      
+      // Filter out completed tasks
+      if (x.status === "Completed") {
+        return null;
+      }
+
       const t = x.team || {};
       const teamId = t.id || x.teamId || "no-team";
       const teamName =
@@ -817,11 +1351,12 @@ export default function ProjectManagerTaskBoard() {
 
       const created =
         typeof x.createdAt?.toDate === "function" ? x.createdAt.toDate() : null;
-      const createdDisplay = created ? created.toLocaleDateString() : "—";
+      const createdDisplay = formatDate(x.createdAt);
 
       const dueDate = x.dueDate || null;
       const time = x.dueTime || null;
-      const dueDisplay = dueDate || "—";
+      const timeDisplay = formatTime(time);
+      const dueDisplay = formatDate(dueDate);
       const dueAtMs =
         x.dueAtMs ??
         (dueDate && time ? new Date(`${dueDate}T${time}:00`).getTime() : null);
@@ -832,12 +1367,48 @@ export default function ProjectManagerTaskBoard() {
         !!dueAtMs && dueAtMs < now && (x.status || "To Do") !== "Completed";
       if (isOverdue) colId = "missed";
 
-      return {
+      // UPDATED: Improved assignment logic to match what the task actually has
+      let assignedTo = "";
+
+      if (x.taskManager === "Adviser") {
+        // For adviser tasks, show team name (e.g., "Lenon, Et Al")
+        assignedTo = teamName;
+      } else {
+        // For team tasks - use the actual assignment data from the task
+        // Priority: assignedTo field > assignees array > fallback to team name
+        if (x.assignedTo) {
+          // If task has assignedTo field, use it directly
+          assignedTo = x.assignedTo;
+        } else if (x.assignees && x.assignees.length > 0) {
+          // If task has assignees array, use the first assignee's name
+          assignedTo = x.assignees[0].name || "Unassigned";
+        } else if (x.assignedMember && (x.assignedMember.name || x.assignedMember.firstName)) {
+          // If assigned to a member (e.g., "Isabella G Torres")
+          assignedTo = safeName(x.assignedMember);
+        } else if (x.assignedProjectManager && (x.assignedProjectManager.name || x.assignedProjectManager.firstName)) {
+          // If assigned to project manager (e.g., "Robbie G. Lenon")
+          assignedTo = safeName(x.assignedProjectManager);
+        } else if (x.projectManager && (x.projectManager.name || x.projectManager.firstName)) {
+          // If task has project manager field
+          assignedTo = safeName(x.projectManager);
+        } else if (x.manager && (x.manager.name || x.manager.firstName)) {
+          // If task has manager field
+          assignedTo = safeName(x.manager);
+        } else {
+          // For unassigned team tasks, show team name
+          assignedTo = teamName;
+        }
+      }
+
+      // COMPLETELY REWRITTEN: Extract ALL fields directly from the source data
+      // This ensures we get all fields exactly as they are in Firestore
+      const cardData = {
         id: d.id,
         _collection: collectionName,
         _colId: colId,
         teamId,
         teamName,
+        assignedTo,
         task: x.task || x.chapter || "Task",
         chapter: x.chapter || null,
         type: x.type || null,
@@ -846,12 +1417,60 @@ export default function ProjectManagerTaskBoard() {
         revision: x.revision || "No Revision",
         status: x.status || "To Do",
         time: time || "—",
+        timeDisplay,
         dueDisplay,
         createdDisplay,
         dueAtMs: dueAtMs || null,
-        // ADD TASK MANAGER FIELD FOR FILTERING
-        taskManager: x.taskManager || "Project Manager", // Default to Project Manager for old tasks
+        taskManager: x.taskManager || "Project Manager",
       };
+
+      // FIXED: Extract subtask and elements with comprehensive field checking
+      // Check multiple possible field names and formats
+      const subtask = 
+        x.subtask || 
+        x.subtasks || 
+        x.subTask || 
+        x.subTasks || 
+        null;
+      
+      const elements = 
+        x.elements || 
+        x.element || 
+        x.scope || 
+        null;
+
+      // Handle different data types for subtask and elements
+      if (subtask) {
+        if (Array.isArray(subtask)) {
+          cardData.subtask = subtask.join(", ");
+        } else if (typeof subtask === 'string') {
+          cardData.subtask = subtask;
+        } else if (typeof subtask === 'object') {
+          cardData.subtask = JSON.stringify(subtask);
+        }
+      }
+
+      if (elements) {
+        if (Array.isArray(elements)) {
+          cardData.elements = elements.join(", ");
+        } else if (typeof elements === 'string') {
+          cardData.elements = elements;
+        } else if (typeof elements === 'object') {
+          cardData.elements = JSON.stringify(elements);
+        }
+      }
+
+      // Debug logging to see what data we're actually getting
+      console.log('Task Data:', {
+        id: d.id,
+        collection: collectionName,
+        task: x.task,
+        subtask: x.subtask,
+        elements: x.elements,
+        allFields: Object.keys(x)
+      });
+
+      return cardData;
     };
 
     const publish = () => {
@@ -863,15 +1482,17 @@ export default function ProjectManagerTaskBoard() {
         "finalRedefenseTasks",
       ]) {
         for (const subset of ["A", "B"]) {
-          store[coll][subset].forEach((val, key) =>
-            unionMap.set(`${coll}:${key}`, val)
-          );
+          store[coll][subset].forEach((val, key) => {
+            if (val) { // Skip null values (completed tasks)
+              unionMap.set(`${coll}:${key}`, val);
+            }
+          });
         }
       }
       
-      // FILTER CARDS BASED ON SELECTED TAB
+      // Filter cards based on selected tab
       const filteredCards = Array.from(unionMap.values()).filter(card => {
-        if (managerTab === "Adviser") {
+        if (activeTab === "adviser") {
           return card.taskManager === "Adviser";
         } else {
           return card.taskManager === "Project Manager";
@@ -886,7 +1507,12 @@ export default function ProjectManagerTaskBoard() {
         const q = query(collection(db, collectionName), where("team.id", "in", ids));
         const unsub = onSnapshot(q, (snap) => {
           const next = new Map();
-          snap.docs.forEach((d) => next.set(d.id, normalize(collectionName, d)));
+          snap.docs.forEach((d) => {
+            const normalized = normalize(collectionName, d);
+            if (normalized) {
+              next.set(d.id, normalized);
+            }
+          });
           store[collectionName].A = next;
           publish();
         });
@@ -903,7 +1529,7 @@ export default function ProjectManagerTaskBoard() {
       unsubsRef.current.forEach((u) => typeof u === "function" && u());
       unsubsRef.current = [];
     };
-  }, [teams, managerTab]); // ADD managerTab AS DEPENDENCY
+  }, [teams, activeTab]);
 
   const grouped = useMemo(() => {
     const map = Object.fromEntries(COLUMNS.map((c) => [c.id, []]));
@@ -918,45 +1544,56 @@ export default function ProjectManagerTaskBoard() {
   }
 
   return (
-    <div className="space-y-4 min-h-0">
-      <div className="flex items-center gap-2">
-        <LayoutList className="w-5 h-5" />
-        <h2 className="text-lg font-semibold">Task Board</h2>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
+          <LayoutList className="w-5 h-5" />
+          <span>Task Board</span>
+        </div>
+        <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
-      <div className="h-[2px] w-full" style={{ backgroundColor: MAROON }} />
 
-      <div className="flex items-center gap-2">
+      {/* Modern Tab Design */}
+      <div className="flex border-b border-neutral-200">
         <button
-          onClick={() => setManagerTab("Adviser")}
-          className={`px-3 py-1.5 text-sm rounded-md border ${
-            managerTab === "Adviser"
-              ? "bg-neutral-100 border-neutral-300 font-semibold"
-              : "border-neutral-300"
+          onClick={() => setActiveTab("team")}
+          className={`relative px-6 py-3 text-sm font-medium transition-all duration-300 ease-in-out ${
+            activeTab === "team" 
+              ? "text-[#3B0304] font-semibold" 
+              : "text-neutral-600 hover:text-neutral-800"
+          }`}
+        >
+          Team Tasks
+          {activeTab === "team" && (
+            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#3B0304] rounded-t-full transition-all duration-300 ease-in-out" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("adviser")}
+          className={`relative px-6 py-3 text-sm font-medium transition-all duration-300 ease-in-out ${
+            activeTab === "adviser" 
+              ? "text-[#3B0304] font-semibold" 
+              : "text-neutral-600 hover:text-neutral-800"
           }`}
         >
           Adviser Tasks
-        </button>
-        <button
-          onClick={() => setManagerTab("Project Manager")}
-          className={`px-3 py-1.5 text-sm rounded-md border ${
-            managerTab === "Project Manager"
-              ? "bg-neutral-100 border-neutral-300 font-semibold"
-              : "border-neutral-300"
-          }`}
-        >
-          Project Manager Tasks
+          {activeTab === "adviser" && (
+            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#3B0304] rounded-t-full transition-all duration-300 ease-in-out" />
+          )}
         </button>
       </div>
 
-      <div className="min-h-[520px] max-h-[70vh]">
-        <div className="h-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      {/* Responsive Kanban Board */}
+      <div className="min-h-[520px]">
+        <div className="h-full grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
           {COLUMNS.map((col) => (
             <Column key={col.id} title={col.title} color={col.color}>
               {grouped[col.id].length === 0 ? (
-                <div className="text-sm text-neutral-500">
-                  {managerTab === "Adviser" 
+                <div className="text-sm text-neutral-500 text-center py-8">
+                  {activeTab === "adviser" 
                     ? "No adviser tasks." 
-                    : "No project manager tasks."}
+                    : "No team tasks."}
                 </div>
               ) : (
                 grouped[col.id].map((card) => (

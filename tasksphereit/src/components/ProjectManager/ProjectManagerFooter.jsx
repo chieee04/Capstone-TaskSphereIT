@@ -5,7 +5,7 @@ const ProjectManagerFooter = () => {
   return (
     <footer className="w-full">
       {/* thin maroon accent strip */}
-      <div className="h-[3px] bg-[#6A0F14]" />
+      <div className="h-[3px] bg-[#3B0304]" />
       {/* base footer with soft shadow and border */}
       <div className="bg-white border-t border-neutral-100 shadow-[0_-4px_8px_rgba(0,0,0,0.05)]">
         <div className="max-w-7xl mx-auto px-4">

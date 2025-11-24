@@ -67,23 +67,27 @@ const AddUserModal = ({
                   ID Number
                 </label>
                 <input
-                  type="text"
-                  placeholder="ID Number"
-                  value={form.idNumber}
-                  onChange={(e) => {
-                    // Allow only digits and limit to 9
-                    const value = e.target.value.replace(/\D/g, ""); // remove non-numbers
-                    if (value.length <= 9) {
-                      onChange("idNumber")({ target: { value } });
-                    }
-                  }}
-                  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6A0F14]/30"
-                  inputMode="numeric"
-                  maxLength={9}
-                />
-                <p className="text-xs text-neutral-500 mt-1">
-                  Must be 9 Numbers Only.
-                </p>
+  type="text"
+  placeholder="ID Number"
+  value={form.idNumber}
+  onChange={(e) => {
+    // keep only digits
+    const value = e.target.value.replace(/\D/g, "");
+
+    // allow only up to exactly 9 digits
+    if (value.length <= 9) {
+      onChange("idNumber")({ target: { value } });
+    }
+  }}
+  className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6A0F14]/30"
+  inputMode="numeric"
+  maxLength={9}
+/>
+
+<p className="text-xs text-neutral-500 mt-1">
+  ID Number must be exactly 9 digits.
+</p>
+
               </div>
 
               {/* Row 2: First Name | Password */}
@@ -165,17 +169,30 @@ const AddUserModal = ({
               Cancel
             </button>
             <button
-              className="px-6 py-2 rounded-full bg-[#6A0F14] text-sm font-medium text-white hover:bg-[#5c0d12] disabled:opacity-60"
-              onClick={handleSaveUser}
-              disabled={
-                saving ||
-                !form.idNumber.trim() ||
-                !form.firstName.trim() ||
-                !form.lastName.trim()
-              }
-            >
-              {saving ? "Saving..." : "Save"}
-            </button>
+  className="px-6 py-2 rounded-full bg-[#6A0F14] text-sm font-medium text-white hover:bg-[#5c0d12] disabled:opacity-60"
+  onClick={async () => {
+    await handleSaveUser();   // save first
+    closeModal();             // close modal immediately
+
+    setTimeout(() => {
+      Swal.fire({
+        icon: "success",
+        title: "Success!",
+        text: "User added successfully",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    }, 200);
+  }}
+  disabled={
+    saving ||
+    form.idNumber.length !== 9 ||
+    !form.firstName.trim() ||
+    !form.lastName.trim()
+  }
+>
+  {saving ? "Saving..." : "Save"}
+</button>
           </div>
         </div>
       </div>

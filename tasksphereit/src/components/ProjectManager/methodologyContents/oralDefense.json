@@ -18,7 +18,7 @@
                   "task": "Prepare: Chapter 1",
                   "subtasks": [
                     {
-                      "subtask": "1.Introduction",
+                      "subtask": "Introduction",
                       "elements": [
                         "Project Context",
                         "Background of the Study",
@@ -1349,6 +1349,31 @@
                   "elements": []
                 }
               ]
+            },
+            {
+              "type": "Discussion & Review",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Interview User/ Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Gather User/Client Feedback on Prototype Concept",
+                  "subtasks": [],
+                  "elements": []
+                }
+              ]
             }
           ]
         },
@@ -1448,6 +1473,31 @@
                       "elements": []
                     }
                   ],
+                  "elements": []
+                }
+              ]
+            },
+            {
+              "type": "Discussion & Review",
+              "tasks": [
+                {
+                  "task": "Capstone Meeting",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Adviser Consultation",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Interview User/ Client",
+                  "subtasks": [],
+                  "elements": []
+                },
+                {
+                  "task": "Gather User/Client Feedback on Prototype Functionality",
+                  "subtasks": [],
                   "elements": []
                 }
               ]
