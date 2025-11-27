@@ -9,6 +9,7 @@ import {
   Edit,
 } from "lucide-react";
 
+
 /* ===== Firebase ===== */
 import { auth, db } from "../../config/firebase";
 import {
@@ -24,7 +25,9 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
+
 const MAROON = "#3B0304";
+
 
 /* --------------------------- Categories --------------------------- */
 const CATEGORIES = [
@@ -38,6 +41,7 @@ const CATEGORIES = [
   },
 ];
 
+
 /* --------------------------- Confirmation Dialog --------------------------- */
 function ConfirmationDialog({
   open,
@@ -49,6 +53,7 @@ function ConfirmationDialog({
   cancelText = "No",
 }) {
   if (!open) return null;
+
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overscroll-contain">
@@ -87,6 +92,7 @@ function ConfirmationDialog({
   );
 }
 
+
 /* --------------------------- Edit Due Date & Time Dialog --------------------------- */
 function EditDueDateTimeDialog({
   open,
@@ -101,6 +107,7 @@ function EditDueDateTimeDialog({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
+
   useEffect(() => {
     if (!open) return;
     if (existingTask) {
@@ -113,19 +120,21 @@ function EditDueDateTimeDialog({
     setHasChanges(false);
   }, [open, existingTask]);
 
+
   const save = async () => {
     if (!due || !time) return;
     setSaving(true);
     try {
       const dueAtMs = due && time ? new Date(`${due}T${time}:00`).getTime() : null;
-      
+     
       const currentRevision = existingTask?.revision || "No Revision";
-      const revisionNumber = currentRevision === "No Revision" ? 1 : 
+      const revisionNumber = currentRevision === "No Revision" ? 1 :
                            parseInt(currentRevision.match(/\d+/)?.[0] || "0") + 1;
-      const newRevision = revisionNumber === 1 ? "1st Revision" : 
+      const newRevision = revisionNumber === 1 ? "1st Revision" :
                          revisionNumber === 2 ? "2nd Revision" :
-                         revisionNumber === 3 ? "3rd Revision" : 
+                         revisionNumber === 3 ? "3rd Revision" :
                          `${revisionNumber}th Revision`;
+
 
       const payload = {
         dueDate: due || null,
@@ -137,15 +146,17 @@ function EditDueDateTimeDialog({
         updatedAt: serverTimestamp(),
       };
 
+
       if (existingTask?.id) {
         const cat = CATEGORIES.find((c) => c.id === category);
         const collectionName = cat ? cat.coll : "titleDefenseTasks";
-        
+       
         await updateDoc(
           doc(db, collectionName, existingTask.id),
           payload
         );
       }
+
 
       onSaved?.();
       onClose();
@@ -157,6 +168,7 @@ function EditDueDateTimeDialog({
     }
   };
 
+
   const handleClose = () => {
     if (hasChanges) {
       setShowExitConfirm(true);
@@ -165,16 +177,20 @@ function EditDueDateTimeDialog({
     }
   };
 
+
   const handleConfirmExit = () => {
     setShowExitConfirm(false);
     onClose();
   };
 
+
   const handleInputChange = () => {
     setHasChanges(true);
   };
 
+
   if (!open) return null;
+
 
   return (
     <>
@@ -199,6 +215,7 @@ function EditDueDateTimeDialog({
               </button>
             </div>
 
+
             <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-5 space-y-5">
               <div className="space-y-3">
                 <h3 className="font-medium text-neutral-700">Task Information</h3>
@@ -220,6 +237,7 @@ function EditDueDateTimeDialog({
                   </div>
                 </div>
               </div>
+
 
               <div className="grid grid-cols-12 gap-4">
                 <div className="col-span-6">
@@ -252,12 +270,14 @@ function EditDueDateTimeDialog({
                 </div>
               </div>
 
+
               <div className="bg-blue-50 rounded-lg p-3">
                 <p className="text-sm text-blue-700">
                   <strong>Note:</strong> Extending the due date/time will increase the revision number and reset the status to "To Do". This task will be moved back to active tasks immediately and will disappear from this completed tasks list.
                 </p>
               </div>
             </div>
+
 
             <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-neutral-200">
               <button
@@ -275,6 +295,7 @@ function EditDueDateTimeDialog({
         </div>
       </div>
 
+
       <ConfirmationDialog
         open={showExitConfirm}
         onClose={() => setShowExitConfirm(false)}
@@ -288,6 +309,7 @@ function EditDueDateTimeDialog({
   );
 }
 
+
 /* --------------------------- Updated Card Component -------------------------- */
 function TaskRecordCard({ title, icon: Icon, onClick }) {
   return (
@@ -297,34 +319,36 @@ function TaskRecordCard({ title, icon: Icon, onClick }) {
       className="cursor-pointer relative w-[160px] h-[220px] rounded-2xl bg-white border-2 border-gray-200 shadow-lg transition-all duration-300
                  hover:shadow-2xl hover:-translate-y-2 hover:border-gray-300 active:scale-[0.98] text-neutral-800 overflow-hidden group"
     >
-      <div 
+      <div
         className="absolute left-0 top-0 w-6 h-full rounded-l-2xl transition-all duration-300 group-hover:w-8"
         style={{ background: MAROON }}
       />
-      
-      <div 
+     
+      <div
         className="absolute bottom-0 left-0 right-0 h-6 rounded-b-2xl transition-all duration-300 group-hover:h-8"
         style={{ background: MAROON }}
       />
-      
+     
       <div className="absolute inset-0 flex flex-col items-center justify-center pl-6 pr-4 pt-2 pb-10">
         <div className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
           <ClipboardList className="w-16 h-16 mb-4 text-black" />
         </div>
-        
+       
         <span className="text-base font-bold text-center leading-tight text-black transition-all duration-300 group-hover:scale-105">
           {title}
         </span>
       </div>
 
+
       <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-           style={{ 
+           style={{
              boxShadow: `0 0 20px ${MAROON}40`,
              background: `radial-gradient(circle at center, transparent 0%, ${MAROON}10 100%)`
            }} />
     </button>
   );
 }
+
 
 const Toolbar = ({ onSearch }) => (
   <div className="flex items-center gap-3 flex-wrap">
@@ -339,6 +363,7 @@ const Toolbar = ({ onSearch }) => (
   </div>
 );
 
+
 /* ---------- Helper Functions ---------- */
 const formatTime12Hour = (time24) => {
   if (!time24 || time24 === "null") return "—";
@@ -349,13 +374,14 @@ const formatTime12Hour = (time24) => {
   return `${hour12}:${minutes} ${period}`;
 };
 
+
 const formatDateMonthDayYear = (date) => {
   if (!date) return "—";
-  
+ 
   try {
     const dateObj = date instanceof Date ? date : new Date(date);
     if (isNaN(dateObj.getTime())) return "—";
-    
+   
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return dateObj.toLocaleDateString('en-US', options);
   } catch (error) {
@@ -364,23 +390,25 @@ const formatDateMonthDayYear = (date) => {
   }
 };
 
+
 const convertFirebaseTime = (timestamp) => {
   if (!timestamp) return null;
-  
+ 
   if (timestamp.toDate && typeof timestamp.toDate === 'function') {
     return timestamp.toDate();
   }
-  
+ 
   if (timestamp instanceof Date) {
     return timestamp;
   }
-  
+ 
   if (typeof timestamp === 'string') {
     return new Date(timestamp);
   }
-  
+ 
   return null;
 };
+
 
 /* ---------- Status Badge for Completed Tasks ---------- */
 const StatusBadgeCompleted = () => (
@@ -388,6 +416,7 @@ const StatusBadgeCompleted = () => (
     Completed
   </span>
 );
+
 
 const RevisionPill = ({ value }) =>
   value && value !== "null" && value !== "No Revision" ? (
@@ -398,16 +427,17 @@ const RevisionPill = ({ value }) =>
     <span>No Revision</span>
   );
 
+
 /* --------------------------- Title Defense Tables --------------------------- */
-const TitleDefensePage1Table = ({ 
-  rows, 
-  loading, 
+const TitleDefensePage1Table = ({
+  rows,
+  loading,
   onEdit,
   onView,
   onDelete,
   deletingId,
   menuOpenId,
-  setMenuOpenId 
+  setMenuOpenId
 }) => (
   <div className="w-full rounded-xl border border-neutral-200 bg-white overflow-x-auto">
     <table className="w-full text-sm min-w-[1200px]">
@@ -519,15 +549,16 @@ const TitleDefensePage1Table = ({
   </div>
 );
 
-const TitleDefensePage2Table = ({ 
-  rows, 
-  loading, 
+
+const TitleDefensePage2Table = ({
+  rows,
+  loading,
   onEdit,
   onView,
   onDelete,
   deletingId,
   menuOpenId,
-  setMenuOpenId 
+  setMenuOpenId
 }) => (
   <div className="w-full rounded-xl border border-neutral-200 bg-white overflow-x-auto">
     <table className="w-full text-sm min-w-[800px]">
@@ -629,16 +660,17 @@ const TitleDefensePage2Table = ({
   </div>
 );
 
+
 /* --------------------------- Defense Tasks Table (Oral, Final, Final Re-defense) --------------------------- */
-const DefenseTasksTable = ({ 
-  rows, 
-  loading, 
+const DefenseTasksTable = ({
+  rows,
+  loading,
   onEdit,
   onView,
   onDelete,
   deletingId,
   menuOpenId,
-  setMenuOpenId 
+  setMenuOpenId
 }) => (
   <div className="w-full rounded-xl border border-neutral-200 bg-white overflow-x-auto">
     <table className="w-full text-sm min-w-[1400px]">
@@ -756,6 +788,7 @@ const DefenseTasksTable = ({
   </div>
 );
 
+
 /* ------------------------------ MAIN ------------------------------ */
 const TaskRecord = () => {
   const [view, setView] = useState("grid");
@@ -764,12 +797,15 @@ const TaskRecord = () => {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("team"); // "team" or "adviser"
 
+
   const [meUid, setMeUid] = useState("");
   const [teams, setTeams] = useState([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
 
+
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [records, setRecords] = useState([]);
+
 
   // Action states
   const [menuOpenId, setMenuOpenId] = useState(null);
@@ -778,8 +814,10 @@ const TaskRecord = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
 
+
   const teamUnsubsRef = useRef([]);
   const tasksUnsubRef = useRef(null);
+
 
   /* -------- identify current user -------- */
   useEffect(() => {
@@ -790,13 +828,16 @@ const TaskRecord = () => {
     return () => stop();
   }, []);
 
+
   /* -------- fetch teams of this Project Manager -------- */
   useEffect(() => {
     teamUnsubsRef.current.forEach((u) => typeof u === "function" && u());
     teamUnsubsRef.current = [];
 
+
     if (!meUid) return;
     setLoadingTeams(true);
+
 
     const merged = new Map();
     const apply = (snap) => {
@@ -804,6 +845,7 @@ const TaskRecord = () => {
       setTeams(Array.from(merged.values()));
       setLoadingTeams(false);
     };
+
 
     const stopA = onSnapshot(
       query(collection(db, "teams"), where("projectManager.uid", "==", meUid)),
@@ -816,6 +858,7 @@ const TaskRecord = () => {
       () => setLoadingTeams(false)
     );
 
+
     teamUnsubsRef.current.push(stopA, stopB);
     return () => {
       teamUnsubsRef.current.forEach((u) => typeof u === "function" && u());
@@ -823,12 +866,15 @@ const TaskRecord = () => {
     };
   }, [meUid]);
 
-  /* -------- FIXED: REAL-TIME fetch completed tasks -------- */
+
+  /* -------- FIXED: REAL-TIME fetch completed tasks - FILTERED BY PROJECT MANAGER'S TEAMS -------- */
   useEffect(() => {
     if (view !== "detail" || !category) return;
 
+
     const cat = CATEGORIES.find((c) => c.id === category);
     if (!cat) return;
+
 
     // Clean up previous listener
     if (tasksUnsubRef.current) {
@@ -836,18 +882,20 @@ const TaskRecord = () => {
       tasksUnsubRef.current = null;
     }
 
+
     setLoadingTasks(true);
+
 
     const normalize = (doc) => {
       const x = doc.data();
-      
+     
       // FIXED: Properly handle assigned name for both team and adviser tasks
       let assignedName = "Unknown";
-      
+     
       // For team tasks
       if (x.isTeamTask) {
         assignedName = "Team";
-      } 
+      }
       // For individual tasks with assignees
       else if (x.assignees && x.assignees.length > 0) {
         // Check if it's a team assignment (uid === 'team')
@@ -867,24 +915,29 @@ const TaskRecord = () => {
         }
       }
 
+
       const created = convertFirebaseTime(x.createdAt);
       const createdDisplay = formatDateMonthDayYear(created);
+
 
       const dueDate = x.dueDate || null;
       const dueTime = x.dueTime || null;
       const dueDisplay = dueDate ? formatDateMonthDayYear(dueDate) : "—";
       const timeDisplay = dueTime ? formatTime12Hour(dueTime) : "—";
 
+
       let completed = convertFirebaseTime(x.completedAt);
-      
+     
       if (!completed && x.status === "Completed") {
         completed = convertFirebaseTime(x.updatedAt);
       }
-      
+     
       const completedDisplay = completed ? formatDateMonthDayYear(completed) : "—";
+
 
       const subtask = x.subtask || x.subTask || x.subtasks || "—";
       const elements = x.elements || x.element || "—";
+
 
       return {
         _key: `${doc.id}`,
@@ -906,24 +959,36 @@ const TaskRecord = () => {
       };
     };
 
-    // FIXED: Use a simpler approach - listen to all tasks and filter completed ones in memory
-    // This ensures real-time updates work immediately
+
+    // Get team IDs for filtering
+    const teamIds = teams.map(team => team.id);
+   
+    // If no teams, don't fetch any tasks
+    if (teamIds.length === 0) {
+      setRecords([]);
+      setLoadingTasks(false);
+      return;
+    }
+
+
+    // FIXED: Only fetch tasks that belong to the project manager's teams
     const qy = query(
       collection(db, cat.coll),
+      where("team.id", "in", teamIds), // Only tasks from the project manager's teams
       orderBy("updatedAt", "desc")
     );
-    
+   
     const stop = onSnapshot(
       qy,
       (snap) => {
-        // Filter for completed tasks in memory (like Title Defense does)
+        // Filter for completed tasks in memory
         const completedTasks = snap.docs
           .map((d) => ({ doc: d, data: d.data() }))
           .filter(({ data }) => data.status === "Completed")
           .map(({ doc }) => normalize(doc))
           .sort((a, b) => (a.completed > b.completed ? -1 : 1))
           .map((r, i) => ({ ...r, no: i + 1 }));
-        
+       
         setRecords(completedTasks);
         setLoadingTasks(false);
       },
@@ -932,8 +997,9 @@ const TaskRecord = () => {
         setLoadingTasks(false);
       }
     );
-    
+   
     tasksUnsubRef.current = stop;
+
 
     return () => {
       if (tasksUnsubRef.current) {
@@ -941,15 +1007,17 @@ const TaskRecord = () => {
         tasksUnsubRef.current = null;
       }
     };
-  }, [view, category]);
+  }, [view, category, teams]); // Added teams to dependency array
+
 
   /* -------- Filter records by active tab for defense categories -------- */
   const filteredRecords = useMemo(() => {
     const isDefenseCategory = ["oral", "final", "finalRedefense"].includes(category);
-    
+   
     if (!isDefenseCategory) {
       return records;
     }
+
 
     // For defense categories, filter by taskManager
     return records.filter(record => {
@@ -961,9 +1029,11 @@ const TaskRecord = () => {
     });
   }, [records, category, activeTab]);
 
+
   /* -------- search + page derivations -------- */
   const [searchText, setSearchText] = useState("");
   useEffect(() => setSearchText(search), [search]);
+
 
   const filtered = useMemo(() => {
     const s = searchText.trim().toLowerCase();
@@ -987,11 +1057,13 @@ const TaskRecord = () => {
     );
   }, [filteredRecords, searchText]);
 
+
   const page1Rows = useMemo(() => filtered, [filtered]);
   const page2Rows = useMemo(
     () => filtered.map((r) => ({ ...r, status: "Completed" })),
     [filtered]
   );
+
 
   /* -------- Action Handlers -------- */
   const handleEdit = (task) => {
@@ -999,10 +1071,12 @@ const TaskRecord = () => {
     setMenuOpenId(null);
   };
 
+
   const handleView = (task) => {
     alert(`Viewing task: ${task.task}\nAssigned to: ${task.assignees?.[0]?.name || 'Team'}\nCompleted on: ${formatDateMonthDayYear(convertFirebaseTime(task.completedAt))}`);
     setMenuOpenId(null);
   };
+
 
   const handleDelete = (taskId) => {
     setTaskToDelete(taskId);
@@ -1010,10 +1084,11 @@ const TaskRecord = () => {
     setMenuOpenId(null);
   };
 
+
   const confirmDelete = async () => {
     if (!taskToDelete) return;
     setDeletingId(taskToDelete);
-    
+   
     try {
       const cat = CATEGORIES.find((c) => c.id === category);
       if (cat) {
@@ -1029,11 +1104,13 @@ const TaskRecord = () => {
     }
   };
 
+
   const handleEditSaved = () => {
     // The real-time listener will automatically update the records
     // because when status changes from "Completed" to "To Do", the task will be filtered out
     setEditDueDateTime(null);
   };
+
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -1043,20 +1120,23 @@ const TaskRecord = () => {
       }
     };
 
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [menuOpenId]);
 
+
   /* -------- Check if current category is a defense category -------- */
   const isDefenseCategory = ["oral", "final", "finalRedefense"].includes(category);
   const isTitleDefense = category === "title";
 
+
   /* -------- render -------- */
   if (view === "detail" && category) {
     const current = CATEGORIES.find((c) => c.id === category);
-    
+   
     return (
       <div className="space-y-4">
         {/* UPDATED HEADER - Consistent with grid view */}
@@ -1070,14 +1150,15 @@ const TaskRecord = () => {
           <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
         </div>
 
+
         {/* Tabs for Defense Categories */}
         {isDefenseCategory && (
           <div className="flex border-b border-neutral-200">
             <button
               onClick={() => setActiveTab("team")}
               className={`relative px-6 py-3 text-sm font-medium transition-all duration-300 ease-in-out ${
-                activeTab === "team" 
-                  ? "text-[#6A0F14] font-semibold" 
+                activeTab === "team"
+                  ? "text-[#6A0F14] font-semibold"
                   : "text-neutral-600 hover:text-neutral-800"
               }`}
             >
@@ -1089,8 +1170,8 @@ const TaskRecord = () => {
             <button
               onClick={() => setActiveTab("adviser")}
               className={`relative px-6 py-3 text-sm font-medium transition-all duration-300 ease-in-out ${
-                activeTab === "adviser" 
-                  ? "text-[#6A0F14] font-semibold" 
+                activeTab === "adviser"
+                  ? "text-[#6A0F14] font-semibold"
                   : "text-neutral-600 hover:text-neutral-800"
               }`}
             >
@@ -1102,7 +1183,9 @@ const TaskRecord = () => {
           </div>
         )}
 
+
         <Toolbar onSearch={setSearch} />
+
 
         {!isTitleDefense && !isDefenseCategory && (
           <div className="w-full md:w-auto md:ml-auto">
@@ -1126,6 +1209,7 @@ const TaskRecord = () => {
             </div>
           </div>
         )}
+
 
         <div className="mt-3">
           {isTitleDefense ? (
@@ -1273,6 +1357,7 @@ const TaskRecord = () => {
           )}
         </div>
 
+
         {/* Edit Dialog */}
         <EditDueDateTimeDialog
           open={!!editDueDateTime}
@@ -1281,6 +1366,7 @@ const TaskRecord = () => {
           existingTask={editDueDateTime}
           category={category}
         />
+
 
         {/* Delete Confirmation */}
         <ConfirmationDialog
@@ -1299,6 +1385,7 @@ const TaskRecord = () => {
     );
   }
 
+
   // GRID VIEW
   return (
     <div className="space-y-4">
@@ -1309,6 +1396,7 @@ const TaskRecord = () => {
         </div>
         <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
+
 
       <div className="flex flex-wrap gap-6">
         {CATEGORIES.map(({ id, title }) => (
@@ -1328,4 +1416,6 @@ const TaskRecord = () => {
   );
 };
 
+
 export default TaskRecord;
+

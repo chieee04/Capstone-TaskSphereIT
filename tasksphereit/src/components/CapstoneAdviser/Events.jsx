@@ -14,32 +14,39 @@ import {
   Edit,
   Check,
   X as CloseIcon,
+  ChevronDown,
+  Filter,
 } from "lucide-react";
- 
+
+
 import { getAdviserEvents } from "../../services/events";
 import { auth } from "../../config/firebase";
- 
+
+
 /* ===== Firebase ===== */
 import { db } from "../../config/firebase";
-import { 
-  doc, 
-  setDoc, 
-  updateDoc, 
-  getDoc, 
-  collection, 
-  getDocs, 
-  query, 
+import {
+  doc,
+  setDoc,
+  updateDoc,
+  getDoc,
+  collection,
+  getDocs,
+  query,
   where,
   onSnapshot,
   deleteDoc,
   Timestamp
 } from "firebase/firestore";
- 
+
+
 /* ===== Supabase ===== */
 import { supabase } from "../../config/supabase";
- 
+
+
 const MAROON = "#6A0F14";
- 
+
+
 /** Must match your Firestore collection name */
 const MANUSCRIPT_COLLECTION = "manuscriptSubmissions";
 const TEAMS_COLLECTION = "teams";
@@ -47,7 +54,9 @@ const TITLE_DEFENSE_COLLECTION = "titleDefenseSchedules";
 const ORAL_DEFENSE_COLLECTION = "oralDefenseSchedules";
 const FINAL_DEFENSE_COLLECTION = "finalDefenseSchedules";
 const REFINAL_DEFENSE_COLLECTION = "refinalDefenseSchedules";
- 
+const TEAM_SYSTEM_TITLES_COLLECTION = "teamSystemTitles";
+
+
 const to12h = (t) => {
   if (!t) return "";
   const [Hraw, Mraw] = String(t).split(":");
@@ -57,7 +66,8 @@ const to12h = (t) => {
   const hh = ((H + 11) % 12) + 1;
   return `${hh}:${String(M || 0).padStart(2, "0")} ${ampm}`;
 };
- 
+
+
 const CardTable = ({ children }) => (
   <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
     <div className="overflow-x-auto">
@@ -65,7 +75,8 @@ const CardTable = ({ children }) => (
     </div>
   </div>
 );
- 
+
+
 const Pill = ({ children, editable, onClick }) => (
   <span
     onClick={onClick}
@@ -78,279 +89,271 @@ const Pill = ({ children, editable, onClick }) => (
     {children}
   </span>
 );
- 
-/* ============ Editable Cell ============ */
-function EditableCell({
-  value,
-  row,
-  field,
-  onSave,
-  editing,
-  onEdit,
-  onCancel,
-  type = "number",
-}) {
-  const [editValue, setEditValue] = useState(
-    value?.toString() || (type === "number" ? "0" : "")
-  );
- 
-  useEffect(() => {
-    setEditValue(value?.toString() || (type === "number" ? "0" : ""));
-  }, [value, type]);
- 
-  const handleChange = (newValue) => {
-    if (type === "number") {
-      // Only allow numbers and limit to 100
-      const numValue = newValue.replace(/[^0-9]/g, "");
-      if (
-        numValue === "" ||
-        (parseInt(numValue) >= 0 && parseInt(numValue) <= 100)
-      ) {
-        setEditValue(numValue === "" ? "" : numValue);
-      }
-    } else {
-      setEditValue(newValue);
-    }
-  };
- 
-  const handleSave = () => {
-    let finalValue;
-    if (type === "number") {
-      finalValue = editValue === "" ? 0 : parseInt(editValue);
-    } else {
-      finalValue = editValue.trim();
-    }
-    onSave(row.id, field, finalValue);
-  };
- 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleSave();
-    } else if (e.key === "Escape") {
-      onCancel();
-    }
-  };
- 
-  if (editing) {
-    if (type === "select") {
-      return (
-        <div className="flex items-center gap-1">
-          <select
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={handleKeyPress}
-            className="px-2 py-1 border border-neutral-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-            autoFocus
-          >
-            <option value="Pending">Pending</option>
-            <option value="Passed">Passed</option>
-            <option value="Failed">Failed</option>
-            <option value="Revision">Revision</option>
-          </select>
-          <button
-            onClick={handleSave}
-            className="p-1 text-green-600 hover:bg-green-50 rounded"
-            title="Save"
-          >
-            <Check className="w-3 h-3" />
-          </button>
-          <button
-            onClick={onCancel}
-            className="p-1 text-red-600 hover:bg-red-50 rounded"
-            title="Cancel"
-          >
-            <CloseIcon className="w-3 h-3" />
-          </button>
-        </div>
-      );
-    }
- 
-    return (
-      <div className="flex items-center gap-1">
-        <input
-          type="text"
-          value={editValue}
-          onChange={(e) => handleChange(e.target.value)}
-          onKeyDown={handleKeyPress}
-          className={`px-2 py-1 border border-neutral-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-            type === "number" ? "w-16" : "w-24"
-          }`}
-          autoFocus
-        />
-        <button
-          onClick={handleSave}
-          className="p-1 text-green-600 hover:bg-green-50 rounded"
-          title="Save"
-        >
-          <Check className="w-3 h-3" />
-        </button>
-        <button
-          onClick={onCancel}
-          className="p-1 text-red-600 hover:bg-red-50 rounded"
-          title="Cancel"
-        >
-          <CloseIcon className="w-3 h-3" />
-        </button>
-      </div>
-    );
-  }
- 
-  return (
-    <div className="flex items-center gap-1 group">
-      <span>{type === "number" ? `${value ?? 0}%` : value}</span>
-      <button
-        onClick={() => onEdit(row.id, field)}
-        className="p-1 opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-neutral-600 rounded transition-opacity"
-        title="Edit"
-      >
-        <Edit className="w-3 h-3" />
-      </button>
-    </div>
-  );
-}
- 
-/* ============ Editable Verdict ============ */
-function EditableVerdict({ value, row, onSave, editing, onEdit, onCancel }) {
-  const [editValue, setEditValue] = useState(value || "Pending");
- 
-  useEffect(() => {
-    setEditValue(value || "Pending");
-  }, [value]);
- 
-  const handleSave = () => {
-    onSave(row.id, "verdict", editValue);
-  };
- 
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleSave();
-    } else if (e.key === "Escape") {
-      onCancel();
-    }
-  };
- 
-  if (editing) {
-    return (
-      <div className="flex items-center gap-1">
-        <select
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onKeyDown={handleKeyPress}
-          className="px-2 py-1 border border-neutral-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-          autoFocus
-        >
-          <option value="Pending">Pending</option>
-          <option value="Passed">Passed</option>
-          <option value="Failed">Failed</option>
-          <option value="Revision">Revision</option>
-        </select>
-        <button
-          onClick={handleSave}
-          className="p-1 text-green-600 hover:bg-green-50 rounded"
-          title="Save"
-        >
-          <Check className="w-3 h-3" />
-        </button>
-        <button
-          onClick={onCancel}
-          className="p-1 text-red-600 hover:bg-red-50 rounded"
-          title="Cancel"
-        >
-          <CloseIcon className="w-3 h-3" />
-        </button>
-      </div>
-    );
-  }
- 
-  return (
-    <div className="flex items-center gap-1 group">
-      <Pill>{value || "Pending"}</Pill>
-      <button
-        onClick={() => onEdit(row.id, "verdict")}
-        className="p-1 opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-neutral-600 rounded transition-opacity"
-        title="Edit"
-      >
-        <Edit className="w-3 h-3" />
-      </button>
-    </div>
-  );
-}
- 
-/* ============ Kebab Menu ============ */
-function KebabMenu({ row, onEdit, canEdit }) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef(null);
- 
+
+
+/* ============ Status Colors ============ */
+const STATUS_COLORS = {
+  "Pending": "#FFFFFF", // White
+  "Passed": "#809D3C", // Green
+  "Re-Check": "#578FCA", // Blue
+  "Failed": "#3B0304", // Dark Maroon
+};
+
+
+/* ============ Improved Status Dropdown ============ */
+function StatusDropdown({ value, row, onSave, canEdit }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+
+  const statusOptions = [
+    { value: "Pending", label: "Pending", color: STATUS_COLORS.Pending },
+    { value: "Passed", label: "Passed", color: STATUS_COLORS.Passed },
+    { value: "Re-Check", label: "Re-Check", color: STATUS_COLORS["Re-Check"] },
+    { value: "Failed", label: "Failed", color: STATUS_COLORS.Failed },
+  ];
+
+
+  const currentStatus = statusOptions.find(opt => opt.value === value) || statusOptions[0];
+
+
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setOpen(false);
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
       }
     };
- 
+
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
- 
-  return (
-    <div className="relative" ref={menuRef}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="p-1 rounded-md hover:bg-neutral-100 text-neutral-500"
-        aria-label="More options"
+
+
+  const handleStatusChange = (newValue) => {
+    onSave(row.id, "verdict", newValue);
+    setIsOpen(false);
+  };
+
+
+  if (!canEdit) {
+    return (
+      <span
+        className="inline-flex items-center px-3 py-1 rounded text-[12px] font-medium border border-neutral-300"
+        style={{
+          backgroundColor: currentStatus.color,
+          color: currentStatus.value === "Pending" ? "#374151" : "white"
+        }}
       >
-        <MoreVertical className="w-4 h-4" />
-      </button>
- 
-      {open && (
-        <div className="absolute right-0 top-6 bg-white border border-neutral-200 rounded-md shadow-lg z-10 min-w-[120px]">
-          <button
-            onClick={() => {
-              if (canEdit) {
-                onEdit(row);
-                setOpen(false);
-              }
-            }}
-            disabled={!canEdit}
-            className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-50 text-left ${
-              !canEdit ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-            }`}
-            title={
-              !canEdit
-                ? "Cannot edit: Due date and time not set"
-                : "Update scores"
-            }
-          >
-            <Edit className="w-4 h-4" />
-            Update
-          </button>
-        </div>
-      )}
+        {currentStatus.label}
+      </span>
+    );
+  }
+
+
+  return (
+    <div className="relative inline-flex items-center" ref={dropdownRef}>
+      <select
+        value={value}
+        onChange={(e) => handleStatusChange(e.target.value)}
+        className="text-[12px] font-medium border border-neutral-300 rounded px-3 py-1 bg-white cursor-pointer appearance-none pr-6"
+        style={{
+          backgroundColor: currentStatus.color,
+          color: currentStatus.value === "Pending" ? "#374151" : "white",
+          minWidth: '100px'
+        }}
+      >
+        {statusOptions.map((status) => (
+          <option key={status.value} value={status.value} className="text-gray-900 bg-white">
+            {status.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="w-3 h-3 absolute right-1.5 pointer-events-none" style={{ color: currentStatus.value === "Pending" ? "#374151" : "white" }} />
     </div>
   );
 }
- 
+
+
+/* ============ Improved Percentage Input with Decimal Support ============ */
+function PercentageInput({ value, row, field, onSave, canEdit }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(
+    typeof value === 'number' ? value.toFixed(2) : "0.00"
+  );
+  const inputRef = useRef(null);
+
+
+  useEffect(() => {
+    setEditValue(
+      typeof value === 'number' ? value.toFixed(2) : "0.00"
+    );
+  }, [value]);
+
+
+  const handleSave = () => {
+    // Parse the value as float and ensure it's between 0-100
+    let finalValue = parseFloat(editValue) || 0;
+   
+    // Validate range
+    if (finalValue < 0) finalValue = 0;
+    if (finalValue > 100) finalValue = 100;
+   
+    // Round to 2 decimal places
+    finalValue = Math.round(finalValue * 100) / 100;
+   
+    onSave(row.id, field, finalValue);
+    setIsEditing(false);
+  };
+
+
+  const handleChange = (newValue) => {
+    // Allow numbers, decimal point, and backspace
+    const decimalRegex = /^\d*\.?\d{0,2}$/;
+   
+    // Remove any non-numeric characters except decimal point
+    let cleanedValue = newValue.replace(/[^\d.]/g, '');
+   
+    // Ensure only one decimal point
+    const decimalParts = cleanedValue.split('.');
+    if (decimalParts.length > 2) {
+      cleanedValue = decimalParts[0] + '.' + decimalParts.slice(1).join('');
+    }
+   
+    // Limit to 4 digits before decimal and 2 after
+    if (decimalParts[0] && decimalParts[0].length > 4) {
+      cleanedValue = decimalParts[0].substring(0, 4) + (decimalParts[1] ? '.' + decimalParts[1] : '');
+    }
+   
+    // Limit to 2 decimal places
+    if (decimalParts[1] && decimalParts[1].length > 2) {
+      cleanedValue = decimalParts[0] + '.' + decimalParts[1].substring(0, 2);
+    }
+   
+    // Don't allow decimal point at the beginning
+    if (cleanedValue === '.') {
+      cleanedValue = '0.';
+    }
+   
+    // Validate against regex
+    if (decimalRegex.test(cleanedValue) || cleanedValue === '') {
+      setEditValue(cleanedValue);
+    }
+  };
+
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSave();
+    } else if (e.key === "Escape") {
+      setIsEditing(false);
+      setEditValue(typeof value === 'number' ? value.toFixed(2) : "0.00");
+    }
+  };
+
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+
+  // Format display value with 2 decimal places
+  const displayValue = typeof value === 'number' ? value.toFixed(2) : "0.00";
+
+
+  if (!canEdit) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="font-medium text-neutral-800 text-sm">{displayValue}%</span>
+      </div>
+    );
+  }
+
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="relative">
+          <input
+            ref={inputRef}
+            type="text"
+            value={editValue}
+            onChange={(e) => handleChange(e.target.value)}
+            onKeyDown={handleKeyPress}
+            className="w-24 px-3 py-1.5 border border-neutral-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right bg-white"
+            style={{ fontSize: '13px' }}
+            placeholder="0.00"
+          />
+          <span className="absolute right-8 top-1/2 transform -translate-y-1/2 text-sm text-neutral-500 pointer-events-none">
+            %
+          </span>
+        </div>
+        <button
+          onClick={handleSave}
+          className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+          title="Save"
+        >
+          <Check className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => {
+            setIsEditing(false);
+            setEditValue(typeof value === 'number' ? value.toFixed(2) : "0.00");
+          }}
+          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+          title="Cancel"
+        >
+          <CloseIcon className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-medium text-neutral-800 text-sm">{displayValue}%</span>
+      <button
+        onClick={() => setIsEditing(true)}
+        className="p-1.5 text-neutral-700 rounded transition-all hover:bg-neutral-100"
+        title={`Edit ${field === 'plag' ? 'Plagiarism' : 'AI'} score`}
+        style={{ color: "#3B0304" }}
+      >
+        <Edit className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+
 /* ============ Upload helpers ============ */
 const safeName = (name = "") =>
   name
     .replace(/[^a-zA-Z0-9._-]/g, "_")
     .replace(/_+/g, "_")
     .slice(0, 120);
- 
+
+
 async function uploadToSupabase(file, row) {
   const fileKey = `${row.teamId || "no-team"}/${row.id}/${
     Date.now() + "-" + Math.random().toString(36).slice(2)
   }-${safeName(file.name)}`;
- 
+
+
   const { error } = await supabase.storage
     .from("user-manuscripts")
     .upload(fileKey, file, { upsert: false });
   if (error) throw new Error(error.message);
- 
+
+
   const {
     data: { publicUrl },
   } = supabase.storage.from("user-manuscripts").getPublicUrl(fileKey);
- 
+
+
   return {
     name: file.name,
     fileName: fileKey,
@@ -358,7 +361,8 @@ async function uploadToSupabase(file, row) {
     uploadedAt: new Date().toISOString(),
   };
 }
- 
+
+
 async function upsertFileUrl(docId, nextList) {
   const ref = doc(db, MANUSCRIPT_COLLECTION, docId);
   try {
@@ -367,7 +371,8 @@ async function upsertFileUrl(docId, nextList) {
     await setDoc(ref, { fileUrl: nextList }, { merge: true });
   }
 }
- 
+
+
 /* ============ Upload Modal ============ */
 function UploadModal({ open, row, onClose, onSaved }) {
   const [pendingFiles, setPendingFiles] = useState([]);
@@ -375,16 +380,19 @@ function UploadModal({ open, row, onClose, onSaved }) {
   const [toDelete, setToDelete] = useState(new Set());
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef(null);
- 
+
+
   // Initialize when opened
   useEffect(() => {
     if (!open || !row?.id) return;
- 
+
+
     // snapshot existing files locally for editing
     setExisting(Array.isArray(row.fileUrl) ? [...row.fileUrl] : []);
     setPendingFiles([]);
     setToDelete(new Set());
- 
+
+
     // ensure fileUrl exists remotely too
     (async () => {
       if (!Array.isArray(row.fileUrl)) {
@@ -402,21 +410,26 @@ function UploadModal({ open, row, onClose, onSaved }) {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, row?.id]);
- 
+
+
   if (!open || !row) return null;
- 
+
+
   const pickFiles = () => inputRef.current?.click();
- 
+
+
   const onFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setPendingFiles((prev) => [...prev, ...files]);
     e.target.value = "";
   };
- 
+
+
   const removePending = (idx) =>
     setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
- 
+
+
   const removeExisting = (fileName) => {
     setExisting((prev) => prev.filter((f) => f.fileName !== fileName));
     setToDelete((prev) => {
@@ -425,7 +438,8 @@ function UploadModal({ open, row, onClose, onSaved }) {
       return next;
     });
   };
- 
+
+
   const save = async () => {
     if (uploading || !row?.id) return;
     setUploading(true);
@@ -438,17 +452,20 @@ function UploadModal({ open, row, onClose, onSaved }) {
           .remove(names);
         if (error) console.warn("Supabase remove error:", error.message);
       }
- 
+
+
       // 2) upload new files
       const uploaded =
         pendingFiles.length > 0
           ? await Promise.all(pendingFiles.map((f) => uploadToSupabase(f, row)))
           : [];
- 
+
+
       // 3) compose final list & write to Firestore
       const nextList = [...existing, ...uploaded];
       await upsertFileUrl(row.id, nextList);
- 
+
+
       onSaved?.(nextList);
       onClose();
     } catch (e) {
@@ -458,9 +475,11 @@ function UploadModal({ open, row, onClose, onSaved }) {
       setUploading(false);
     }
   };
- 
+
+
   const hasChanges = pendingFiles.length > 0 || toDelete.size > 0;
- 
+
+
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
@@ -484,7 +503,8 @@ function UploadModal({ open, row, onClose, onSaved }) {
               <X className="w-5 h-5" />
             </button>
           </div>
- 
+
+
           {/* Body (scrollable) */}
           <div className="flex-1 px-5 pb-5 overflow-y-auto space-y-5">
             {/* Existing files */}
@@ -548,7 +568,8 @@ function UploadModal({ open, row, onClose, onSaved }) {
                 )}
               </div>
             </div>
- 
+
+
             {/* Pending attachments */}
             <div className="rounded-xl border border-neutral-200">
               <div className="px-4 py-2 border-b border-neutral-200 text-sm font-semibold flex items-center justify-between">
@@ -569,7 +590,8 @@ function UploadModal({ open, row, onClose, onSaved }) {
                   onChange={onFileChange}
                 />
               </div>
- 
+
+
               <div className="p-4">
                 {pendingFiles.length === 0 ? (
                   <div className="text-sm text-neutral-600">
@@ -605,7 +627,8 @@ function UploadModal({ open, row, onClose, onSaved }) {
               </div>
             </div>
           </div>
- 
+
+
           {/* Footer */}
           <div className="flex justify-end gap-2 px-5 pb-4 pt-2">
             <button
@@ -631,14 +654,16 @@ function UploadModal({ open, row, onClose, onSaved }) {
     </div>
   );
 }
- 
+
+
 // Helper function to get last name from full name
 const getLastName = (fullName) => {
   if (!fullName) return "";
   const parts = fullName.trim().split(" ");
   return parts[parts.length - 1] || "";
 };
- 
+
+
 // Helper function to format team name
 const formatTeamName = (teamData) => {
   if (teamData.manager && teamData.manager.fullName) {
@@ -647,7 +672,172 @@ const formatTeamName = (teamData) => {
   }
   return teamData.name || "Unknown Team";
 };
+
+
+/* ============================ Updated Category Card ============================ */
+function CategoryCard({ title, icon: Icon, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="cursor-pointer relative w-[160px] h-[220px] rounded-2xl bg-white border-2 border-gray-200 shadow-lg transition-all duration-300
+                 hover:shadow-2xl hover:-translate-y-2 hover:border-gray-300 active:scale-[0.98] text-neutral-800 overflow-hidden group"
+    >
+      {/* Bottom accent only - removed left side accent */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-6 rounded-b-2xl transition-all duration-300 group-hover:h-8"
+        style={{ background: MAROON }}
+      />
+     
+      {/* Central content area */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 pb-10">
+        {/* Task icon - centered in main white area with animation */}
+        <div className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+          <Icon className="w-16 h-16 mb-4 text-black" />
+        </div>
+       
+        {/* Title text - positioned below icon */}
+        <span className="text-base font-bold text-center leading-tight text-black transition-all duration-300 group-hover:scale-105">
+          {title}
+        </span>
+      </div>
+
+
+      {/* Subtle glow effect on hover */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+           style={{
+             boxShadow: `0 0 20px ${MAROON}40`,
+             background: `radial-gradient(circle at center, transparent 0%, ${MAROON}10 100%)`
+           }} />
+    </button>
+  );
+}
+
+
+// Helper function to fetch system titles for teams
+const fetchSystemTitlesForTeams = async (teamIds) => {
+  const titlesMap = {};
  
+  try {
+    // Fetch system titles from teamSystemTitles collection
+    const titlePromises = teamIds.map(async (teamId) => {
+      try {
+        const titleDoc = await getDoc(doc(db, TEAM_SYSTEM_TITLES_COLLECTION, teamId));
+        if (titleDoc.exists()) {
+          const titleData = titleDoc.data();
+          titlesMap[teamId] = titleData.systemTitle || "";
+        } else {
+          titlesMap[teamId] = "";
+        }
+      } catch (error) {
+        console.error(`Error fetching title for team ${teamId}:`, error);
+        titlesMap[teamId] = "";
+      }
+    });
+
+
+    await Promise.all(titlePromises);
+  } catch (error) {
+    console.error("Error fetching system titles:", error);
+  }
+
+
+  return titlesMap;
+};
+
+
+// Helper function to check if adviser is panelist in a defense and get the exact panelist name
+const isAdviserPanelist = (defenseData, adviserName) => {
+  if (!adviserName || !defenseData.panelists) return { isPanelist: false, panelistName: null };
+ 
+  const panelists = Array.isArray(defenseData.panelists)
+    ? defenseData.panelists
+    : [defenseData.panelists].filter(Boolean);
+ 
+  // Find the exact panelist name that matches the adviser
+  const matchingPanelist = panelists.find(panelist =>
+    panelist && panelist.toLowerCase().includes(adviserName.toLowerCase())
+  );
+ 
+  return {
+    isPanelist: !!matchingPanelist,
+    panelistName: matchingPanelist || null
+  };
+};
+
+
+/* ============================ Filter Dropdown ============================ */
+function DefenseFilterDropdown({ value, onChange }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+
+  const options = [
+    { value: "adviser", label: "Adviser" },
+    { value: "panelists", label: "Panelists" }
+  ];
+
+
+  const currentOption = options.find(opt => opt.value === value) || options[0];
+
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+
+  const handleOptionSelect = (optionValue) => {
+    onChange(optionValue);
+    setIsOpen(false);
+  };
+
+
+  return (
+    <div className="relative inline-block text-left" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-maroon"
+        style={{ borderColor: MAROON }}
+      >
+        <Filter className="w-4 h-4" />
+        {currentOption.label}
+        <ChevronDown className="w-4 h-4" />
+      </button>
+
+
+      {isOpen && (
+        <div className="absolute right-0 z-10 mt-2 w-40 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+          <div className="py-1">
+            {options.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handleOptionSelect(option.value)}
+                className={`block w-full text-left px-4 py-2 text-sm ${
+                  value === option.value
+                    ? 'bg-gray-100 text-gray-900'
+                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 /* ============================ Main ============================ */
 export default function AdviserEvents() {
   const [rows, setRows] = useState({
@@ -657,6 +847,11 @@ export default function AdviserEvents() {
     finalDefense: [],
     finalRedefense: [],
   });
+  const [allDefenses, setAllDefenses] = useState({
+    titleDefense: [],
+    oralDefense: [],
+    finalDefense: [],
+  });
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState(
@@ -665,84 +860,116 @@ export default function AdviserEvents() {
   const [defTab, setDefTab] = useState(
     (searchParams.get("tab") || "title").toLowerCase()
   );
- 
+  const [defenseFilter, setDefenseFilter] = useState("adviser");
+  const [adviserName, setAdviserName] = useState("");
+  const [adviserTeams, setAdviserTeams] = useState([]);
+
+
   // Upload modal state
   const [uploadRow, setUploadRow] = useState(null);
- 
+
+
   // Inline editing state
   const [editingCells, setEditingCells] = useState(new Set()); // Set of 'docId-field' strings
- 
+
+
   const uid =
     auth?.currentUser?.uid ??
     (typeof window !== "undefined" ? localStorage.getItem("uid") : null);
- 
-  // FIXED: Enhanced function to fetch ALL defense schedules - only show teams in their specific schedules
+
+
+  // Get adviser's name and teams
+  useEffect(() => {
+    const fetchAdviserData = async () => {
+      if (!uid) return;
+     
+      try {
+        // Get adviser's name
+        const userDoc = await getDoc(doc(db, "users", uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setAdviserName(userData.fullName || "");
+        }
+
+
+        // Get adviser's teams
+        const teamsQuery = query(
+          collection(db, TEAMS_COLLECTION),
+          where("adviser.uid", "==", uid)
+        );
+        const teamsSnapshot = await getDocs(teamsQuery);
+        const teamsData = teamsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setAdviserTeams(teamsData);
+      } catch (error) {
+        console.error("Error fetching adviser data:", error);
+      }
+    };
+
+
+    fetchAdviserData();
+  }, [uid]);
+
+
+  // Enhanced function to fetch ALL defense schedules including those where adviser is panelist
   const fetchAllDefenseSchedules = async () => {
     try {
       console.log("Fetching ALL defense schedules from separate collections...");
- 
-      // Get adviser's teams first
-      const teamsQuery = query(
-        collection(db, TEAMS_COLLECTION),
-        where("adviser.uid", "==", uid)
-      );
-      const teamsSnapshot = await getDocs(teamsQuery);
-      const adviserTeams = teamsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
- 
-      console.log("Adviser's teams:", adviserTeams);
- 
-      if (adviserTeams.length === 0) {
-        console.log("No teams found for this adviser");
-        setRows(prev => ({
-          ...prev,
-          titleDefense: [],
-          oralDefense: [],
-          finalDefense: [],
-          finalRedefense: []
-        }));
-        return;
-      }
- 
-      const adviserTeamIds = adviserTeams.map(team => team.id);
- 
-      // Fetch from each collection separately
-      const [titleDefenseSnapshot, oralDefenseSnapshot, finalDefenseSnapshot, refinalDefenseSnapshot] = await Promise.all([
+
+
+      // Fetch system titles for all teams
+      const systemTitlesMap = await fetchSystemTitlesForTeams(adviserTeams.map(team => team.id));
+
+
+      // Fetch from each collection separately - get ALL documents, not just adviser's teams
+      const [titleDefenseSnapshot, oralDefenseSnapshot, finalDefenseSnapshot] = await Promise.all([
         getDocs(collection(db, TITLE_DEFENSE_COLLECTION)),
         getDocs(collection(db, ORAL_DEFENSE_COLLECTION)),
-        getDocs(collection(db, FINAL_DEFENSE_COLLECTION)),
-        getDocs(collection(db, REFINAL_DEFENSE_COLLECTION))
+        getDocs(collection(db, FINAL_DEFENSE_COLLECTION))
       ]);
- 
+
+
       console.log("Raw defense data counts:", {
         titleDefense: titleDefenseSnapshot.docs.length,
         oralDefense: oralDefenseSnapshot.docs.length,
-        finalDefense: finalDefenseSnapshot.docs.length,
-        refinalDefense: refinalDefenseSnapshot.docs.length
+        finalDefense: finalDefenseSnapshot.docs.length
       });
- 
-      // FIXED: Process each collection independently - only show teams that have schedules in that specific collection
-      const processDefenseData = (snapshot, defenseType, teamDataMap) => {
+
+
+      // Process defense data for ALL teams (not just adviser's teams)
+      const processAllDefenseData = (snapshot, defenseType) => {
         return snapshot.docs
           .filter(doc => {
             const data = doc.data();
-            // Only include schedules that belong to adviser's teams AND have valid schedule data
-            return data.teamId && adviserTeamIds.includes(data.teamId) && 
-                   (data.date || data.scheduleDate || data.deadline); // Must have some date
+            // Include all schedules that have valid schedule data
+            return (data.date || data.scheduleDate || data.deadline);
           })
           .map((doc) => {
             const data = doc.data();
-            const teamData = teamDataMap[data.teamId];
+           
+            // Try to get team data for team name and title
             let currentTeamName = "Unknown Team";
             let currentTeamTitle = "";
- 
-            if (teamData) {
-              currentTeamName = formatTeamName(teamData);
-              currentTeamTitle = teamData.projectTitle || teamData.title || data.title || "";
+            let isAdviserTeam = false;
+
+
+            if (data.teamId) {
+              const adviserTeam = adviserTeams.find(team => team.id === data.teamId);
+              if (adviserTeam) {
+                currentTeamName = formatTeamName(adviserTeam);
+                currentTeamTitle = systemTitlesMap[data.teamId] || adviserTeam.projectTitle || adviserTeam.title || data.title || "";
+                isAdviserTeam = true;
+              } else {
+                // For non-advisory teams, try to fetch team data
+                // In a real scenario, you might want to fetch this data
+                currentTeamName = data.teamName || "Unknown Team";
+                currentTeamTitle = data.title || "";
+              }
             }
- 
+
+
             // Enhanced panelists extraction
             let panelists = [];
             if (Array.isArray(data.panelists)) {
@@ -756,16 +983,20 @@ export default function AdviserEvents() {
             } else if (data.panelistsNames) {
               panelists = [data.panelistsNames];
             }
- 
+
+
             // Enhanced date extraction
             const date = data.date || data.scheduleDate || data.deadline || data.scheduledDate || "";
- 
+
+
             // Enhanced time extraction
             const timeStart = data.timeStart || data.time || data.scheduleTime || data.deadlineTime || data.startTime || "";
- 
+
+
             // Enhanced verdict extraction
             const verdict = data.verdict || data.status || data.result || data.outcome || "Pending";
- 
+
+
             return {
               id: doc.id,
               ...data,
@@ -776,134 +1007,106 @@ export default function AdviserEvents() {
               timeStart: timeStart,
               panelists: panelists,
               verdict: verdict,
-              isAdviserTeam: true
+              isAdviserTeam: isAdviserTeam,
+              teamId: data.teamId
             };
           });
       };
- 
-      // Create team data map for quick lookup
-      const teamDataMap = {};
-      adviserTeams.forEach(team => {
-        teamDataMap[team.id] = team;
+
+
+      // Process all defense data
+      const allTitleDefense = processAllDefenseData(titleDefenseSnapshot, 'title');
+      const allOralDefense = processAllDefenseData(oralDefenseSnapshot, 'oral');
+      const allFinalDefense = processAllDefenseData(finalDefenseSnapshot, 'final');
+
+
+      console.log("All processed defense schedules:", {
+        titleDefense: allTitleDefense.length,
+        oralDefense: allOralDefense.length,
+        finalDefense: allFinalDefense.length
       });
- 
-      // Process each defense type independently
-      // Each tab will ONLY show teams that have schedules in that specific collection
-      const titleDefense = processDefenseData(titleDefenseSnapshot, 'title', teamDataMap);
-      const oralDefense = processDefenseData(oralDefenseSnapshot, 'oral', teamDataMap);
-      const finalDefense = processDefenseData(finalDefenseSnapshot, 'final', teamDataMap);
-      const finalRedefense = processDefenseData(refinalDefenseSnapshot, 'redefense', teamDataMap);
- 
-      console.log("Final processed defense schedules:", {
-        titleDefense: titleDefense.map(d => ({ 
-          id: d.id, 
-          teamName: d.teamName, 
-          teamId: d.teamId, 
-          date: d.date, 
-          timeStart: d.timeStart,
-          collection: 'titleDefense'
-        })),
-        oralDefense: oralDefense.map(d => ({ 
-          id: d.id, 
-          teamName: d.teamName, 
-          teamId: d.teamId, 
-          date: d.date, 
-          timeStart: d.timeStart,
-          collection: 'oralDefense'
-        })),
-        finalDefense: finalDefense.map(d => ({ 
-          id: d.id, 
-          teamName: d.teamName, 
-          teamId: d.teamId, 
-          date: d.date, 
-          timeStart: d.timeStart,
-          collection: 'finalDefense'
-        })),
-        finalRedefense: finalRedefense.map(d => ({ 
-          id: d.id, 
-          teamName: d.teamName, 
-          teamId: d.teamId, 
-          date: d.date, 
-          timeStart: d.timeStart,
-          collection: 'refinalDefense'
-        }))
+
+
+      // Store all defenses for filtering
+      setAllDefenses({
+        titleDefense: allTitleDefense,
+        oralDefense: allOralDefense,
+        finalDefense: allFinalDefense
       });
- 
-      // FIXED: Set each defense type independently - no cross-population
-      setRows(prev => ({
-        ...prev,
-        titleDefense: titleDefense, // Only teams with title defense schedules
-        oralDefense: oralDefense,   // Only teams with oral defense schedules
-        finalDefense: finalDefense, // Only teams with final defense schedules
-        finalRedefense: finalRedefense // Only teams with re-defense schedules
-      }));
- 
+
+
     } catch (error) {
       console.error("Error fetching defense schedules:", error);
-      setRows(prev => ({
-        ...prev,
+      setAllDefenses({
         titleDefense: [],
         oralDefense: [],
-        finalDefense: [],
-        finalRedefense: []
-      }));
+        finalDefense: []
+      });
     }
   };
- 
+
+
   // Get adviser's teams and their manuscript submissions
   const fetchAdviserManuscripts = async () => {
     try {
       setLoading(true);
       console.log("Fetching manuscripts for adviser UID:", uid);
- 
-      // First, get all teams where this user is the adviser
-      const teamsQuery = query(
-        collection(db, TEAMS_COLLECTION),
-        where("adviser.uid", "==", uid)
-      );
-      const teamsSnapshot = await getDocs(teamsQuery);
-      const adviserTeamIds = teamsSnapshot.docs.map(doc => doc.id);
- 
-      console.log("Adviser's team IDs:", adviserTeamIds);
- 
-      if (adviserTeamIds.length === 0) {
+
+
+      if (adviserTeams.length === 0) {
         console.log("No teams found for this adviser");
         setRows(prev => ({ ...prev, manuscript: [] }));
         return;
       }
- 
+
+
+      const adviserTeamIds = adviserTeams.map(team => team.id);
+
+
+      // Fetch system titles for all teams
+      const systemTitlesMap = await fetchSystemTitlesForTeams(adviserTeamIds);
+
+
       // Get manuscript submissions for these teams
       const manuscriptsQuery = query(
         collection(db, MANUSCRIPT_COLLECTION),
         where("teamId", "in", adviserTeamIds)
       );
- 
+
+
       const manuscriptsSnapshot = await getDocs(manuscriptsQuery);
       const manuscriptsData = manuscriptsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
- 
+
+
       console.log("Raw manuscript data:", manuscriptsData);
- 
+
+
       // Process manuscript data with team information
       const processedManuscripts = await Promise.all(
         manuscriptsData.map(async (m) => {
           // Get current team info to ensure we have the latest team name
           let currentTeamName = m.teamName || "Unknown Team";
+          let currentTeamTitle = "";
           try {
             const teamDoc = await getDoc(doc(db, TEAMS_COLLECTION, m.teamId));
             if (teamDoc.exists()) {
               const teamData = teamDoc.data();
               currentTeamName = formatTeamName(teamData);
+              // Get system title from the titles map we fetched
+              currentTeamTitle = systemTitlesMap[m.teamId] || teamData.projectTitle || teamData.title || m.title || "";
             }
           } catch (error) {
             console.error("Error fetching team data:", error);
           }
- 
+
+
           // Extract date and time fields - check ALL possible field names
           const date = m.date || m.dueDate || m.submissionDate || m.deadline || "";
- 
+
+
           let duetime = "";
           if (m.duetime) duetime = m.duetime;
           else if (m.dueTime) duetime = m.dueTime;
@@ -911,14 +1114,17 @@ export default function AdviserEvents() {
           else if (m.submissionTime) duetime = m.submissionTime;
           else if (m.deadlineTime) duetime = m.deadlineTime;
           else if (m.timeStart) duetime = m.timeStart;
- 
+
+
           console.log(`Processing manuscript ${m.id}:`, {
             date,
             duetime,
             teamName: currentTeamName,
+            title: currentTeamTitle,
             allFields: Object.keys(m)
           });
- 
+
+
           return {
             ...m,
             fileUrl: Array.isArray(m.fileUrl) ? m.fileUrl : [],
@@ -926,17 +1132,19 @@ export default function AdviserEvents() {
             date: date,
             timeStart: duetime, // For compatibility
             teamName: currentTeamName,
-            title: m.title || m.projectTitle || "",
+            title: currentTeamTitle,
             plag: m.plag || m.plagiarism || 0,
             ai: m.ai || m.aiScore || 0,
             verdict: m.verdict || m.status || "Pending",
           };
         })
       );
- 
+
+
       console.log("Processed manuscripts:", processedManuscripts);
       setRows(prev => ({ ...prev, manuscript: processedManuscripts }));
- 
+
+
     } catch (error) {
       console.error("Error fetching adviser manuscripts:", error);
       setRows(prev => ({ ...prev, manuscript: [] }));
@@ -944,83 +1152,69 @@ export default function AdviserEvents() {
       setLoading(false);
     }
   };
- 
+
+
   // Real-time listener for team and defense schedule changes
   useEffect(() => {
     if (!uid) return;
- 
+
+
     // Listen for changes in teams collection
     const teamsQuery = query(
       collection(db, TEAMS_COLLECTION),
       where("adviser.uid", "==", uid)
     );
- 
+
+
     const unsubscribeTeams = onSnapshot(teamsQuery, (snapshot) => {
+      const updatedTeams = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setAdviserTeams(updatedTeams);
+
+
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'removed') {
           // Team was dissolved - remove its manuscripts and defense schedules
           const dissolvedTeamId = change.doc.id;
           console.log("Team dissolved, removing data for team:", dissolvedTeamId);
- 
+
+
           // Remove manuscripts
           setRows(prev => ({
             ...prev,
             manuscript: prev.manuscript.filter(m => m.teamId !== dissolvedTeamId)
           }));
- 
-          // Remove defense schedules
-          setRows(prev => ({
-            ...prev,
-            titleDefense: prev.titleDefense.filter(d => d.teamId !== dissolvedTeamId),
-            oralDefense: prev.oralDefense.filter(d => d.teamId !== dissolvedTeamId),
-            finalDefense: prev.finalDefense.filter(d => d.teamId !== dissolvedTeamId),
-            finalRedefense: prev.finalRedefense.filter(d => d.teamId !== dissolvedTeamId)
-          }));
- 
+
+
         } else if (change.type === 'modified') {
           // Team was updated (manager changed, etc.) - update team names
           const updatedTeam = { id: change.doc.id, ...change.doc.data() };
           console.log("Team updated:", updatedTeam);
- 
-          // Update team name in manuscripts and defense schedules
+
+
+          // Update team name in manuscripts
           const newTeamName = formatTeamName(updatedTeam);
           const newTeamTitle = updatedTeam.projectTitle || updatedTeam.title || "";
- 
+
+
           setRows(prev => ({
             ...prev,
-            manuscript: prev.manuscript.map(m => 
-              m.teamId === updatedTeam.id 
+            manuscript: prev.manuscript.map(m =>
+              m.teamId === updatedTeam.id
                 ? { ...m, teamName: newTeamName }
                 : m
-            ),
-            titleDefense: prev.titleDefense.map(d =>
-              d.teamId === updatedTeam.id
-                ? { ...d, teamName: newTeamName, title: newTeamTitle }
-                : d
-            ),
-            oralDefense: prev.oralDefense.map(d =>
-              d.teamId === updatedTeam.id
-                ? { ...d, teamName: newTeamName, title: newTeamTitle }
-                : d
-            ),
-            finalDefense: prev.finalDefense.map(d =>
-              d.teamId === updatedTeam.id
-                ? { ...d, teamName: newTeamName, title: newTeamTitle }
-                : d
-            ),
-            finalRedefense: prev.finalRedefense.map(d =>
-              d.teamId === updatedTeam.id
-                ? { ...d, teamName: newTeamName, title: newTeamTitle }
-                : d
             )
           }));
         }
       });
     });
- 
+
+
     // Listen for manuscript changes
     const manuscriptsUnsubscribe = onSnapshot(
-      collection(db, MANUSCRIPT_COLLECTION), 
+      collection(db, MANUSCRIPT_COLLECTION),
       (snapshot) => {
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'removed') {
@@ -1034,7 +1228,8 @@ export default function AdviserEvents() {
         });
       }
     );
- 
+
+
     // Listen for ALL defense schedule changes from all collections
     const titleDefenseUnsubscribe = onSnapshot(
       collection(db, TITLE_DEFENSE_COLLECTION),
@@ -1043,7 +1238,8 @@ export default function AdviserEvents() {
         fetchAllDefenseSchedules();
       }
     );
- 
+
+
     const oralDefenseUnsubscribe = onSnapshot(
       collection(db, ORAL_DEFENSE_COLLECTION),
       () => {
@@ -1051,7 +1247,8 @@ export default function AdviserEvents() {
         fetchAllDefenseSchedules();
       }
     );
- 
+
+
     const finalDefenseUnsubscribe = onSnapshot(
       collection(db, FINAL_DEFENSE_COLLECTION),
       () => {
@@ -1059,33 +1256,27 @@ export default function AdviserEvents() {
         fetchAllDefenseSchedules();
       }
     );
- 
-    const refinalDefenseUnsubscribe = onSnapshot(
-      collection(db, REFINAL_DEFENSE_COLLECTION),
-      () => {
-        console.log("Re-final defense schedules changed, refetching...");
-        fetchAllDefenseSchedules();
-      }
-    );
- 
+
+
     return () => {
       unsubscribeTeams();
       manuscriptsUnsubscribe();
       titleDefenseUnsubscribe();
       oralDefenseUnsubscribe();
       finalDefenseUnsubscribe();
-      refinalDefenseUnsubscribe();
     };
   }, [uid]);
- 
-  // Initial data fetch
+
+
+  // Initial data fetch when adviser teams are loaded
   useEffect(() => {
-    if (uid) {
+    if (uid && adviserTeams.length > 0) {
       fetchAdviserManuscripts();
       fetchAllDefenseSchedules();
     }
-  }, [uid]);
- 
+  }, [uid, adviserTeams]);
+
+
   // Refresh data when switching to defenses view
   useEffect(() => {
     if (view === "defenses" && uid) {
@@ -1093,7 +1284,8 @@ export default function AdviserEvents() {
       fetchAllDefenseSchedules();
     }
   }, [view, uid]);
- 
+
+
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     if (view === "menu") next.delete("view");
@@ -1103,12 +1295,14 @@ export default function AdviserEvents() {
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, defTab]);
- 
+
+
   // FIXED: Updated canEditRow function
   const canEditRow = (row) => {
     const hasDate = !!row.date && row.date.trim() !== "";
     const hasDuetime = !!row.duetime && row.duetime.trim() !== "";
- 
+
+
     console.log("canEditRow check for:", row.teamName, {
       date: row.date,
       duetime: row.duetime,
@@ -1116,15 +1310,18 @@ export default function AdviserEvents() {
       hasDuetime,
       canEdit: hasDate && hasDuetime,
     });
- 
+
+
     return hasDate && hasDuetime;
   };
- 
+
+
   const handleSaveScore = async (docId, field, value) => {
     try {
       const ref = doc(db, MANUSCRIPT_COLLECTION, docId);
       await updateDoc(ref, { [field]: value });
- 
+
+
       // Update local state
       setRows((prev) => ({
         ...prev,
@@ -1132,7 +1329,8 @@ export default function AdviserEvents() {
           m.id === docId ? { ...m, [field]: value } : m
         ),
       }));
- 
+
+
       // Remove from editing set
       setEditingCells((prev) => {
         const next = new Set(prev);
@@ -1144,70 +1342,80 @@ export default function AdviserEvents() {
       alert("Failed to update score. Please try again.");
     }
   };
- 
+
+
   const handleEditCell = (docId, field) => {
     const row = rows.manuscript.find((m) => m.id === docId);
     if (row && canEditRow(row)) {
       setEditingCells((prev) => new Set(prev).add(`${docId}-${field}`));
     }
   };
- 
-  const handleBulkEdit = (row) => {
-    if (canEditRow(row)) {
-      // Enable editing for all three fields at once
-      setEditingCells(
-        new Set([`${row.id}-plag`, `${row.id}-ai`, `${row.id}-verdict`])
-      );
+
+
+  // Filter defense data based on selected filter
+  const getFilteredDefenseData = (defenseData) => {
+    if (defenseFilter === "adviser") {
+      // Show only advisory teams (teams where user is adviser)
+      return defenseData.filter(defense => defense.isAdviserTeam);
+    } else if (defenseFilter === "panelists" && adviserName) {
+      // Show only defenses where user is panelist AND their name appears in panelists list
+      return defenseData
+        .map(defense => {
+          const { isPanelist, panelistName } = isAdviserPanelist(defense, adviserName);
+          return { ...defense, isPanelist, panelistName };
+        })
+        .filter(defense => defense.isPanelist && defense.panelistName);
+    }
+    return defenseData;
+  };
+
+
+  // Get the currently displayed defense data based on active tab and filter
+  const getCurrentDefenseData = () => {
+    switch (defTab) {
+      case "title":
+        // For Title Defense: Always filter by panelist name - only show if adviser name is in panelists
+        if (adviserName) {
+          return allDefenses.titleDefense
+            .map(defense => {
+              const { isPanelist, panelistName } = isAdviserPanelist(defense, adviserName);
+              return { ...defense, isPanelist, panelistName };
+            })
+            .filter(defense => defense.isPanelist && defense.panelistName);
+        } else {
+          return [];
+        }
+      case "oral":
+        return getFilteredDefenseData(allDefenses.oralDefense);
+      case "final":
+        return getFilteredDefenseData(allDefenses.finalDefense);
+      default:
+        return [];
     }
   };
- 
-  const handleCancelEdit = (docId, field) => {
-    setEditingCells((prev) => {
-      const next = new Set(prev);
-      next.delete(`${docId}-${field}`);
-      return next;
-    });
-  };
- 
-  const isEditing = (docId, field) => {
-    return editingCells.has(`${docId}-${field}`);
-  };
- 
+
+
+  const currentDefenseData = getCurrentDefenseData();
+
+
+  /* ===== Updated Header to match ProjectManagerTasks ===== */
   const Header = (
     <div className="space-y-2">
-      <div
-        className="flex items-center gap-2 text-[18px] font-semibold"
-        style={{ color: MAROON }}
-      >
+      <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
         <ClipboardList className="w-5 h-5" />
         <span>Events</span>
       </div>
-      <div className="h-[3px] w-full" style={{ backgroundColor: MAROON }} />
+      {/* Divider with rounded edges - matching ProjectManagerTasks */}
+      <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
     </div>
   );
- 
-  const CategoryCard = ({ title, icon: Icon, onClick }) => (
-    <button
-      onClick={onClick}
-      className="w-[220px] h-[120px] rounded-xl border border-neutral-200 bg-white shadow hover:shadow-md text-left overflow-hidden"
-    >
-      <div className="h-full flex">
-        <div className="w-2" style={{ backgroundColor: MAROON }} />
-        <div className="flex-1 p-4 flex items-center gap-3">
-          <Icon className="w-8 h-8 text-neutral-800" />
-          <div className="text-[14px] font-semibold text-neutral-800">
-            {title}
-          </div>
-        </div>
-      </div>
-    </button>
-  );
- 
+
+
   if (view === "menu") {
     return (
       <div className="space-y-4">
         {Header}
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-6">
           <CategoryCard
             title="Manuscript Results"
             icon={BookOpenCheck}
@@ -1222,30 +1430,24 @@ export default function AdviserEvents() {
       </div>
     );
   }
- 
+
+
   return (
     <div className="space-y-4">
       {Header}
- 
+
+
       {view === "manuscript" && (
         <section>
-          <div className="flex items-center gap-2 mb-2">
-            <BookOpenCheck className="w-5 h-5" color={MAROON} />
-            <h2 className="text-[17px] font-semibold" style={{ color: MAROON }}>
-              Manuscript Results
-            </h2>
-          </div>
- 
           {/* Instructions */}
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> You can only edit scores and verdict when a
-              due date and due time are set by the instructor. Click the edit icons
-              next to each field or use the "Update" action to edit all fields
-              at once.
+              <strong>Note:</strong> You can only edit scores and status when a
+              due date and due time are set by the instructor. The edit icons are always visible for editable fields.
             </p>
           </div>
- 
+
+
           {rows.manuscript.length === 0 && !loading ? (
             <div className="text-center py-8 text-neutral-500">
               No manuscript submissions found for your teams.
@@ -1261,26 +1463,25 @@ export default function AdviserEvents() {
                   <th className="text-left py-2 pr-3">Due Time</th>
                   <th className="text-left py-2 pr-3">Plagiarism</th>
                   <th className="text-left py-2 pr-3">AI</th>
-                  <th className="text-left py-2 pr-3">Verdict</th>
+                  <th className="text-left py-2 pr-3">Status</th>
                   <th className="text-left py-2 pr-3">File Uploaded</th>
-                  <th className="text-left py-2 pr-6">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {(loading ? [] : rows.manuscript).map((r, idx) => {
                   const canEdit = canEditRow(r);
-                  const editingPlag = isEditing(r.id, "plag");
-                  const editingAI = isEditing(r.id, "ai");
-                  const editingVerdict = isEditing(r.id, "verdict");
- 
+
+
                   console.log("Rendering row:", {
                     id: r.id,
                     teamName: r.teamName,
+                    title: r.title,
                     date: r.date,
                     duetime: r.duetime,
                     canEdit,
                   });
- 
+
+
                   return (
                     <tr
                       key={`ms-${r.id}`}
@@ -1301,49 +1502,43 @@ export default function AdviserEvents() {
                           <span className="text-red-500 text-xs">Not set</span>
                         )}
                       </td>
- 
-                      {/* Plagiarism Score - Editable */}
+
+
+                      {/* Plagiarism Score - Improved UI with Decimal Support */}
                       <td className="py-2 pr-3">
-                        <EditableCell
+                        <PercentageInput
                           value={r.plag}
                           row={r}
                           field="plag"
                           onSave={handleSaveScore}
-                          editing={editingPlag}
-                          onEdit={handleEditCell}
-                          onCancel={() => handleCancelEdit(r.id, "plag")}
-                          type="number"
+                          canEdit={canEdit}
                         />
                       </td>
- 
-                      {/* AI Score - Editable */}
+
+
+                      {/* AI Score - Improved UI with Decimal Support */}
                       <td className="py-2 pr-3">
-                        <EditableCell
+                        <PercentageInput
                           value={r.ai}
                           row={r}
                           field="ai"
                           onSave={handleSaveScore}
-                          editing={editingAI}
-                          onEdit={handleEditCell}
-                          onCancel={() => handleCancelEdit(r.id, "ai")}
-                          type="number"
+                          canEdit={canEdit}
                         />
                       </td>
- 
-                      {/* Verdict - Editable */}
+
+
+                      {/* Status - Improved Dropdown */}
                       <td className="py-2 pr-3">
-                        <EditableCell
+                        <StatusDropdown
                           value={r.verdict}
                           row={r}
-                          field="verdict"
                           onSave={handleSaveScore}
-                          editing={editingVerdict}
-                          onEdit={handleEditCell}
-                          onCancel={() => handleCancelEdit(r.id, "verdict")}
-                          type="select"
+                          canEdit={canEdit}
                         />
                       </td>
- 
+
+
                       {/* Upload button + modal */}
                       <td className="py-2 pr-3">
                         <button
@@ -1355,22 +1550,14 @@ export default function AdviserEvents() {
                           Upload File
                         </button>
                       </td>
- 
-                      {/* Kebab Menu */}
-                      <td className="py-2 pr-6">
-                        <KebabMenu
-                          row={r}
-                          onEdit={handleBulkEdit}
-                          canEdit={canEdit}
-                        />
-                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </CardTable>
           )}
- 
+
+
           {/* Upload Modal */}
           <UploadModal
             open={!!uploadRow}
@@ -1388,42 +1575,43 @@ export default function AdviserEvents() {
           />
         </section>
       )}
- 
+
+
       {view === "defenses" && (
         <>
-          <div className="flex gap-2 mb-3">
-            {[
-              { key: "title", label: "Title Defense" },
-              { key: "oral", label: "Oral Defense" },
-              { key: "final", label: "Final Defense" },
-              { key: "redef", label: "Final Re-Defense" },
-            ].map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setDefTab(t.key)}
-                className={`px-3 py-1.5 rounded-md text-sm border ${
-                  defTab === t.key ? "text-white" : "text-neutral-700"
-                }`}
-                style={defTab === t.key ? { backgroundColor: MAROON } : {}}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="flex justify-between items-center mb-3">
+            <div className="flex gap-2">
+              {[
+                { key: "title", label: "Title Defense" },
+                { key: "oral", label: "Oral Defense" },
+                { key: "final", label: "Final Defense" },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setDefTab(t.key)}
+                  className={`px-3 py-1.5 rounded-md text-sm border ${
+                    defTab === t.key ? "text-white" : "text-neutral-700"
+                  }`}
+                  style={defTab === t.key ? { backgroundColor: MAROON } : {}}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+           
+            {/* Filter Dropdown - Hide for Title Defense */}
+            {defTab !== "title" && (
+              <DefenseFilterDropdown
+                value={defenseFilter}
+                onChange={setDefenseFilter}
+              />
+            )}
           </div>
- 
-          {/* FIXED: Each defense tab now ONLY shows teams that have schedules in that specific collection */}
- 
+
+
+          {/* Defense Tables */}
           {defTab === "title" && (
             <section>
-              <div className="flex items-center gap-2 mb-2">
-                <ClipboardList className="w-5 h-5" color={MAROON} />
-                <h2
-                  className="text-[17px] font-semibold"
-                  style={{ color: MAROON }}
-                >
-                  Title Defense
-                </h2>
-              </div>
               <CardTable>
                 <thead>
                   <tr className="bg-neutral-50/80 text-neutral-600">
@@ -1437,7 +1625,7 @@ export default function AdviserEvents() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(loading ? [] : rows.titleDefense).map((r, idx) => (
+                  {currentDefenseData.map((r, idx) => (
                     <tr
                       key={`td-${r.id}`}
                       className="border-t border-neutral-200"
@@ -1450,22 +1638,28 @@ export default function AdviserEvents() {
                         {r.timeStart ? to12h(r.timeStart) : "—"}
                       </td>
                       <td className="py-2 pr-3">
-                        {Array.isArray(r.panelists) && r.panelists.length > 0
-                          ? r.panelists.join(", ")
-                          : "—"}
+                        {r.panelistName ? (
+                          <span className="font-medium text-blue-700">
+                            {r.panelistName}
+                          </span>
+                        ) : (
+                          Array.isArray(r.panelists) && r.panelists.length > 0
+                            ? r.panelists.join(", ")
+                            : "—"
+                        )}
                       </td>
                       <td className="py-2 pr-6">
                         <Pill>{r.verdict || "Pending"}</Pill>
                       </td>
                     </tr>
                   ))}
-                  {rows.titleDefense.length === 0 && !loading && (
+                  {currentDefenseData.length === 0 && !loading && (
                     <tr className="border-t border-neutral-200">
                       <td
                         className="py-6 text-center text-neutral-500"
                         colSpan={7}
                       >
-                        No title defense schedules found for your teams.
+                        No title defense schedules found where you are a panelist.
                       </td>
                     </tr>
                   )}
@@ -1473,18 +1667,10 @@ export default function AdviserEvents() {
               </CardTable>
             </section>
           )}
- 
+
+
           {defTab === "oral" && (
             <section>
-              <div className="flex items-center gap-2 mb-2">
-                <Presentation className="w-5 h-5" color={MAROON} />
-                <h2
-                  className="text-[17px] font-semibold"
-                  style={{ color: MAROON }}
-                >
-                  Oral Defense
-                </h2>
-              </div>
               <CardTable>
                 <thead>
                   <tr className="bg-neutral-50/80 text-neutral-600">
@@ -1498,7 +1684,7 @@ export default function AdviserEvents() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(loading ? [] : rows.oralDefense).map((r, idx) => (
+                  {currentDefenseData.map((r, idx) => (
                     <tr
                       key={`od-${r.id}`}
                       className="border-t border-neutral-200"
@@ -1511,22 +1697,33 @@ export default function AdviserEvents() {
                         {r.timeStart ? to12h(r.timeStart) : "—"}
                       </td>
                       <td className="py-2 pr-3">
-                        {Array.isArray(r.panelists) && r.panelists.length > 0
-                          ? r.panelists.join(", ")
-                          : "—"}
+                        {defenseFilter === "panelists" && r.panelistName ? (
+                          // In panelist mode, show only the adviser's panelist name
+                          <span className="font-medium text-blue-700">
+                            {r.panelistName}
+                          </span>
+                        ) : (
+                          // In adviser mode, show all panelists
+                          Array.isArray(r.panelists) && r.panelists.length > 0
+                            ? r.panelists.join(", ")
+                            : "—"
+                        )}
                       </td>
                       <td className="py-2 pr-6">
                         <Pill>{r.verdict || "Pending"}</Pill>
                       </td>
                     </tr>
                   ))}
-                  {rows.oralDefense.length === 0 && !loading && (
+                  {currentDefenseData.length === 0 && !loading && (
                     <tr className="border-t border-neutral-200">
                       <td
                         className="py-6 text-center text-neutral-500"
                         colSpan={7}
                       >
-                        No oral defense schedules found for your teams.
+                        {defenseFilter === "adviser"
+                          ? "No oral defense schedules found for your advisory teams."
+                          : "No oral defense schedules found where you are a panelist."
+                        }
                       </td>
                     </tr>
                   )}
@@ -1534,18 +1731,10 @@ export default function AdviserEvents() {
               </CardTable>
             </section>
           )}
- 
+
+
           {defTab === "final" && (
             <section>
-              <div className="flex items-center gap-2 mb-2">
-                <GraduationCap className="w-5 h-5" color={MAROON} />
-                <h2
-                  className="text-[17px] font-semibold"
-                  style={{ color: MAROON }}
-                >
-                  Final Defense
-                </h2>
-              </div>
               <CardTable>
                 <thead>
                   <tr className="bg-neutral-50/80 text-neutral-600">
@@ -1559,8 +1748,8 @@ export default function AdviserEvents() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(rows.finalDefense || []).length ? (
-                    rows.finalDefense.map((r, idx) => (
+                  {currentDefenseData.length ? (
+                    currentDefenseData.map((r, idx) => (
                       <tr
                         key={`fd-${r.id}`}
                         className="border-t border-neutral-200"
@@ -1573,9 +1762,17 @@ export default function AdviserEvents() {
                           {r.timeStart ? to12h(r.timeStart) : "—"}
                         </td>
                         <td className="py-2 pr-3">
-                          {Array.isArray(r.panelists) && r.panelists.length > 0
-                            ? r.panelists.join(", ")
-                            : "—"}
+                          {defenseFilter === "panelists" && r.panelistName ? (
+                            // In panelist mode, show only the adviser's panelist name
+                            <span className="font-medium text-blue-700">
+                              {r.panelistName}
+                            </span>
+                          ) : (
+                            // In adviser mode, show all panelists
+                            Array.isArray(r.panelists) && r.panelists.length > 0
+                              ? r.panelists.join(", ")
+                              : "—"
+                          )}
                         </td>
                         <td className="py-2 pr-6">
                           <Pill>{r.verdict || "Pending"}</Pill>
@@ -1588,69 +1785,10 @@ export default function AdviserEvents() {
                         className="py-6 text-center text-neutral-500"
                         colSpan={7}
                       >
-                        No final defense schedules found for your teams.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </CardTable>
-            </section>
-          )}
- 
-          {defTab === "redef" && (
-            <section>
-              <div className="flex items-center gap-2 mb-2">
-                <GraduationCap className="w-5 h-5" color={MAROON} />
-                <h2
-                  className="text-[17px] font-semibold"
-                  style={{ color: MAROON }}
-                >
-                  Final Re-Defense
-                </h2>
-              </div>
-              <CardTable>
-                <thead>
-                  <tr className="bg-neutral-50/80 text-neutral-600">
-                    <th className="text-left py-2 pl-6 pr-3">NO</th>
-                    <th className="text-left py-2 pr-3">Team</th>
-                    <th className="text-left py-2 pr-3">Title</th>
-                    <th className="text-left py-2 pr-3">Date</th>
-                    <th className="text-left py-2 pr-3">Time</th>
-                    <th className="text-left py-2 pr-3">Panelist</th>
-                    <th className="text-left py-2 pr-6">Verdict</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(rows.finalRedefense || []).length ? (
-                    rows.finalRedefense.map((r, idx) => (
-                      <tr
-                        key={`frd-${r.id}`}
-                        className="border-t border-neutral-200"
-                      >
-                        <td className="py-2 pl-6 pr-3">{idx + 1}.</td>
-                        <td className="py-2 pr-3">{r.teamName}</td>
-                        <td className="py-2 pr-3">{r.title || "—"}</td>
-                        <td className="py-2 pr-3">{r.date || "—"}</td>
-                        <td className="py-2 pr-3">
-                          {r.timeStart ? to12h(r.timeStart) : "—"}
-                        </td>
-                        <td className="py-2 pr-3">
-                          {Array.isArray(r.panelists) && r.panelists.length > 0
-                            ? r.panelists.join(", ")
-                            : "—"}
-                        </td>
-                        <td className="py-2 pr-6">
-                          <Pill>{r.verdict || "Pending"}</Pill>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr className="border-t border-neutral-200">
-                      <td
-                        className="py-6 text-center text-neutral-500"
-                        colSpan={7}
-                      >
-                        No final re-defense schedules found for your teams.
+                        {defenseFilter === "adviser"
+                          ? "No final defense schedules found for your advisory teams."
+                          : "No final defense schedules found where you are a panelist."
+                        }
                       </td>
                     </tr>
                   )}
@@ -1663,3 +1801,5 @@ export default function AdviserEvents() {
     </div>
   );
 }
+
+

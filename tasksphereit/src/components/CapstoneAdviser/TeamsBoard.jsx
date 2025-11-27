@@ -1,4 +1,4 @@
-// src/components/ProjectManager/TaskBoard.jsx
+// src/components/Adviser/Teams Board.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   LayoutList,
@@ -9,8 +9,9 @@ import {
   Send,
   MessageSquareText,
   Loader2,
-  X as XIcon,
+  MoreVertical,
 } from "lucide-react";
+
 
 /* ===== Firebase ===== */
 import { auth, db } from "../../config/firebase";
@@ -19,8 +20,8 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDocs,
   getDoc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -31,65 +32,185 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
-/* ===== Supabase (for file uploads / public URLs) ===== */
+
+/* ===== Supabase (for uploads & public URLs) ===== */
 import { supabase } from "../../config/supabase";
 
+
 const MAROON = "#6A0F14";
+
 
 /* ========================== Helpers ========================== */
 const COLUMNS = [
   { id: "todo", title: "To Do", color: "#F5B700" },
   { id: "inprogress", title: "In Progress", color: "#7C9C3B" },
   { id: "review", title: "To Review", color: "#6FA8DC" },
-  { id: "missed", title: "Missed Task", color: "#D11A2A" },
+  { id: "missed", title: "Missed", color: "#6A0F14" },
 ];
+
 
 const STATUS_TO_COLUMN = {
   "To Do": "todo",
   "In Progress": "inprogress",
   "To Review": "review",
-  Completed: "todo",
 };
+
 
 const cardShell =
   "bg-white border border-neutral-200 rounded-lg shadow-sm hover:shadow transition-shadow";
+
 
 const safeName = (u) =>
   [u?.firstName, u?.middleName ? `${u.middleName[0]}.` : null, u?.lastName]
     .filter(Boolean)
     .join(" ") || "Unknown";
 
-const cleanBase = (p = "") =>
-  String(p).split("/").pop()?.split("?")[0] || String(p);
 
-const humanName = (meta = {}) =>
-  meta.originalName ||
-  meta.fileName ||
-  meta.name ||
-  cleanBase(meta.path || meta.url || "");
+const BUCKET = "user-tasks-files";
 
-const fmtWhen = (msOrDate) => {
+
+const safeFileName = (name = "") =>
+  name.replace(/[^\w.\- ]+/g, "_").replace(/\s+/g, "_");
+
+
+const buildTaskFolder = (card) => `${card._collection}/${card.id}`;
+
+
+const toDate = (v) => {
+  if (!v) return null;
+  if (typeof v.toDate === "function") return v.toDate();
+  const d = new Date(v);
+  return Number.isNaN(+d) ? null : d;
+};
+
+
+const formatDate = (date) => {
+  if (!date) return "—";
+  if (typeof date.toDate === "function") {
+    date = date.toDate();
+  }
+  if (date instanceof Date) {
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+  const d = new Date(date);
+  return Number.isNaN(+d) ? date : d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+};
+
+
+const formatTime = (timeString) => {
+  if (!timeString) return "—";
   try {
-    if (!msOrDate) return "";
-    const d = msOrDate instanceof Date ? msOrDate : new Date(msOrDate);
-    if (Number.isNaN(d.getTime())) return "";
-    return d.toLocaleString();
-  } catch {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  } catch (e) {
+    return timeString;
+  }
+};
+
+
+const formatDateTime = (timestamp) => {
+  if (!timestamp) return "";
+  try {
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  } catch (e) {
     return "";
   }
 };
 
-const slugSafe = (s = "") =>
-  s
-    .toLowerCase()
-    .replace(/[^\w\s.-]/g, "_")
-    .replace(/\s+/g, "-")
-    .slice(0, 120);
+
+const uniqBy = (arr, keyFn) => {
+  const m = new Map();
+  arr.forEach((x) => m.set(keyFn(x), x));
+  return Array.from(m.values());
+};
+
+
+const getInitials = (name) => {
+  if (!name) return "U";
+  const parts = name.split(' ');
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+ 
+  // Get first letter of first name and first letter of last name
+  const firstName = parts[0];
+  const lastName = parts[parts.length - 1];
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+};
+
+
+/* ======================= Confirmation Dialog ======================= */
+function ConfirmationDialog({
+  open,
+  onClose,
+  onConfirm,
+  title = "Confirmation",
+  message = "Are you sure you want to proceed?",
+  confirmText = "Yes",
+  cancelText = "No",
+}) {
+  if (!open) return null;
+
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overscroll-contain">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-2xl border border-neutral-200">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-neutral-900 mb-2">
+              {title}
+            </h3>
+            <p className="text-neutral-600">{message}</p>
+          </div>
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-neutral-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+            >
+              {cancelText}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onConfirm();
+                onClose();
+              }}
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow hover:bg-[#5A0D12]"
+              style={{ backgroundColor: MAROON }}
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 /* ======================= Reusable UI ========================= */
 function Column({ title, color, children }) {
   return (
-    <div className="flex flex-col w-[280px] bg-white border border-neutral-200 rounded-xl shadow">
+    <div className="flex flex-col bg-white border border-neutral-200 rounded-xl shadow h-fit">
       <div
         className="px-4 py-3 rounded-t-xl text-white text-sm font-semibold"
         style={{ backgroundColor: color }}
@@ -97,13 +218,14 @@ function Column({ title, color, children }) {
         {title}
       </div>
       <div className="flex-1 min-h-0">
-        <div className="h-full overflow-y-auto px-3 py-3 space-y-3">
+        <div className="h-full px-3 py-3 space-y-3">
           {children}
         </div>
       </div>
     </div>
   );
 }
+
 
 function KanbanCard({ data, onOpen }) {
   return (
@@ -123,6 +245,7 @@ function KanbanCard({ data, onOpen }) {
           </button>
         </div>
 
+
         <div className="mt-2 text-sm">
           <div className="text-neutral-800">
             {data.task || data.chapter || "Task"}
@@ -132,13 +255,14 @@ function KanbanCard({ data, onOpen }) {
           </div>
         </div>
 
-        <div className="mt-3 text-xs text-neutral-700 flex items-center gap-2">
+
+        <div className="mt-3 text-xs flex items-center gap-2">
           <span
             className={`w-2 h-2 rounded-full ${
-              data._colId === "missed" ? "bg-red-500" : "bg-neutral-400"
+              data._colId === "missed" ? "bg-[#6A0F14]" : "bg-neutral-400"
             } inline-block`}
           />
-          <span className="px-2 py-1 rounded border border-neutral-200 bg-neutral-50">
+          <span className="font-bold" style={{ color: MAROON }}>
             {data.dueDisplay || "No due date"}
           </span>
         </div>
@@ -146,6 +270,7 @@ function KanbanCard({ data, onOpen }) {
     </div>
   );
 }
+
 
 /* ====================== Detail + Chat ======================== */
 function Field({ label, value }) {
@@ -157,303 +282,606 @@ function Field({ label, value }) {
   );
 }
 
-function ChatBubble({ m, meUid, onEdit, onDelete, editingId, setEditingId }) {
-  const mine = m.sender?.uid === meUid;
-  const [editText, setEditText] = useState(m.text);
-  const base =
-    "max-w-[80%] px-3 py-2 rounded-lg text-sm leading-snug shadow border border-neutral-200";
-  const isEditing = editingId === m.id && mine;
 
-  const hasFiles = Array.isArray(m.fileUrl) && m.fileUrl.length > 0;
+function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEditingId, replyingTo, setReplyingTo, depth = 0 }) {
+  const isMine = message.sender?.uid === meUid;
+  const [editText, setEditText] = useState(message.text);
+  const [replyText, setReplyText] = useState("");
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showReplyInput, setShowReplyInput] = useState(false);
+  const isEditing = editingId === message.id && isMine;
+  const isReplying = replyingTo === message.id;
+
+
+  // Disable edit if message has already been edited
+  const canEdit = isMine && !message.__optimistic && !message.editedAt;
+
+
+  const handleEditConfirm = () => {
+    onEdit(message.id, editText);
+    setEditingId(null);
+    setShowEditConfirm(false);
+  };
+
+
+  const handleDeleteConfirm = () => {
+    onDelete(message.id);
+    setShowDeleteConfirm(false);
+  };
+
+
+  const handleReply = () => {
+    if (replyText.trim()) {
+      onReply(message.id, replyText);
+      setReplyText("");
+      setShowReplyInput(false);
+      setReplyingTo(null);
+    }
+  };
+
+
+  const handleCancelReply = () => {
+    setReplyText("");
+    setShowReplyInput(false);
+    setReplyingTo(null);
+  };
+
+
+  // Calculate indentation based on depth
+  const indentClass = depth > 0 ? `ml-12` : "";
+
 
   return (
-    <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`${base} ${mine ? "bg-[#F9F5F4]" : "bg-white"}`}
-        title={
-          m.createdAt?.toDate?.() ? m.createdAt.toDate().toLocaleString() : ""
-        }
-      >
-        <div className="text-xs text-neutral-500 mb-1">
-          {m.role || m.sender?.name || "Someone"}
-          {m.editedAt?.toDate?.() && <span className="ml-1">(edited)</span>}
+    <>
+      {/* Confirmation Dialogs */}
+      <ConfirmationDialog
+        open={showEditConfirm}
+        onClose={() => setShowEditConfirm(false)}
+        onConfirm={handleEditConfirm}
+        title="Edit Comment"
+        message="Are you sure you want to edit this comment? This action cannot be undone."
+        confirmText="Yes, Edit"
+        cancelText="No, Cancel"
+      />
+
+
+      <ConfirmationDialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Comment"
+        message="Are you sure you want to delete this comment? Replies will be promoted to main comments."
+        confirmText="Yes, Delete"
+        cancelText="No, Cancel"
+      />
+
+
+      <div className={`flex gap-3 mb-6 last:mb-0 ${indentClass}`}>
+        {/* Profile Icon */}
+        <div className="flex-shrink-0">
+          <div
+            className="w-10 h-10 rounded-full bg-[#6A0F14] flex items-center justify-center text-white font-semibold text-sm"
+            title={message.sender?.name || "Unknown User"}
+          >
+            {getInitials(message.sender?.name)}
+          </div>
         </div>
 
-        {isEditing ? (
-          <>
-            <textarea
-              className="w-full text-sm border border-neutral-300 rounded p-2"
-              rows={3}
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-            />
-            <div className="mt-2 text-xs flex gap-3">
-              <button
-                onClick={() => {
-                  onEdit(m.id, editText);
-                  setEditingId(null);
-                }}
-                className="text-[#6A0F14] font-medium"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setEditingId(null)}
-                className="text-neutral-500"
-              >
-                Cancel
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            {m.text ? (
-              <div className="text-neutral-800 whitespace-pre-wrap">
-                {m.text}
-              </div>
-            ) : null}
 
-            {hasFiles && (
-              <ul className="mt-2 space-y-1">
-                {m.fileUrl.map((f, i) => (
-                  <li key={i} className="text-sm">
-                    <a
-                      href={f.url || f.publicUrl || "#"}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline"
-                    >
-                      {humanName(f)}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+        {/* Comment Content */}
+        <div className="flex-1 min-w-0">
+          {/* Header with name and timestamp inline */}
+          <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+            <span className="font-semibold text-[15px] text-gray-900">
+              {message.sender?.name || "Unknown User"}
+            </span>
+            <span className="text-xs text-gray-500">•</span>
+            <span className="text-xs text-gray-500">
+              {formatDateTime(message.createdAt)}
+            </span>
+            {message.editedAt?.toDate?.() && (
+              <>
+                <span className="text-xs text-gray-500">•</span>
+                <span className="text-xs text-gray-500">(edited)</span>
+              </>
             )}
+          </div>
 
-            {mine && !m.__optimistic && (
-              <div className="mt-1 text-xs text-neutral-500 flex gap-4">
+
+          {/* Comment Body */}
+          <div className="mb-2">
+            {isEditing ? (
+              <div className="space-y-2">
+                <textarea
+                  className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#6A0F14] focus:border-transparent text-sm"
+                  rows={3}
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowEditConfirm(true)}
+                    className="px-4 py-2 text-sm font-medium text-white bg-[#6A0F14] rounded-lg hover:bg-[#5A0D12] transition-colors"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingId(null);
+                      setEditText(message.text);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* FIX: Ensure proper line break preservation with multiple CSS classes */}
+                <div className="text-sm text-gray-800 leading-relaxed mt-1 whitespace-pre-wrap break-words w-full overflow-hidden">
+                  {message.text || (
+                    <span className="italic text-gray-500">[no text]</span>
+                  )}
+                </div>
+               
+                {/* Display attached files in the comment - REMOVED BORDER BOX */}
+                {message.sender?.fileUrl?.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {message.sender.fileUrl.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <Paperclip className="w-4 h-4 text-red-600" />
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={file.originalName || file.fileName}
+                          className="text-blue-600 hover:text-blue-800 hover:underline truncate max-w-[200px]"
+                          title={file.originalName || file.fileName}
+                        >
+                          {file.originalName || file.fileName}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+
+          {/* Action Buttons */}
+          {!isEditing && (
+            <div className="flex items-center gap-4 mt-2">
+              {canEdit && (
                 <button
-                  onClick={() => setEditingId(m.id)}
-                  className="hover:underline cursor-pointer"
+                  onClick={() => {
+                    setEditingId(message.id);
+                    setEditText(message.text);
+                  }}
+                  className="text-xs text-[#6A0F14] font-medium hover:text-[#5A0D12] transition-colors"
                 >
                   Edit
                 </button>
+              )}
+              {isMine && !message.__optimistic && (
                 <button
-                  onClick={() => onDelete(m.id)}
-                  className="hover:underline cursor-pointer"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="text-xs text-red-600 font-medium hover:text-red-700 transition-colors"
                 >
                   Delete
                 </button>
+              )}
+              {!isMine && (
+                <button
+                  onClick={() => {
+                    setShowReplyInput(true);
+                    setReplyingTo(message.id);
+                  }}
+                  className="text-xs text-[#6A0F14] font-medium hover:text-[#5A0D12] transition-colors"
+                >
+                  Reply
+                </button>
+              )}
+            </div>
+          )}
+
+
+          {/* Reply Input */}
+          {(showReplyInput || isReplying) && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <div
+                    className="w-8 h-8 rounded-full bg-[#6A0F14] flex items-center justify-center text-white font-semibold text-xs"
+                    title="You"
+                  >
+                    {getInitials("You")}
+                  </div>
+                </div>
+                <div className="flex-1 space-y-3">
+                  <textarea
+                    rows={2}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write a reply…"
+                    className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#6A0F14] focus:border-transparent text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleReply();
+                      }
+                    }}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={handleCancelReply}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleReply}
+                      disabled={!replyText.trim()}
+                      className="px-3 py-1.5 text-xs font-medium text-white bg-[#6A0F14] rounded-lg hover:bg-[#5A0D12] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Reply
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
-          </>
-        )}
+            </div>
+          )}
+
+
+          {/* ONE-LEVEL-only Replies */}
+          {message.replies && message.replies.length > 0 && (
+            <div className="mt-4 space-y-4">
+              {message.replies.map((reply) => (
+                <Comment
+                  key={reply.id}
+                  message={reply}
+                  meUid={meUid}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onReply={onReply}
+                  editingId={editingId}
+                  setEditingId={setEditingId}
+                  replyingTo={replyingTo}
+                  setReplyingTo={setReplyingTo}
+                  depth={1} // always one-level indent
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
+
 function DetailView({ me, card, onBack }) {
   const meUid = me?.uid;
-
-  // chat state
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState(null);
-
-  // local attach-before-send
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [tab, setTab] = useState("comments");
   const [pendingFiles, setPendingFiles] = useState([]);
-  const fileInputRef = useRef(null);
-
-  // attachments tab aggregated
-  const [taskFiles, setTaskFiles] = useState([]); // from task doc
-  const [chatFiles, setChatFiles] = useState([]); // from chat docs
-  const [tab, setTab] = useState("conversation");
+  const [attRows, setAttRows] = useState([]);
+  const [hydrating, setHydrating] = useState(false);
   const listRef = useRef(null);
 
-  // ==== task doc fileUrl (existing files) ====
-  useEffect(() => {
-    let stop = false;
-    (async () => {
-      try {
-        const dref = doc(db, card._collection, card.id);
-        const snap = await getDoc(dref);
-        const data = snap.exists() ? snap.data() : {};
-        const arr = Array.isArray(data.fileUrl) ? data.fileUrl : [];
-        // normalize: add url via supabase if only "path" provided
-        const normalized = await Promise.all(
-          arr.map(async (f) => {
-            const path = f.path || f.fileName || f.name || "";
-            let url = f.url || f.publicUrl || "";
-            if (!url && path) {
-              const { data } = supabase.storage
-                .from("user-tasks-files")
-                .getPublicUrl(path);
-              url = data?.publicUrl || "";
-            }
-            return {
-              ...f,
-              path,
-              url,
-              source: "task",
-              uploadedAtMs:
-                f.uploadedAtMs ||
-                (f.uploadedAt?.toDate?.()
-                  ? f.uploadedAt.toDate().getTime()
-                  : null),
-            };
-          })
-        );
-        if (!stop) setTaskFiles(normalized);
-      } catch (e) {
-        if (!stop) setTaskFiles([]);
-      }
-    })();
-    return () => {
-      stop = true;
-    };
-  }, [card._collection, card.id]);
 
-  // ==== chat subscription (this task only; no threadKey) ====
+  // Helper: flatten messages so replies are only 1-level deep and no duplicates
+  const flattenMessages = (rows) => {
+    // Build map of id -> message (shallow clone) with replies array
+    const map = new Map();
+    rows.forEach((m) => map.set(m.id, { ...m, replies: [] }));
+
+
+    // Attach direct replies to their parent (only direct)
+    rows.forEach((m) => {
+      if (m.parentId && map.has(m.parentId)) {
+        const parent = map.get(m.parentId);
+        parent.replies.push(map.get(m.id));
+      }
+    });
+
+
+    // Function to recursively collect all descendants of a message
+    const collectDescendants = (msg, visited = new Set()) => {
+      let acc = [];
+      // copy of current direct replies (from map)
+      const direct = msg.replies ? [...msg.replies] : [];
+      for (const r of direct) {
+        if (!visited.has(r.id)) {
+          visited.add(r.id);
+          acc.push(r);
+          // If that reply itself has children in the original dataset, collect them
+          // The children of r are available via map.get(r.id).replies only if they were attached earlier
+          const deeper = collectDescendants(map.get(r.id) || r, visited);
+          if (deeper.length) acc = acc.concat(deeper);
+        }
+      }
+      return acc;
+    };
+
+
+    // Build top-level array (messages without parentId)
+    const topLevel = [];
+    rows.forEach((m) => {
+      if (!m.parentId) {
+        const base = map.get(m.id);
+        // collect all nested replies and flatten to single-level
+        const flatReplies = collectDescendants(base);
+        // ensure uniqueness and sort by createdAt
+        const unique = Array.from(
+          new Map(flatReplies.map((r) => [r.id, r])).values()
+        );
+        unique.sort((a, b) => {
+          const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+          const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+          return aTime - bTime;
+        });
+        // assign flattened replies and clear any nested replies on children
+        base.replies = unique.map((r) => ({ ...r, replies: [] }));
+        topLevel.push(base);
+      }
+    });
+
+
+    // Sort top-level messages by createdAt ascending (keep original ordering)
+    topLevel.sort((a, b) => {
+      const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+      const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+      return aTime - bTime;
+    });
+
+
+    return topLevel;
+  };
+
+
   useEffect(() => {
-    const qy = query(
-      collection(db, "chats"),
+    if (!card?.id) return;
+    const filters = [
       where("taskCollection", "==", card._collection),
       where("taskId", "==", card.id),
+    ];
+    if (card.teamId) filters.push(where("teamId", "==", card.teamId));
+    const qy = query(
+      collection(db, "chats"),
+      ...filters,
       orderBy("createdAt", "asc")
     );
-    const stop = onSnapshot(qy, (snap) => {
-      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setMessages(rows);
 
-      // collect any files on messages
-      const files = [];
-      rows.forEach((m) => {
-        const arr = Array.isArray(m.fileUrl) ? m.fileUrl : [];
-        arr.forEach((f) => {
-          files.push({
-            ...f,
+
+    const stop = onSnapshot(qy, (snap) => {
+      const rows = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+        createdAt: d.data().createdAt,
+        editedAt: d.data().editedAt
+      }));
+
+
+      // flatten and de-duplicate replies so UI shows one-level replies only
+      const organized = flattenMessages(rows);
+      setMessages(organized);
+
+
+      // scroll to bottom
+      requestAnimationFrame(() => {
+        if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+      });
+    });
+
+
+    return () => typeof stop === "function" && stop();
+  }, [card]);
+
+
+  const hydrateAttachments = async () => {
+    setHydrating(true);
+    try {
+      const merged = [];
+      const folder = buildTaskFolder(card);
+
+
+      const taskSnap = await getDoc(doc(db, card._collection, card.id));
+      if (taskSnap.exists()) {
+        const data = taskSnap.data() || {};
+        const arr = Array.isArray(data.fileUrl) ? data.fileUrl : [];
+        for (const f of arr) {
+          const fileName = f.fileName || f.name || "";
+          const originalName = f.originalName || fileName;
+          let url = f.url || f.publicUrl || null;
+          if (!url && fileName) {
+            const { data: pub } = supabase.storage
+              .from(BUCKET)
+              .getPublicUrl(`${folder}/${fileName}`);
+            url = pub?.publicUrl || null;
+          }
+          merged.push({
+            name: fileName,
+            originalName: originalName,
+            url,
+            date: toDate(f.uploadedAt) || toDate(data.createdAt) || null,
+            source: "task",
+          });
+        }
+      }
+
+
+      const filters = [
+        where("taskCollection", "==", card._collection),
+        where("taskId", "==", card.id),
+      ];
+      if (card.teamId) filters.push(where("teamId", "==", card.teamId));
+      const snap = await getDocs(query(collection(db, "chats"), ...filters));
+      snap.forEach((d) => {
+        const m = d.data();
+        const files =
+          (Array.isArray(m?.sender?.fileUrl) && m.sender.fileUrl) ||
+          (Array.isArray(m?.fileUrl) && m.fileUrl) ||
+          [];
+        files.forEach((f, i) => {
+          merged.push({
+            name: f.fileName || f.name || `Attachment ${i + 1}`,
+            originalName: f.originalName || f.fileName || f.name || `Attachment ${i + 1}`,
+            url: f.url || f.publicUrl || null,
+            date: toDate(f.uploadedAt) || toDate(m.createdAt) || null,
             source: "chat",
-            uploadedAtMs:
-              f.uploadedAtMs ||
-              (f.uploadedAt?.toDate?.()
-                ? f.uploadedAt.toDate().getTime()
-                : null) ||
-              (m.createdAt?.toDate?.() ? m.createdAt.toDate().getTime() : null),
           });
         });
       });
-      setChatFiles(files);
 
-      // autoscroll
-      requestAnimationFrame(() => {
-        if (listRef.current)
-          listRef.current.scrollTop = listRef.current.scrollHeight;
-      });
-    });
-    return () => stop();
-  }, [card._collection, card.id]);
 
-  // ==== aggregate attachments for the tab ====
-  const allAttachments = useMemo(() => {
-    const all = [...taskFiles, ...chatFiles];
-    return all
-      .map((f) => ({
-        ...f,
-        displayName: humanName(f),
-        when: fmtWhen(f.uploadedAtMs),
-      }))
-      .sort((a, b) => (b.uploadedAtMs || 0) - (a.uploadedAtMs || 0));
-  }, [taskFiles, chatFiles]);
-
-  // composer helpers
-  const openPicker = () => fileInputRef.current?.click();
-  const onFilePick = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length) {
-      setPendingFiles((prev) => [...prev, ...files]);
+      const unique = uniqBy(
+        merged,
+        (x) => `${x.source}:${x.name}:${x.url || ""}`
+      );
+      unique.sort(
+        (a, b) => (b.date?.getTime?.() || 0) - (a.date?.getTime?.() || 0)
+      );
+      setAttRows(unique);
+    } finally {
+      setHydrating(false);
     }
-    e.target.value = "";
   };
+
+
+  useEffect(() => {
+    if (tab === "attachment") hydrateAttachments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+
+  const openPicker = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.onchange = (e) => {
+      const files = Array.from(e.target.files || []);
+      if (files.length) setPendingFiles((prev) => [...prev, ...files]);
+    };
+    input.click();
+  };
+
+
   const removePending = (idx) => {
     setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const uploadFiles = async () => {
-    if (pendingFiles.length === 0) return [];
-    const bucket = "user-tasks-files";
-    const uploaded = [];
-    for (const f of pendingFiles) {
-      const ts = Date.now();
-      const path = `${card.teamId || "no-team"}/${card.id}/${ts}-${slugSafe(
-        f.name
-      )}`;
-      const { error } = await supabase.storage.from(bucket).upload(path, f, {
-        upsert: false,
-        contentType: f.type || undefined,
-      });
-      if (error) {
-        // skip failed items but keep sending text/chat
-        continue;
-      }
-      const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-      uploaded.push({
-        path,
-        url: data?.publicUrl || "",
-        originalName: f.name,
-        size: f.size,
-        uploadedAtMs: ts,
-      });
-    }
-    return uploaded;
-  };
 
-  const send = async () => {
-    const text = draft.trim();
+  const send = async (parentId = null) => {
+    const text = (draft || "").trim();
     if (!text && pendingFiles.length === 0) return;
 
-    setSending(true);
-    const optimisticTime = new Date();
 
-    // optimistic message
-    const optimistic = {
-      id: `tmp-${Date.now()}`,
-      text,
-      role: me?.role || "Project Manager",
-      sender: { uid: meUid || null, name: me?.name || "Unknown" },
-      teamId: card.teamId || null,
-      teamName: card.teamName || null,
-      taskId: card.id,
-      taskTitle: card.task || card.chapter || "Task",
-      taskCollection: card._collection,
-      createdAt: { toDate: () => optimisticTime },
-      __optimistic: true,
-      type: "message",
-      fileUrl: pendingFiles.map((f) => ({
-        path: `${card.teamId || "no-team"}/${card.id}/(uploading)-${slugSafe(
-          f.name
-        )}`,
-        url: "",
-        originalName: f.name,
-        size: f.size,
-        uploadedAtMs: optimisticTime.getTime(),
-      })),
-    };
-    if (text || optimistic.fileUrl.length) {
-      setMessages((prev) => [...prev, optimistic]);
-    }
-    setDraft("");
+    setSending(true);
+    const uploads = [];
+
 
     try {
-      // upload to supabase
-      const uploaded = await uploadFiles();
+      const folder = buildTaskFolder(card);
 
-      // persist chat doc with fileUrl array + text
+
+      for (const f of pendingFiles) {
+        // Use original file name without timestamp prefix
+        const originalName = f.name;
+        const filename = safeFileName(originalName);
+        const storagePath = `${folder}/${filename}`;
+       
+        const { error: upErr } = await supabase.storage
+          .from(BUCKET)
+          .upload(storagePath, f, {
+            contentType: f.type || "application/octet-stream",
+            upsert: false,
+          });
+        if (upErr) throw upErr;
+
+
+        const { data: pub } = supabase.storage
+          .from(BUCKET)
+          .getPublicUrl(storagePath);
+        uploads.push({
+          fileName: filename,
+          originalName: originalName, // Store original file name
+          url: pub?.publicUrl || null,
+          storagePath,
+          uploadedAt: new Date().toISOString(),
+        });
+      }
+
+
+      const optimistic = {
+        id: `tmp-${Date.now()}`,
+        text,
+        parentId: parentId || null,
+        role: me?.role || "Capstone Adviser",
+        sender: {
+          uid: meUid,
+          name: me?.name || "Unknown",
+          fileUrl: uploads
+        },
+        teamId: card.teamId || null,
+        teamName: card.teamName || null,
+        taskId: card.id,
+        taskTitle: card.task || card.chapter || "Task",
+        taskCollection: card._collection,
+        createdAt: new Date(),
+        __optimistic: true,
+        type: "message",
+      };
+     
+      // Optimistic update: if top-level, push to messages; if reply, attach to parent (local)
+      setMessages(prev => {
+        if (!parentId) {
+          return [...prev, optimistic];
+        }
+       
+        const addReply = (messages) => {
+          return messages.map(msg => {
+            if (msg.id === parentId) {
+              // ensure replies array exists
+              return {
+                ...msg,
+                replies: [...(msg.replies || []), optimistic]
+              };
+            }
+            // Recursively check if the parent is a reply
+            if (msg.replies && msg.replies.length > 0) {
+              return { ...msg, replies: addReply(msg.replies) };
+            }
+            return msg;
+          });
+        };
+       
+        return addReply(prev);
+      });
+     
+      setDraft("");
+      setPendingFiles([]);
+
+
       await addDoc(collection(db, "chats"), {
         text,
-        role: me?.role || "Project Manager",
-        sender: { uid: meUid || null, name: me?.name || "Unknown" },
+        parentId: parentId || null,
+        role: me?.role || "Capstone Adviser",
+        sender: {
+          uid: meUid || null,
+          name: me?.name || "Unknown",
+          fileUrl: uploads,
+        },
         teamId: card.teamId || null,
         teamName: card.teamName || null,
         taskId: card.id,
@@ -461,14 +889,91 @@ function DetailView({ me, card, onBack }) {
         taskCollection: card._collection,
         createdAt: serverTimestamp(),
         type: "message",
-        fileUrl: uploaded, // <-- final uploaded list
       });
+
+
+      if (tab === "attachment") hydrateAttachments();
+    } catch (e) {
+      console.error("[chat] send failed:", e);
+      alert("Failed to send. Check console for details.");
     } finally {
       setSending(false);
-      setPendingFiles([]);
-      // snapshot listener will refresh and show the saved message & files
     }
   };
+
+
+  const sendReply = async (parentId, replyText) => {
+    if (!replyText.trim()) return;
+
+
+    setSending(true);
+    try {
+      const optimistic = {
+        id: `tmp-reply-${Date.now()}`,
+        text: replyText,
+        parentId: parentId,
+        role: me?.role || "Capstone Adviser",
+        sender: {
+          uid: meUid,
+          name: me?.name || "Unknown",
+          fileUrl: []
+        },
+        teamId: card.teamId || null,
+        teamName: card.teamName || null,
+        taskId: card.id,
+        taskTitle: card.task || card.chapter || "Task",
+        taskCollection: card._collection,
+        createdAt: new Date(),
+        __optimistic: true,
+        type: "message",
+      };
+
+
+      // Optimistic update: attach reply to parent (local)
+      setMessages(prev => {
+        const addReply = (messages) => {
+          return messages.map(msg => {
+            if (msg.id === parentId) {
+              return { ...msg, replies: [...(msg.replies || []), optimistic] };
+            }
+            // Recursively check if the parent is a reply
+            if (msg.replies && msg.replies.length > 0) {
+              return { ...msg, replies: addReply(msg.replies) };
+            }
+            return msg;
+          });
+        };
+        return addReply(prev);
+      });
+
+
+      await addDoc(collection(db, "chats"), {
+        text: replyText,
+        parentId: parentId,
+        role: me?.role || "Capstone Adviser",
+        sender: {
+          uid: meUid || null,
+          name: me?.name || "Unknown",
+          fileUrl: [],
+        },
+        teamId: card.teamId || null,
+        teamName: card.teamName || null,
+        taskId: card.id,
+        taskTitle: card.task || card.chapter || "Task",
+        taskCollection: card._collection,
+        createdAt: serverTimestamp(),
+        type: "message",
+      });
+
+
+    } catch (e) {
+      console.error("[chat] reply failed:", e);
+      alert("Failed to send reply. Check console for details.");
+    } finally {
+      setSending(false);
+    }
+  };
+
 
   const editMessage = async (id, newText) => {
     const text = (newText || "").trim();
@@ -479,319 +984,377 @@ function DetailView({ me, card, onBack }) {
     });
   };
 
+
+  /**
+   * FIX: Deletes the specified message and promotes its direct replies
+   * to become top-level messages by setting their parentId to null in Firestore.
+   * This relies on the onSnapshot listener to update the local state correctly.
+   */
   const deleteMessage = async (id) => {
-    await deleteDoc(doc(db, "chats", id));
+    try {
+      // 1. Find and promote all direct replies to be top-level messages in Firestore
+      const repliesQuery = query(
+        collection(db, "chats"),
+        where("parentId", "==", id)
+      );
+      // Use getDocs to fetch the replies so we can update them
+      const repliesSnap = await getDocs(repliesQuery);
+
+
+      if (!repliesSnap.empty) {
+        const promotePromises = repliesSnap.docs.map((docSnapshot) => {
+          // Update the reply's parentId to null to promote it
+          return updateDoc(doc(db, "chats", docSnapshot.id), {
+            parentId: null,
+          });
+        });
+        // Wait for all replies to be promoted
+        await Promise.all(promotePromises);
+      }
+
+
+      // 2. Delete the original message in Firestore
+      await deleteDoc(doc(db, "chats", id));
+
+
+      // The onSnapshot listener will automatically handle the local state update
+      // with the deleted comment removed and the replies promoted.
+
+
+    } catch (err) {
+      console.error("Failed to delete comment:", err);
+      // Removed alert to avoid showing an error message that might happen
+      // due to optimistic updates not being strictly necessary if onSnapshot is fast,
+      // but keeping the core fix. The user's original error was due to the
+      // complex local state manipulation failing.
+      alert("Failed to delete comment.");
+     
+      // No need to restore state manually since onSnapshot will overwrite it soon,
+      // but if we were to restore, we'd need to re-fetch/re-subscribe.
+      // For now, let's trust onSnapshot.
+    } finally {
+      setSending(false);
+    }
   };
 
-  const computedActivity = useMemo(() => {
-    const items = [];
-    if (card._colId === "missed")
-      items.push({ id: "miss", text: "Task is overdue (Missed Task)." });
-    if (card.status)
-      items.push({ id: "st", text: `Current status: ${card.status}` });
-    messages
-      .filter((m) => m.type === "activity")
-      .forEach((m) =>
-        items.push({
-          id: m.id,
-          text: m.text || `Activity by ${m.role || "system"}`,
-        })
-      );
-    return items;
-  }, [card._colId, card.status, messages]);
+
+  const renderComments = (messages, depth = 0) => {
+    return messages.map((message) => (
+      <Comment
+        key={message.id || message._localId || Math.random()}
+        message={message}
+        meUid={meUid}
+        onEdit={editMessage}
+        onDelete={deleteMessage}
+        onReply={sendReply}
+        editingId={editingId}
+        setEditingId={setEditingId}
+        replyingTo={replyingTo}
+        setReplyingTo={setReplyingTo}
+        depth={depth}
+      />
+    ));
+  };
+
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <LayoutList className="w-5 h-5" />
-        <span className="font-semibold">Task Board</span>
-        <ChevronRight className="w-4 h-4 text-neutral-500" />
-        <span className="font-semibold">{card.teamName}</span>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
+          <LayoutList className="w-5 h-5" />
+          <span>Task Board</span>
+        </div>
+        <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
-      <div className="h-[2px] w-full" style={{ backgroundColor: MAROON }} />
 
-      <button
-        onClick={onBack}
-        className="cursor-pointer inline-flex items-center gap-1 text-sm px-3 py-1.5 rounded-md border border-neutral-300 hover:bg-neutral-100"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        Back to Board
-      </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* LEFT: Task meta */}
-        <div className="bg-white border border-neutral-200 rounded-xl shadow p-4">
-          <div className="flex items-center justify-between">
-            <div className="text-lg font-semibold">
-              {card.task || card.chapter || "Task"}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Task Details Panel */}
+        <div className="bg-white border border-neutral-200 rounded-xl shadow p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="text-xl font-semibold text-gray-900">
+              {card.teamName || "No Team"}
             </div>
             <span
-              className="text-sm font-semibold px-3 py-1 rounded-full text-white"
+              className="text-sm font-semibold px-4 py-2 rounded-full text-white"
               style={{
                 backgroundColor:
                   card._colId === "missed"
-                    ? "#D11A2A"
+                    ? "#6A0F14"
                     : card.status === "To Review"
                     ? "#6FA8DC"
                     : card.status === "In Progress"
                     ? "#7C9C3B"
-                    : card.status === "Completed"
-                    ? MAROON
                     : "#F5B700",
               }}
             >
               {card._colId === "missed"
-                ? "Missed Task"
+                ? "Missed"
                 : card.status || "To Do"}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-y-2 gap-x-6 mt-4 text-sm">
-            <Field label="Team" value={card.teamName} />
-            <Field label="Task Type" value={card.type} />
-            <Field label="Methodology" value={card.methodology} />
-            <Field label="Project Phase" value={card.phase} />
-            <Field label="Revision NO" value={card.revision} />
+
+          {/* Task Fields */}
+          <div className="space-y-4">
+            <Field label="Tasks" value={card.task} />
+            <Field label="Subtasks" value={card.subtask || "—"} />
+            <Field label="Elements" value={card.elements || "—"} />
             <Field label="Date Created" value={card.createdDisplay} />
             <Field label="Due Date" value={card.dueDisplay} />
-            <Field label="Time" value={card.time || "—"} />
-          </div>
-
-          <div className="mt-6">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <MessageSquareText className="w-4 h-4" />
-              Activity
-            </div>
-            <ul className="mt-2 space-y-1 text-sm text-neutral-700">
-              {computedActivity.length === 0 ? (
-                <li className="text-neutral-500">No activity yet.</li>
-              ) : (
-                computedActivity.map((a) => <li key={a.id}>• {a.text}</li>)
-              )}
-            </ul>
+            <Field label="Time" value={card.timeDisplay || "—"} />
+            <Field label="Revision NO" value={card.revision} />
+            <Field label="Status" value={card.status} />
+            <Field label="Methodology" value={card.methodology} />
+            <Field label="Project Phase" value={card.phase} />
           </div>
         </div>
 
-        {/* RIGHT: Conversation / Attachments */}
-        <div className="bg-white border border-neutral-200 rounded-xl shadow p-0 overflow-hidden relative">
+
+        {/* Comments & Attachments Panel */}
+        <div className="bg-white border border-neutral-200 rounded-xl shadow overflow-hidden flex flex-col h-[700px]">
           {/* Tabs */}
-          <div className="px-4 pt-3">
-            <div className="flex gap-6 text-sm">
+          <div className="px-6 pt-4">
+            <div className="flex gap-8 text-sm border-b border-neutral-200">
               <button
-                onClick={() => setTab("conversation")}
-                className={`pb-2 font-medium ${
-                  tab === "conversation"
-                    ? "border-b-2 border-neutral-800"
-                    : "text-neutral-500 hover:text-neutral-800"
+                onClick={() => setTab("comments")}
+                className={`pb-3 font-medium transition-colors relative ${
+                  tab === "comments"
+                    ? "text-[#6A0F14] font-semibold"
+                    : "text-neutral-600 hover:text-neutral-800"
                 }`}
               >
-                Conversation
+                Comments
+                {tab === "comments" && (
+                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#6A0F14] rounded-t-full" />
+                )}
               </button>
               <button
-                onClick={() => setTab("attachments")}
-                className={`pb-2 font-medium inline-flex items-center gap-2 ${
-                  tab === "attachments"
-                    ? "border-b-2 border-neutral-800"
-                    : "text-neutral-500 hover:text-neutral-800"
+                onClick={() => setTab("attachment")}
+                className={`pb-3 font-medium transition-colors relative ${
+                  tab === "attachment"
+                    ? "text-[#6A0F14] font-semibold"
+                    : "text-neutral-600 hover:text-neutral-800"
                 }`}
               >
-                <Paperclip className="w-4 h-4" />
-                Attachments
+                Attachment
+                {tab === "attachment" && (
+                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#6A0F14] rounded-t-full" />
+                )}
               </button>
             </div>
           </div>
-          <div className="h-[1px] bg-neutral-200" />
 
-          {/* Conversation */}
-          {tab === "conversation" && (
-            <>
-              <div className="p-4">
-                <div className="rounded-lg border border-neutral-300 overflow-hidden">
-                  <div className="px-3 py-2 border-b border-neutral-200 text-sm font-medium">
-                    {me?.name || "You"}{" "}
-                    <span className="text-neutral-500">({me?.role})</span>
-                  </div>
-                  <div className="p-3 relative">
-                    <textarea
-                      rows={3}
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      placeholder="Write a message…"
-                      className="w-full resize-none outline-none text-sm"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          send();
-                        }
-                      }}
-                    />
 
-                    {/* Pending file chips */}
-                    {pendingFiles.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {pendingFiles.map((f, i) => (
-                          <span
-                            key={`${f.name}-${i}`}
-                            className="inline-flex items-center gap-2 px-2 py-1 rounded border text-xs bg-neutral-50"
-                          >
-                            {f.name}
-                            <button
-                              onClick={() => removePending(i)}
-                              className="hover:text-red-600"
-                            >
-                              <XIcon className="w-3 h-3" />
-                            </button>
-                          </span>
-                        ))}
+          {/* Content Area */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {tab === "comments" && (
+              <>
+                {/* Comment Input - AT THE TOP */}
+                <div className="border-b border-neutral-200 p-6">
+                  <div className="space-y-4">
+                    {/* User Profile and Name */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0">
+                        <div
+                          className="w-10 h-10 rounded-full bg-[#6A0F14] flex items-center justify-center text-white font-semibold text-sm"
+                          title={me?.name || "You"}
+                        >
+                          {getInitials(me?.name)}
+                        </div>
                       </div>
-                    )}
+                      <span className="font-semibold text-[15px] text-gray-900">
+                        {me?.name || "You"}
+                      </span>
+                    </div>
+                   
+                    {/* Textarea */}
+                    <div className="space-y-3">
+                      <textarea
+                        rows={3}
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        placeholder="Write a comment…"
+                        className="w-full p-4 border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#6A0F14] focus:border-transparent text-sm"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            send();
+                          }
+                        }}
+                      />
 
-                    {/* hidden picker */}
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      className="hidden"
-                      onChange={onFilePick}
-                      accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.txt"
-                    />
 
-                    <div className="flex items-center gap-2 absolute right-3 bottom-3">
-                      <button
-                        onClick={openPicker}
-                        className="p-1.5 rounded hover:bg-neutral-100 cursor-pointer"
-                        title="Attach files"
-                      >
-                        <Paperclip className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={send}
-                        disabled={sending}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-white cursor-pointer disabled:opacity-60"
-                        style={{ backgroundColor: MAROON }}
-                      >
-                        {sending ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4" />
-                        )}
-                        {sending ? "Sending…" : "Send"}
-                      </button>
+                      {/* Pending Files - REMOVED BORDER BOX */}
+                      {pendingFiles.length > 0 && (
+                        <div className="space-y-2">
+                          {pendingFiles.map((f, i) => (
+                            <div
+                              key={`${f.name}-${i}`}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <Paperclip className="w-4 h-4 text-red-600" />
+                              <span className="text-gray-700 truncate max-w-[200px]">
+                                {f.name}
+                              </span>
+                              <button
+                                onClick={() => removePending(i)}
+                                className="text-gray-500 hover:text-gray-700 p-1"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+
+                      {/* Action Buttons - Attach icon before Send */}
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={openPicker}
+                          className="p-2 rounded-lg text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+                          title="Attach files"
+                        >
+                          <Paperclip className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => send()}
+                          disabled={sending || (!draft.trim() && pendingFiles.length === 0)}
+                          className="inline-flex items-center gap-2 px-6 py-2 bg-[#6A0F14] text-white rounded-lg hover:bg-[#5A0D12] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {sending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Sending…
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-4 h-4" />
+                              Send
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {sending && (
-                <div className="absolute inset-0 bg-white/40 pointer-events-none flex items-start justify-end pr-6 pt-24" />
-              )}
 
-              <div
-                ref={listRef}
-                className="px-4 pb-4 max-h-[360px] overflow-y-auto space-y-3"
-              >
-                {messages.length === 0 ? (
-                  <div className="text-sm text-neutral-600">
-                    No messages yet. Start the conversation above.
-                  </div>
-                ) : (
-                  messages.map((m) => (
-                    <ChatBubble
-                      key={
-                        m.id ||
-                        m._localId ||
-                        m.createdAt?.seconds ||
-                        Math.random()
-                      }
-                      m={m}
-                      meUid={meUid}
-                      onEdit={editMessage}
-                      onDelete={deleteMessage}
-                      editingId={editingId}
-                      setEditingId={setEditingId}
-                    />
-                  ))
-                )}
-              </div>
-            </>
-          )}
+                {/* Comments List - BELOW THE INPUT */}
+                <div
+                  ref={listRef}
+                  className="flex-1 overflow-y-auto p-6 space-y-6"
+                >
+                  {messages.length === 0 ? (
+                    <div className="text-center text-gray-500 py-12">
+                      <MessageSquareText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                      <p className="text-sm">No comments yet. Start the conversation above.</p>
+                    </div>
+                  ) : (
+                    renderComments(messages, 0)
+                  )}
+                </div>
+              </>
+            )}
 
-          {/* Attachments */}
-          {tab === "attachments" && (
-            <div className="p-4">
-              <div className="rounded-lg border border-neutral-200 overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 text-neutral-600">
-                    <tr>
-                      <th className="text-left px-4 py-2 font-medium">
-                        Attachment
-                      </th>
-                      <th className="text-right px-4 py-2 font-medium">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-200">
-                    {allAttachments.length === 0 ? (
+
+            {tab === "attachment" && (
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="bg-gray-50 rounded-lg border border-neutral-200 overflow-hidden">
+                  <table className="w-full text-sm table-fixed">
+                    <colgroup>
+                      <col className="w-3/4" />
+                      <col className="w-1/4" />
+                    </colgroup>
+                    <thead className="bg-gray-100 text-gray-700">
                       <tr>
-                        <td
-                          className="px-4 py-6 text-center text-neutral-500"
-                          colSpan={2}
-                        >
-                          No attachments yet.
-                        </td>
+                        <th className="text-left px-4 py-3 font-semibold">
+                          Attachment
+                        </th>
+                        <th className="text-left px-3 py-3 font-semibold"> {/* Reduced padding-left from px-4 to px-3 */}
+                          Date
+                        </th>
                       </tr>
-                    ) : (
-                      allAttachments.map((f, i) => (
-                        <tr
-                          key={`${f.path || f.url || i}`}
-                          className="hover:bg-neutral-50"
-                        >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-red-600">
-                                <Paperclip className="w-4 h-4" />
-                              </span>
-                              <a
-                                href={f.url || f.publicUrl || "#"}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[15px] hover:underline cursor-pointer"
-                                title={
-                                  f.source === "task" ? "[task]" : "[chat]"
-                                }
-                              >
-                                {humanName(f)}
-                              </a>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right text-neutral-700">
-                            {f.when || ""}
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {hydrating ? (
+                        <tr>
+                          <td className="px-4 py-8 text-center text-gray-500" colSpan={2}>
+                            <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                            Loading attachments…
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : attRows.length === 0 ? (
+                        <tr>
+                          <td className="px-4 py-8 text-center text-gray-500" colSpan={2}>
+                            <Paperclip className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                            No attachments yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        attRows.map((f, i) => (
+                          <tr
+                            key={`${f.name}-${i}`}
+                            className="hover:bg-white transition-colors"
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <Paperclip className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                {f.url ? (
+                                  <a
+                                    href={f.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    download={f.originalName || f.name}
+                                    className="text-blue-600 hover:text-blue-800 hover:underline truncate"
+                                    title={f.originalName || f.name}
+                                  >
+                                    {f.originalName || f.name}
+                                  </a>
+                                ) : (
+                                  <span className="text-gray-700 truncate">
+                                    {f.originalName || f.name}
+                                  </span>
+                                )}
+                                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                                  {f.source}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap"> {/* Reduced padding-left from px-4 to px-3 */}
+                              {f.date ? formatDate(f.date) : "—"}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+
 /* ============================ Main ============================ */
 export default function TaskBoard() {
-  const [me, setMe] = useState(null); // { uid, name, role, photoURL }
+  const [me, setMe] = useState(null);
   const [teams, setTeams] = useState([]);
   const [cards, setCards] = useState([]);
   const [selected, setSelected] = useState(null);
 
-  // Identify user
+
   useEffect(() => {
     const stop = onAuthStateChanged(auth, async (u) => {
       const uid = u?.uid || localStorage.getItem("uid") || "";
       if (!uid) return setMe(null);
+
 
       let profile = null;
       try {
@@ -804,141 +1367,245 @@ export default function TaskBoard() {
         if (!snap.empty) profile = snap.docs[0].data();
       } catch (_) {}
 
+
       setMe({
         uid,
         name: safeName(profile),
-        role: profile?.role || "Project Manager",
+        role: profile?.role || "Capstone Adviser",
         photoURL: profile?.photoURL || null,
       });
     });
     return () => stop();
   }, []);
 
-  // Load my teams (PM or Adviser)
+
   useEffect(() => {
     if (!me?.uid) return;
-    const isPM = (me.role || "").toLowerCase().includes("project");
-    const qTeams = isPM
-      ? query(
-          collection(db, "teams"),
-          where("projectManager.uid", "==", me.uid)
-        )
-      : query(collection(db, "teams"), where("adviser.uid", "==", me.uid));
 
-    const stop = onSnapshot(qTeams, (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setTeams(list);
-    });
-    return () => stop();
-  }, [me?.uid, me?.role]);
 
-  // Subscribe tasks for my teams (taskManager == "Adviser" OR "Project Manager" depending on role)
+    const merges = new Map();
+    const apply = (snap) => {
+      snap.docs.forEach((d) => merges.set(d.id, { id: d.id, ...d.data() }));
+      setTeams(Array.from(merges.values()));
+    };
+
+
+    const stopA = onSnapshot(
+      query(collection(db, "teams"), where("adviser.uid", "==", me.uid)),
+      apply
+    );
+    const stopB = onSnapshot(
+      query(collection(db, "teams"), where("manager.uid", "==", me.uid)),
+      apply
+    );
+
+
+    return () => {
+      if (typeof stopA === "function") stopA();
+      if (typeof stopB === "function") stopB();
+    };
+  }, [me?.uid]);
+
+
+  const unsubsRef = useRef([]);
   useEffect(() => {
+    unsubsRef.current.forEach((u) => typeof u === "function" && u());
+    unsubsRef.current = [];
+
+
     if (teams.length === 0) {
       setCards([]);
       return;
     }
+
+
     const teamIds = teams.map((t) => t.id);
     const chunks = (arr, n = 10) =>
       Array.from({ length: Math.ceil(arr.length / n) }, (_, i) =>
         arr.slice(i * n, i * n + n)
       );
 
-    const allStops = [];
-    const buffer = new Map();
 
-    const collectUpdates = (collectionName, snap) => {
-      for (const d of snap.docs) {
-        const x = d.data();
-        const t = x.team || {};
-        const teamId = t.id || x.teamId || "no-team";
-        const teamName =
-          t.name || teams.find((tt) => tt.id === teamId)?.name || "No Team";
-
-        const created =
-          typeof x.createdAt?.toDate === "function"
-            ? x.createdAt.toDate()
-            : null;
-        const createdDisplay = created ? created.toLocaleDateString() : "—";
-
-        const dueDate = x.dueDate || null;
-        const time = x.dueTime || null;
-        const dueDisplay = dueDate || "—";
-        const dueAtMs =
-          x.dueAtMs ??
-          (dueDate && time
-            ? new Date(`${dueDate}T${time}:00`).getTime()
-            : null);
-
-        let colId = STATUS_TO_COLUMN[x.status || "To Do"] || "todo";
-        const now = Date.now();
-        const isOverdue =
-          !!dueAtMs && dueAtMs < now && (x.status || "To Do") !== "Completed";
-        if (isOverdue) colId = "missed";
-
-        const key = `${collectionName}:${d.id}`;
-        buffer.set(key, {
-          id: d.id,
-          _collection: collectionName,
-          _colId: colId,
-          teamId,
-          teamName,
-          task: x.task || x.chapter || "Task",
-          chapter: x.chapter || null,
-          type: x.type || null,
-          methodology: x.methodology || null,
-          phase: x.phase || null,
-          revision: x.revision || "No Revision",
-          status: x.status || "To Do",
-          time: time || "—",
-          dueDisplay,
-          createdDisplay,
-          dueAtMs: dueAtMs || null,
-        });
-      }
-      setCards(Array.from(buffer.values()));
+    const store = {
+      titleDefenseTasks: { A: new Map(), B: new Map() },
+      oralDefenseTasks: { A: new Map(), B: new Map() },
+      finalDefenseTasks: { A: new Map(), B: new Map() },
+      finalRedefenseTasks: { A: new Map(), B: new Map() },
     };
 
-    const attach = (collectionName, managerLabel) => {
+
+    const normalize = (collectionName, d) => {
+      const x = d.data();
+     
+      // Filter out completed tasks
+      if (x.status === "Completed") {
+        return null;
+      }
+
+
+      // Only show adviser tasks
+      if (x.taskManager !== "Adviser") {
+        return null;
+      }
+
+
+      const t = x.team || {};
+      const teamId = t.id || x.teamId || "no-team";
+      const teamName =
+        t.name || teams.find((tt) => tt.id === teamId)?.name || "No Team";
+
+
+      const created =
+        typeof x.createdAt?.toDate === "function" ? x.createdAt.toDate() : null;
+      const createdDisplay = formatDate(x.createdAt);
+
+
+      const dueDate = x.dueDate || null;
+      const time = x.dueTime || null;
+      const timeDisplay = formatTime(time);
+      const dueDisplay = formatDate(dueDate);
+      const dueAtMs =
+        x.dueAtMs ??
+        (dueDate && time ? new Date(`${dueDate}T${time}:00`).getTime() : null);
+
+
+      let colId = STATUS_TO_COLUMN[x.status || "To Do"] || "todo";
+      const now = Date.now();
+      const isOverdue =
+        !!dueAtMs && dueAtMs < now && (x.status || "To Do") !== "Completed";
+      if (isOverdue) colId = "missed";
+
+
+      // For adviser tasks, show team name
+      const assignedTo = teamName;
+
+
+      // Extract ALL fields directly from the source data
+      const cardData = {
+        id: d.id,
+        _collection: collectionName,
+        _colId: colId,
+        teamId,
+        teamName,
+        assignedTo,
+        task: x.task || x.chapter || "Task",
+        chapter: x.chapter || null,
+        type: x.type || null,
+        methodology: x.methodology || null,
+        phase: x.phase || null,
+        revision: x.revision || "No Revision",
+        status: x.status || "To Do",
+        time: time || "—",
+        timeDisplay,
+        dueDisplay,
+        createdDisplay,
+        dueAtMs: dueAtMs || null,
+        taskManager: x.taskManager || "Capstone Adviser",
+      };
+
+
+      // Extract subtask and elements with comprehensive field checking
+      const subtask =
+        x.subtask ||
+        x.subtasks ||
+        x.subTask ||
+        x.subTasks ||
+        null;
+     
+      const elements =
+        x.elements ||
+        x.element ||
+        x.scope ||
+        null;
+
+
+      // Handle different data types for subtask and elements
+      if (subtask) {
+        if (Array.isArray(subtask)) {
+          cardData.subtask = subtask.join(", ");
+        } else if (typeof subtask === 'string') {
+          cardData.subtask = subtask;
+        } else if (typeof subtask === 'object') {
+          cardData.subtask = JSON.stringify(subtask);
+        }
+      }
+
+
+      if (elements) {
+        if (Array.isArray(elements)) {
+          cardData.elements = elements.join(", ");
+        } else if (typeof elements === 'string') {
+          cardData.elements = elements;
+        } else if (typeof elements === 'object') {
+          cardData.elements = JSON.stringify(elements);
+        }
+      }
+
+
+      return cardData;
+    };
+
+
+    const publish = () => {
+      const unionMap = new Map();
+      for (const coll of [
+        "titleDefenseTasks",
+        "oralDefenseTasks",
+        "finalDefenseTasks",
+        "finalRedefenseTasks",
+      ]) {
+        for (const subset of ["A", "B"]) {
+          store[coll][subset].forEach((val, key) => {
+            if (val) { // Skip null values (completed tasks)
+              unionMap.set(`${coll}:${key}`, val);
+            }
+          });
+        }
+      }
+     
+      // Only show adviser tasks (already filtered in normalize function)
+      setCards(Array.from(unionMap.values()));
+    };
+
+
+    const attach = (collectionName) => {
       chunks(teamIds, 10).forEach((ids) => {
-        const stopA = onSnapshot(
-          query(
-            collection(db, collectionName),
-            where("taskManager", "==", managerLabel),
-            where("team.id", "in", ids)
-          ),
-          (snap) => collectUpdates(collectionName, snap)
-        );
-        const stopB = onSnapshot(
-          query(
-            collection(db, collectionName),
-            where("taskManager", "==", managerLabel),
-            where("teamId", "in", ids)
-          ),
-          (snap) => collectUpdates(collectionName, snap)
-        );
-        allStops.push(stopA, stopB);
+        const q = query(collection(db, collectionName), where("team.id", "in", ids));
+        const unsub = onSnapshot(q, (snap) => {
+          const next = new Map();
+          snap.docs.forEach((d) => {
+            const normalized = normalize(collectionName, d);
+            if (normalized) {
+              next.set(d.id, normalized);
+            }
+          });
+          store[collectionName].A = next;
+          publish();
+        });
+        unsubsRef.current.push(unsub);
       });
     };
 
-    const managerLabel = (me.role || "").toLowerCase().includes("project")
-      ? "Project Manager"
-      : "Adviser";
 
-    attach("oralDefenseTasks", managerLabel);
-    attach("finalDefenseTasks", managerLabel);
+    attach("titleDefenseTasks");
+    attach("oralDefenseTasks");
+    attach("finalDefenseTasks");
+    attach("finalRedefenseTasks");
+
 
     return () => {
-      allStops.forEach((s) => s && s());
+      unsubsRef.current.forEach((u) => typeof u === "function" && u());
+      unsubsRef.current = [];
     };
-  }, [teams, me?.role]);
+  }, [teams]);
 
-  // group by column
+
   const grouped = useMemo(() => {
     const map = Object.fromEntries(COLUMNS.map((c) => [c.id, []]));
     for (const c of cards) map[c._colId]?.push(c);
     return map;
   }, [cards]);
+
 
   if (selected) {
     return (
@@ -946,20 +1613,28 @@ export default function TaskBoard() {
     );
   }
 
-  return (
-    <div className="space-y-4 min-h-0">
-      <div className="flex items-center gap-2">
-        <LayoutList className="w-5 h-5" />
-        <h2 className="text-lg font-semibold">Task Board</h2>
-      </div>
-      <div className="h-[2px] w-full" style={{ backgroundColor: MAROON }} />
 
-      <div className="min-h-[520px] max-h-[70vh]">
-        <div className="h-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
+          <LayoutList className="w-5 h-5" />
+          <span>Task Board</span>
+        </div>
+        <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
+      </div>
+
+
+      {/* Responsive Kanban Board - Only Adviser Tasks */}
+      <div className="min-h-[520px]">
+        <div className="h-full grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
           {COLUMNS.map((col) => (
             <Column key={col.id} title={col.title} color={col.color}>
               {grouped[col.id].length === 0 ? (
-                <div className="text-sm text-neutral-500">No tasks.</div>
+                <div className="text-sm text-neutral-500 text-center py-8">
+                  No adviser tasks.
+                </div>
               ) : (
                 grouped[col.id].map((card) => (
                   <KanbanCard
@@ -976,3 +1651,5 @@ export default function TaskBoard() {
     </div>
   );
 }
+
+

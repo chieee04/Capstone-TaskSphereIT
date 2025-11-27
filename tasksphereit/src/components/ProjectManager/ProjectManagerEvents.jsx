@@ -12,11 +12,14 @@ import {
 } from "lucide-react";
 import { getEventsForUser } from "../../services/events";
 
+
 /* ===== Firestore (for view-only files modal) ===== */
 import { db } from "../../config/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
+
 const MAROON = "#3B0304";
+
 
 const to12h = (t) => {
   if (!t) return "";
@@ -26,6 +29,7 @@ const to12h = (t) => {
   return `${hh}:${String(M || 0).padStart(2, "0")} ${ampm}`;
 };
 
+
 const CardTable = ({ children }) => (
   <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
     <div className="overflow-x-auto">
@@ -34,16 +38,19 @@ const CardTable = ({ children }) => (
   </div>
 );
 
+
 const Pill = ({ children }) => (
   <span className="px-3 py-1 rounded-full text-xs inline-flex border border-neutral-300 text-neutral-700">
     {children}
   </span>
 );
 
+
 /* ---------------- Files (view-only) Modal ---------------- */
 function FilesModal({ open, row, onClose }) {
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState([]);
+
 
   useEffect(() => {
     let alive = true;
@@ -69,7 +76,9 @@ function FilesModal({ open, row, onClose }) {
     };
   }, [open, row?.id]);
 
+
   if (!open || !row) return null;
+
 
   return (
     <div className="fixed inset-0 z-50">
@@ -95,6 +104,7 @@ function FilesModal({ open, row, onClose }) {
               <X className="w-5 h-5" />
             </button>
           </div>
+
 
           {/* Body (scrollable) */}
           <div className="flex-1 px-5 pb-5 overflow-y-auto">
@@ -153,6 +163,7 @@ function FilesModal({ open, row, onClose }) {
             </div>
           </div>
 
+
           {/* Footer */}
           <div className="flex justify-end gap-2 px-5 pb-4 pt-2">
             <button
@@ -169,6 +180,7 @@ function FilesModal({ open, row, onClose }) {
   );
 }
 
+
 /* ============================ Updated Category Card ============================ */
 function CategoryCard({ title, icon: Icon, onClick }) {
   return (
@@ -179,33 +191,35 @@ function CategoryCard({ title, icon: Icon, onClick }) {
                  hover:shadow-2xl hover:-translate-y-2 hover:border-gray-300 active:scale-[0.98] text-neutral-800 overflow-hidden group"
     >
       {/* Bottom accent only - removed left side accent */}
-      <div 
+      <div
         className="absolute bottom-0 left-0 right-0 h-6 rounded-b-2xl transition-all duration-300 group-hover:h-8"
         style={{ background: MAROON }}
       />
-      
+     
       {/* Central content area */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 pb-10">
         {/* Task icon - centered in main white area with animation */}
         <div className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
           <Icon className="w-16 h-16 mb-4 text-black" />
         </div>
-        
+       
         {/* Title text - positioned below icon */}
         <span className="text-base font-bold text-center leading-tight text-black transition-all duration-300 group-hover:scale-105">
           {title}
         </span>
       </div>
 
+
       {/* Subtle glow effect on hover */}
       <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-           style={{ 
+           style={{
              boxShadow: `0 0 20px ${MAROON}40`,
              background: `radial-gradient(circle at center, transparent 0%, ${MAROON}10 100%)`
            }} />
     </button>
   );
 }
+
 
 /* ============================ Main ============================ */
 export default function ProjectManagerEvents() {
@@ -225,8 +239,10 @@ export default function ProjectManagerEvents() {
     (searchParams.get("tab") || "title").toLowerCase()
   );
 
+
   // View-only files modal state
   const [filesRow, setFilesRow] = useState(null);
+
 
   useEffect(() => {
     let alive = true;
@@ -255,6 +271,7 @@ export default function ProjectManagerEvents() {
     };
   }, []);
 
+
   // sync URL
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
@@ -265,6 +282,7 @@ export default function ProjectManagerEvents() {
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, defTab]);
+
 
   /* ===== Updated Header to match ProjectManagerTasks ===== */
   const Header = (
@@ -277,6 +295,7 @@ export default function ProjectManagerEvents() {
       <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
     </div>
   );
+
 
   if (view === "menu") {
     return (
@@ -298,9 +317,11 @@ export default function ProjectManagerEvents() {
     );
   }
 
+
   return (
     <div className="space-y-4">
       {Header}
+
 
       {/* manuscript-only view */}
       {view === "manuscript" && (
@@ -336,6 +357,7 @@ export default function ProjectManagerEvents() {
                   <td className="py-2 pr-3">{`${r.plag ?? 0}%`}</td>
                   <td className="py-2 pr-3">{`${r.ai ?? 0}%`}</td>
 
+
                   {/* View-only files button */}
                   <td className="py-2 pr-3">
                     <button
@@ -348,6 +370,7 @@ export default function ProjectManagerEvents() {
                     </button>
                   </td>
 
+
                   <td className="py-2 pr-6">
                     <Pill>{r.verdict}</Pill>
                   </td>
@@ -355,6 +378,7 @@ export default function ProjectManagerEvents() {
               ))}
             </tbody>
           </CardTable>
+
 
           {/* View-only Files Modal */}
           <FilesModal
@@ -364,6 +388,7 @@ export default function ProjectManagerEvents() {
           />
         </section>
       )}
+
 
       {/* defenses view with tabs */}
       {view === "defenses" && (
@@ -388,17 +413,10 @@ export default function ProjectManagerEvents() {
             ))}
           </div>
 
+
           {defTab === "title" && (
             <section>
-              <div className="flex items-center gap-2 mb-2">
-                <ClipboardList className="w-5 h-5" color={MAROON} />
-                <h2
-                  className="text-[17px] font-semibold"
-                  style={{ color: MAROON }}
-                >
-                  Title Defense
-                </h2>
-              </div>
+              {/* REMOVED: Title Defense header */}
               <CardTable>
                 <thead>
                   <tr className="bg-neutral-50/80 text-neutral-600">
@@ -437,17 +455,10 @@ export default function ProjectManagerEvents() {
             </section>
           )}
 
+
           {defTab === "oral" && (
             <section>
-              <div className="flex items-center gap-2 mb-2">
-                <Presentation className="w-5 h-5" color={MAROON} />
-                <h2
-                  className="text-[17px] font-semibold"
-                  style={{ color: MAROON }}
-                >
-                  Oral Defense
-                </h2>
-              </div>
+              {/* REMOVED: Oral Defense header */}
               <CardTable>
                 <thead>
                   <tr className="bg-neutral-50/80 text-neutral-600">
@@ -488,17 +499,10 @@ export default function ProjectManagerEvents() {
             </section>
           )}
 
+
           {defTab === "final" && (
             <section>
-              <div className="flex items-center gap-2 mb-2">
-                <GraduationCap className="w-5 h-5" color={MAROON} />
-                <h2
-                  className="text-[17px] font-semibold"
-                  style={{ color: MAROON }}
-                >
-                  Final Defense
-                </h2>
-              </div>
+              {/* REMOVED: Final Defense header */}
               <CardTable>
                 <thead>
                   <tr className="bg-neutral-50/80 text-neutral-600">
@@ -550,9 +554,11 @@ export default function ProjectManagerEvents() {
             </section>
           )}
 
+
           {/* Removed Final Re-Defense section */}
         </>
       )}
     </div>
   );
 }
+

@@ -16,13 +16,16 @@ import {
 import { Loader2, Edit3 } from "lucide-react"; // removed Shield
 import Swal from "sweetalert2";
 
+
 // Removed RoleTransferDialog import
 import ChangePasswordDialog from "../CapstoneInstructor/ChangePassword";
+
 
 const MAROON = "#6A0F14";
 const isNone = (v) => !v || String(v).toLowerCase() === "none";
 const safeKeyFromEmail = (email) =>
   (email || "").replace(/[^a-zA-Z0-9._-]/g, "_");
+
 
 const nameWithMiddleInitial = (
   firstName = "",
@@ -52,8 +55,10 @@ const Field = ({ label, children }) => (
   const [userDoc, setUserDoc] = useState(null);
   const [error, setError] = useState("");
 
+
   // Removed openRoleDialog state
   const [openChangePw, setOpenChangePw] = useState(false);
+
 
   // edit + avatar
   const [editMode, setEditMode] = useState(false);
@@ -62,6 +67,7 @@ const Field = ({ label, children }) => (
   const [removePending, setRemovePending] = useState(false);
   const fileInputRef = useRef(null);
 
+
   // Only email needs to be editable now, but keep structure for future
   const [form, setForm] = useState({
     firstName: "",
@@ -69,6 +75,7 @@ const Field = ({ label, children }) => (
     lastName: "",
     email: "",
   });
+
 
   // fetch user (unchanged)
   useEffect(() => {
@@ -80,6 +87,7 @@ const Field = ({ label, children }) => (
         const uid = localStorage.getItem("uid");
         if (!uid) throw new Error("No UID found in localStorage.");
         let data = null;
+
 
         const directRef = doc(db, "users", uid);
         const directSnap = await getDoc(directRef);
@@ -98,6 +106,7 @@ const Field = ({ label, children }) => (
           }
         }
 
+
         if (!alive) return;
         if (!data) setError("Instructor not found in users collection.");
         setUserDoc(data);
@@ -113,6 +122,7 @@ const Field = ({ label, children }) => (
       alive = false;
     };
   }, []);
+
 
   const fullName = useMemo(
     () =>
@@ -133,6 +143,7 @@ const Field = ({ label, children }) => (
     [userDoc]
   );
 
+
   // avatar src: preview > imageUrl > none
   const avatarSrc = useMemo(() => {
     if (avatarPreview) return avatarPreview;
@@ -140,6 +151,7 @@ const Field = ({ label, children }) => (
     if (userDoc && !isNone(userDoc.imageUrl)) return userDoc.imageUrl;
     return "";
   }, [avatarPreview, userDoc, removePending]);
+
 
   // avatar handlers
   const handlePickFile = () => fileInputRef.current?.click();
@@ -171,6 +183,7 @@ const Field = ({ label, children }) => (
     setAvatarPreview(URL.createObjectURL(file));
   };
 
+
   // edit flow
   const startEdit = () => {
     if (!userDoc) return;
@@ -192,6 +205,7 @@ const Field = ({ label, children }) => (
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+
   // mark photo for removal (delete happens on Save)
   const markRemove = () => {
     setRemovePending(true);
@@ -200,8 +214,10 @@ const Field = ({ label, children }) => (
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+
   const saveEdit = async () => {
     if (!userDoc?.id) return;
+
 
     const email = form.email.trim();
     if (!email) {
@@ -221,6 +237,7 @@ const Field = ({ label, children }) => (
       return;
     }
 
+
     Swal.fire({
       title: "Saving…",
       allowOutsideClick: false,
@@ -230,8 +247,10 @@ const Field = ({ label, children }) => (
       didOpen: () => Swal.showLoading(),
     });
 
+
     try {
       let imageUrl = userDoc.imageUrl || "None";
+
 
       // If removal is pending and there is an existing image, delete it
       if (removePending && !isNone(userDoc.imageUrl) && userDoc.email) {
@@ -243,12 +262,14 @@ const Field = ({ label, children }) => (
         imageUrl = "None";
       }
 
+
       // Update Firestore — ONLY email + imageUrl + updatedAt
       await updateDoc(doc(db, "users", userDoc.id), {
         email,
         imageUrl,
         updatedAt: serverTimestamp(),
       });
+
 
       setUserDoc({
         ...userDoc,
@@ -261,6 +282,7 @@ const Field = ({ label, children }) => (
       setRemovePending(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
+
       Swal.close();
     } catch (e) {
       console.error(e);
@@ -272,6 +294,7 @@ const Field = ({ label, children }) => (
       });
     }
   };
+
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -302,6 +325,7 @@ const Field = ({ label, children }) => (
                 )}
               </div>
 
+
               {editMode && (
                 <button
                   type="button"
@@ -321,6 +345,7 @@ const Field = ({ label, children }) => (
               />
             </div>
 
+
             <div>
               {loading ? (
                 <div className="mt-1 h-6 w-48 bg-neutral-200/70 rounded animate-pulse" />
@@ -335,7 +360,9 @@ const Field = ({ label, children }) => (
             </div>
           </div>
 
+
           <div className="my-5 h-px bg-neutral-200" />
+
 
           {/* Details */}
           {loading ? (
@@ -346,22 +373,22 @@ const Field = ({ label, children }) => (
             </div>
           ) : !error && userDoc ? (
             <div className="space-y-3">
-              <Field label="Full Name">
-                <span className="font-medium">{fullName}</span>
-              </Field>
+              {/* Removed Full Name field */}
+
 
               {/* Names are always read-only now */}
               <Field label="First Name">{userDoc.firstName || "-"}</Field>
 
-              <Field label="Middle Name">
+
+              <Field label="Middle Initial">
                 {userDoc.middleName
-                  ? `${userDoc.middleName} (${(
-                      userDoc.middleName[0] || ""
-                    ).toUpperCase()}.)`
+                  ? `${(userDoc.middleName[0] || "").toUpperCase()}.`
                   : "-"}
               </Field>
 
+
               <Field label="Last Name">{userDoc.lastName || "-"}</Field>
+
 
               {/* Only Email is editable when in edit mode */}
               <Field label="Email">
@@ -379,10 +406,12 @@ const Field = ({ label, children }) => (
                 )}
               </Field>
 
-              {userDoc.role && <Field label="Role">{userDoc.role}</Field>}
+
+              {/* Removed Role field */}
               {userDoc.idNo && <Field label="ID No">{userDoc.idNo}</Field>}
             </div>
           ) : null}
+
 
           {/* Actions */}
           <div className="mt-6 flex flex-wrap gap-3 justify-end">
@@ -435,6 +464,7 @@ const Field = ({ label, children }) => (
         </div>
       </div>
 
+
       {/* Removed RoleTransferDialog section */}
       {openChangePw && (
         <ChangePasswordDialog onClose={() => setOpenChangePw(false)} />
@@ -445,3 +475,5 @@ const Field = ({ label, children }) => (
 
 
 export default MemberProfile
+
+

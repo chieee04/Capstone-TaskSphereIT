@@ -1,4 +1,4 @@
-// src/components/CapstoneInstructor/InstructorProfile.jsx
+//adviserprofile
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { db } from "../../config/firebase";
 import { supabase } from "../../config/supabase";
@@ -16,13 +16,16 @@ import {
 import { Loader2, Edit3 } from "lucide-react"; // removed Shield
 import Swal from "sweetalert2";
 
+
 // Removed RoleTransferDialog import
 import ChangePasswordDialog from "../CapstoneInstructor/ChangePassword";
+
 
 const MAROON = "#6A0F14";
 const isNone = (v) => !v || String(v).toLowerCase() === "none";
 const safeKeyFromEmail = (email) =>
   (email || "").replace(/[^a-zA-Z0-9._-]/g, "_");
+
 
 const nameWithMiddleInitial = (
   firstName = "",
@@ -48,13 +51,16 @@ const Field = ({ label, children }) => (
   </div>
 );
 
+
 export default function AdviserProfile() {
   const [loading, setLoading] = useState(true);
   const [userDoc, setUserDoc] = useState(null);
   const [error, setError] = useState("");
 
+
   // Removed openRoleDialog state
   const [openChangePw, setOpenChangePw] = useState(false);
+
 
   // edit + avatar
   const [editMode, setEditMode] = useState(false);
@@ -63,6 +69,7 @@ export default function AdviserProfile() {
   const [removePending, setRemovePending] = useState(false);
   const fileInputRef = useRef(null);
 
+
   // Only email needs to be editable now, but keep structure for future
   const [form, setForm] = useState({
     firstName: "",
@@ -70,6 +77,7 @@ export default function AdviserProfile() {
     lastName: "",
     email: "",
   });
+
 
   // fetch user (unchanged)
   useEffect(() => {
@@ -81,6 +89,7 @@ export default function AdviserProfile() {
         const uid = localStorage.getItem("uid");
         if (!uid) throw new Error("No UID found in localStorage.");
         let data = null;
+
 
         const directRef = doc(db, "users", uid);
         const directSnap = await getDoc(directRef);
@@ -99,6 +108,7 @@ export default function AdviserProfile() {
           }
         }
 
+
         if (!alive) return;
         if (!data) setError("Instructor not found in users collection.");
         setUserDoc(data);
@@ -114,6 +124,7 @@ export default function AdviserProfile() {
       alive = false;
     };
   }, []);
+
 
   const fullName = useMemo(
     () =>
@@ -134,6 +145,7 @@ export default function AdviserProfile() {
     [userDoc]
   );
 
+
   // avatar src: preview > imageUrl > none
   const avatarSrc = useMemo(() => {
     if (avatarPreview) return avatarPreview;
@@ -141,6 +153,7 @@ export default function AdviserProfile() {
     if (userDoc && !isNone(userDoc.imageUrl)) return userDoc.imageUrl;
     return "";
   }, [avatarPreview, userDoc, removePending]);
+
 
   // avatar handlers
   const handlePickFile = () => fileInputRef.current?.click();
@@ -172,6 +185,7 @@ export default function AdviserProfile() {
     setAvatarPreview(URL.createObjectURL(file));
   };
 
+
   // edit flow
   const startEdit = () => {
     if (!userDoc) return;
@@ -193,6 +207,7 @@ export default function AdviserProfile() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+
   // mark photo for removal (delete happens on Save)
   const markRemove = () => {
     setRemovePending(true);
@@ -201,8 +216,10 @@ export default function AdviserProfile() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+
   const saveEdit = async () => {
     if (!userDoc?.id) return;
+
 
     const email = form.email.trim();
     if (!email) {
@@ -222,6 +239,7 @@ export default function AdviserProfile() {
       return;
     }
 
+
     Swal.fire({
       title: "Saving…",
       allowOutsideClick: false,
@@ -231,8 +249,10 @@ export default function AdviserProfile() {
       didOpen: () => Swal.showLoading(),
     });
 
+
     try {
       let imageUrl = userDoc.imageUrl || "None";
+
 
       // If removal is pending and there is an existing image, delete it
       if (removePending && !isNone(userDoc.imageUrl) && userDoc.email) {
@@ -244,12 +264,14 @@ export default function AdviserProfile() {
         imageUrl = "None";
       }
 
+
       // Update Firestore — ONLY email + imageUrl + updatedAt
       await updateDoc(doc(db, "users", userDoc.id), {
         email,
         imageUrl,
         updatedAt: serverTimestamp(),
       });
+
 
       setUserDoc({
         ...userDoc,
@@ -262,6 +284,7 @@ export default function AdviserProfile() {
       setRemovePending(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
 
+
       Swal.close();
     } catch (e) {
       console.error(e);
@@ -273,6 +296,7 @@ export default function AdviserProfile() {
       });
     }
   };
+
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -303,6 +327,7 @@ export default function AdviserProfile() {
                 )}
               </div>
 
+
               {editMode && (
                 <button
                   type="button"
@@ -322,6 +347,7 @@ export default function AdviserProfile() {
               />
             </div>
 
+
             <div>
               {loading ? (
                 <div className="mt-1 h-6 w-48 bg-neutral-200/70 rounded animate-pulse" />
@@ -332,11 +358,13 @@ export default function AdviserProfile() {
                   {fullName}
                 </h1>
               )}
-              <div className="text-sm text-neutral-500">Adviser</div>
+              <div className="text-sm text-neutral-500">Capstone Adviser</div>
             </div>
           </div>
 
+
           <div className="my-5 h-px bg-neutral-200" />
+
 
           {/* Details */}
           {loading ? (
@@ -347,22 +375,19 @@ export default function AdviserProfile() {
             </div>
           ) : !error && userDoc ? (
             <div className="space-y-3">
-              <Field label="Full Name">
-                <span className="font-medium">{fullName}</span>
-              </Field>
-
               {/* Names are always read-only now */}
               <Field label="First Name">{userDoc.firstName || "-"}</Field>
 
-              <Field label="Middle Name">
+
+              <Field label="Middle Initial">
                 {userDoc.middleName
-                  ? `${userDoc.middleName} (${(
-                      userDoc.middleName[0] || ""
-                    ).toUpperCase()}.)`
+                  ? `${(userDoc.middleName[0] || "").toUpperCase()}.`
                   : "-"}
               </Field>
 
+
               <Field label="Last Name">{userDoc.lastName || "-"}</Field>
+
 
               {/* Only Email is editable when in edit mode */}
               <Field label="Email">
@@ -380,10 +405,11 @@ export default function AdviserProfile() {
                 )}
               </Field>
 
-              {userDoc.role && <Field label="Role">{userDoc.role}</Field>}
+
               {userDoc.idNo && <Field label="ID No">{userDoc.idNo}</Field>}
             </div>
           ) : null}
+
 
           {/* Actions */}
           <div className="mt-6 flex flex-wrap gap-3 justify-end">
@@ -436,6 +462,7 @@ export default function AdviserProfile() {
         </div>
       </div>
 
+
       {/* Removed RoleTransferDialog section */}
       {openChangePw && (
         <ChangePasswordDialog onClose={() => setOpenChangePw(false)} />
@@ -443,3 +470,5 @@ export default function AdviserProfile() {
     </div>
   );
 }
+
+

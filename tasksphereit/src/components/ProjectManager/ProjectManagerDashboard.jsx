@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Users, CalendarDays, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 
+
 /* === Firebase === */
 import { auth, db } from "../../config/firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -12,12 +13,16 @@ import {
   getDocs,
   query,
   where,
+  onSnapshot,
 } from "firebase/firestore";
+
 
 /* === Modal that saves to teamSystemTitles === */
 import ProjectManagerTitleModal from "./ProjectManagerTitleModal";
 
+
 const MAROON = "#6A0F14";
+
 
 // brand/status colors
 const COLORS = {
@@ -28,7 +33,9 @@ const COLORS = {
   missed: "#3B0304", // Updated missed color
 };
 
+
 // No static sample datasets; everything loads from Firestore.
+
 
 const statusColor = (s) =>
   s === "To Review" ? COLORS.toreview :
@@ -37,12 +44,14 @@ const statusColor = (s) =>
         s === "Completed" ? COLORS.completed :
           COLORS.missed;
 
+
 // ---- small UI bits -------------------------------------------------------
 const Card = ({ children, className = "" }) => (
   <div className={`bg-white border border-neutral-200 rounded-2xl shadow ${className}`}>
     {children}
   </div>
 );
+
 
 const UpcomingCard = ({ item }) => (
   <div className="w-full min-w-[200px] max-w-[280px] flex-shrink-0">
@@ -63,10 +72,12 @@ const UpcomingCard = ({ item }) => (
   </div>
 );
 
+
 // Carousel Component for Upcoming Tasks
 const UpcomingTasksCarousel = ({ tasks }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(3);
+
 
   // Update visible count based on screen size
   useEffect(() => {
@@ -80,20 +91,25 @@ const UpcomingTasksCarousel = ({ tasks }) => {
       }
     };
 
+
     updateVisibleCount();
     window.addEventListener('resize', updateVisibleCount);
     return () => window.removeEventListener('resize', updateVisibleCount);
   }, []);
 
+
   const maxIndex = Math.max(0, tasks.length - visibleCount);
+
 
   const nextSlide = () => {
     setCurrentIndex(current => Math.min(current + 1, maxIndex));
   };
 
+
   const prevSlide = () => {
     setCurrentIndex(current => Math.max(current - 1, 0));
   };
+
 
   if (tasks.length === 0) {
     return (
@@ -102,6 +118,7 @@ const UpcomingTasksCarousel = ({ tasks }) => {
       </div>
     );
   }
+
 
   return (
     <div className="relative">
@@ -118,11 +135,12 @@ const UpcomingTasksCarousel = ({ tasks }) => {
           </button>
         )}
 
+
         {/* Cards Container */}
         <div className="flex-1 overflow-hidden">
-          <div 
+          <div
             className="flex gap-3 sm:gap-4 transition-transform duration-300 ease-in-out"
-            style={{ 
+            style={{
               transform: `translateX(-${currentIndex * (100 / visibleCount)}%)`
             }}
           >
@@ -133,6 +151,7 @@ const UpcomingTasksCarousel = ({ tasks }) => {
             ))}
           </div>
         </div>
+
 
         {/* Next Button */}
         {tasks.length > visibleCount && currentIndex < maxIndex && (
@@ -145,6 +164,7 @@ const UpcomingTasksCarousel = ({ tasks }) => {
           </button>
         )}
       </div>
+
 
       {/* Dots Indicator */}
       {tasks.length > visibleCount && (
@@ -167,6 +187,7 @@ const UpcomingTasksCarousel = ({ tasks }) => {
   );
 };
 
+
 const Legend = ({ items }) => (
   <ul className="space-y-3 w-full">
     {items.map((it) => (
@@ -181,12 +202,14 @@ const Legend = ({ items }) => (
   </ul>
 );
 
+
 // ---- charts --------------------------------------------------------------
 const WeeklyBarChart = ({ data, maxY = 20, width = 560, height = 360 }) => {
   const padding = { top: 16, right: 16, bottom: 30, left: 40 };
   const innerW = width - padding.left - padding.right;
   const innerH = height - padding.top - padding.bottom;
   const barW = innerW / data.length - 22;
+
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[360px]">
@@ -224,11 +247,13 @@ const WeeklyBarChart = ({ data, maxY = 20, width = 560, height = 360 }) => {
   );
 };
 
+
 const Donut = ({ segments, centerText = "40%" }) => {
   const size = 360;
   const stroke = 48;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
+
 
   const arcs = useMemo(() => {
     let acc = 0;
@@ -239,6 +264,7 @@ const Donut = ({ segments, centerText = "40%" }) => {
       return { ...s, arc, offset };
     });
   }, [segments, c]);
+
 
   return (
     <div className="relative grid place-items-center">
@@ -267,11 +293,13 @@ const Donut = ({ segments, centerText = "40%" }) => {
   );
 };
 
+
 /* ============================
    Enhanced Calendar with functional navigation and consistent height
    ============================ */
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 
 function ymd(d) {
   const y = d.getFullYear();
@@ -280,10 +308,12 @@ function ymd(d) {
   return `${y}-${m}-${dd}`;
 }
 
+
 function buildMonthMatrix(year, monthIndex) {
   const first = new Date(year, monthIndex, 1);
   const startDay = first.getDay();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+
 
   const cells = [];
   for (let i = 0; i < startDay; i++) cells.push(null);
@@ -291,15 +321,17 @@ function buildMonthMatrix(year, monthIndex) {
   while (cells.length % 7 !== 0) cells.push(null);
   while (cells.length < 42) cells.push(null);
 
+
   const matrix = [];
   for (let i = 0; i < cells.length; i += 7) matrix.push(cells.slice(i, i + 7));
   return matrix;
 }
 
+
 function buildWeekMatrix(startDate) {
   const matrix = [];
   const weekDays = [];
-  
+ 
   for (let i = 0; i < 7; i++) {
     const day = new Date(startDate);
     day.setDate(startDate.getDate() + i);
@@ -309,14 +341,17 @@ function buildWeekMatrix(startDate) {
   return matrix;
 }
 
+
 function buildDayMatrix(day) {
   return [[day]];
 }
+
 
 const CalendarCard = ({ pmUid }) => {
   const [view, setView] = useState("month");
   const [cursor, setCursor] = useState(new Date());
   const [events, setEvents] = useState([]);
+
 
   // Get the appropriate title based on current view
   const getTitle = () => {
@@ -327,7 +362,7 @@ const CalendarCard = ({ pmUid }) => {
       startOfWeek.setDate(cursor.getDate() - cursor.getDay());
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
-      
+     
       if (startOfWeek.getMonth() === endOfWeek.getMonth()) {
         return `${monthNames[startOfWeek.getMonth()]} ${startOfWeek.getDate()} - ${endOfWeek.getDate()}, ${startOfWeek.getFullYear()}`;
       } else {
@@ -338,6 +373,7 @@ const CalendarCard = ({ pmUid }) => {
       return `${monthNames[cursor.getMonth()]} ${cursor.getDate()}, ${cursor.getFullYear()}`;
     }
   };
+
 
   // Build the appropriate matrix based on current view
   const matrix = useMemo(() => {
@@ -353,6 +389,7 @@ const CalendarCard = ({ pmUid }) => {
     }
   }, [cursor, view]);
 
+
   // Navigation functions
   const goPrev = () => {
     const newDate = new Date(cursor);
@@ -367,6 +404,7 @@ const CalendarCard = ({ pmUid }) => {
     setCursor(newDate);
   };
 
+
   const goNext = () => {
     const newDate = new Date(cursor);
     if (view === "month") {
@@ -380,9 +418,11 @@ const CalendarCard = ({ pmUid }) => {
     setCursor(newDate);
   };
 
+
   const goToday = () => {
     setCursor(new Date());
   };
+
 
   // Get date range for event filtering based on current view
   const getDateRange = () => {
@@ -402,11 +442,13 @@ const CalendarCard = ({ pmUid }) => {
     }
   };
 
+
+  // Load calendar events
   useEffect(() => {
-    let alive = true;
     if (!pmUid) return;
-    
-    (async () => {
+
+
+    const loadCalendarEvents = async () => {
       try {
         // Find teams managed by this PM
         const teamsRef = collection(db, "teams");
@@ -417,6 +459,7 @@ const CalendarCard = ({ pmUid }) => {
           pmTeams = alt.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
         }
         const teamIds = pmTeams.map((t) => t.id);
+
 
         // Helper to chunk fetch schedules by teamId
         const fetchByTeam = async (collName) => {
@@ -430,13 +473,24 @@ const CalendarCard = ({ pmUid }) => {
           return arr;
         };
 
-        // Load tasks created by PM
+
+        // Load tasks created by PM - EXCLUDE COMPLETED TASKS
         const taskDefs = ["titleDefenseTasks", "oralDefenseTasks", "finalDefenseTasks", "finalRedefenseTasks"];
         const taskSnaps = await Promise.all(
           taskDefs.map((c) => getDocs(query(collection(db, c), where("createdBy.uid", "==", pmUid))))
         );
+       
         const tasks = [];
-        taskSnaps.forEach((s) => s.forEach((dx) => tasks.push({ id: dx.id, ...dx.data() })));
+        taskSnaps.forEach((s) => {
+          s.forEach((dx) => {
+            const data = dx.data() || {};
+            // Filter out completed tasks
+            if (data.status !== "Completed") {
+              tasks.push({ id: dx.id, ...data });
+            }
+          });
+        });
+
 
         // Load schedules relevant to PM teams
         const [titleSched, manusSched, oralSched, finalSched, redefSched] = await Promise.all([
@@ -447,34 +501,45 @@ const CalendarCard = ({ pmUid }) => {
           fetchByTeam("finalRedefenseSchedules").catch(() => []),
         ]);
 
+
         // Get current view's date range
         const { start, end } = getDateRange();
         const between = (d) => d >= start && d <= end;
 
+
+        // Task events with color coding based on status
         const taskEvents = tasks
           .filter((t) => typeof t.dueDate === "string" && t.dueDate.length >= 10 && between(t.dueDate))
           .map((t) => ({
             date: t.dueDate,
             title: `${t.task || t.type || "Task"} (${t.status || "To Do"})`,
+            color: statusColor(t.status || "To Do"), // Color code based on status
           }));
 
+
+        // Schedule events
         const schedEvents = [
           ...titleSched.map((s) => ({ date: s.date || "", title: "Title Defense" })),
           ...manusSched.map((s) => ({ date: s.date || "", title: "Manuscript Submission" })),
           ...oralSched.map((s) => ({ date: s.date || "", title: "Oral Defense" })),
           ...finalSched.map((s) => ({ date: s.date || "", title: "Final Defense" })),
           ...redefSched.map((s) => ({ date: s.date || "", title: "Final Re-Defense" })),
-        ].filter((e) => e.date && between(e.date));
+        ].filter((e) => e.date && between(e.date))
+         .map((e) => ({ ...e, color: MAROON })); // All schedule events in maroon
+
 
         const merged = [...taskEvents, ...schedEvents];
-        if (alive) setEvents(merged);
+        setEvents(merged);
       } catch (e) {
         console.error("Calendar load failed:", e);
-        if (alive) setEvents([]);
+        setEvents([]);
       }
-    })();
-    return () => { alive = false; };
+    };
+
+
+    loadCalendarEvents();
   }, [pmUid, cursor, view]);
+
 
   // Calculate cell height based on view to maintain consistent calendar height
   const getCellHeight = () => {
@@ -487,6 +552,7 @@ const CalendarCard = ({ pmUid }) => {
     }
   };
 
+
   // Render appropriate grid based on view
   const renderGrid = () => {
     const { start } = getDateRange();
@@ -497,6 +563,7 @@ const CalendarCard = ({ pmUid }) => {
       return true; // For week and day views, all dates are "current"
     };
 
+
     return (
       <div className={`grid ${view === "day" ? "grid-cols-1" : view === "week" ? "grid-cols-7" : "grid-cols-7"} gap-px bg-neutral-200 rounded-lg overflow-hidden`}>
         {matrix.flat().map((cell, i) => {
@@ -504,6 +571,7 @@ const CalendarCard = ({ pmUid }) => {
           const cellYmd = cell ? ymd(cell) : "";
           const dayEvents = events.filter((e) => e.date === cellYmd);
           const isToday = cellYmd === ymd(new Date());
+
 
           return (
             <div
@@ -521,6 +589,7 @@ const CalendarCard = ({ pmUid }) => {
                 </div>
               )}
 
+
               {/* events - with adjusted positioning for week and day views */}
               <div className={`absolute left-1 right-1 ${
                 view === "month" ? "top-6 md:top-8 lg:top-10 max-h-8 md:max-h-10 lg:max-h-12" : "top-8 md:top-10 lg:top-12 max-h-[280px] md:max-h-[380px] lg:max-h-[500px]"
@@ -529,7 +598,7 @@ const CalendarCard = ({ pmUid }) => {
                   <div
                     key={idx}
                     className="text-[10px] md:text-[11px] text-white px-1 md:px-2 py-0.5 rounded truncate"
-                    style={{ background: MAROON }}
+                    style={{ background: e.color || MAROON }}
                     title={e.title}
                   >
                     {e.title}
@@ -542,6 +611,7 @@ const CalendarCard = ({ pmUid }) => {
       </div>
     );
   };
+
 
   return (
     <Card className="w-full">
@@ -565,6 +635,7 @@ const CalendarCard = ({ pmUid }) => {
             <ChevronRight className="w-4 h-4" />
           </button>
 
+
           <button
             className="ml-2 h-8 px-3 rounded-md text-sm font-medium text-white"
             style={{ background: MAROON }}
@@ -574,9 +645,11 @@ const CalendarCard = ({ pmUid }) => {
           </button>
         </div>
 
+
         <div className="text-sm font-semibold order-1 sm:order-2" style={{ color: MAROON }}>
           {getTitle()}
         </div>
+
 
         <div className="flex items-center gap-1 sm:gap-2 order-3">
           {["Month", "Week", "Day"].map((label) => {
@@ -601,7 +674,9 @@ const CalendarCard = ({ pmUid }) => {
         </div>
       </div>
 
+
       <div className="px-3 md:px-5 mt-2 md:mt-3 h-[2px] w-full" style={{ background: MAROON }} />
+
 
       {/* Grid */}
       <div className="p-3 md:p-5">
@@ -614,11 +689,13 @@ const CalendarCard = ({ pmUid }) => {
           </div>
         )}
 
+
         {renderGrid()}
       </div>
     </Card>
   );
 };
+
 
 // ---- main ---------------------------------------------------------------
 const ProjectManagerDashboard = () => {
@@ -627,6 +704,7 @@ const ProjectManagerDashboard = () => {
   const [weekly, setWeekly] = useState([{ key: "todo", label: "To Do", value: 0, color: COLORS.todo }, { key: "inprogress", label: "In Progress", value: 0, color: COLORS.inprogress }, { key: "toreview", label: "To Review", value: 0, color: COLORS.toreview }, { key: "completed", label: "Completed", value: 0, color: COLORS.completed }, { key: "missed", label: "Missed", value: 0, color: COLORS.missed }]);
   const [donut, setDonut] = useState([{ key: "todo", label: "To Do", pct: 0, color: COLORS.todo }, { key: "inprogress", label: "In Progress", pct: 0, color: COLORS.inprogress }, { key: "toreview", label: "To Review", pct: 0, color: COLORS.toreview }, { key: "completed", label: "Completed", pct: 0, color: COLORS.completed }, { key: "missed", label: "Missed", pct: 0, color: COLORS.missed }]);
   const [recentTasks, setRecentTasks] = useState([]);
+
 
   // helpers
   const to12h = (t) => {
@@ -643,10 +721,30 @@ const ProjectManagerDashboard = () => {
     if (!y || !m || !d) return "--";
     return `${MONTHS[m - 1]} ${Number(d)}, ${y}`;
   };
+
+
+  // Format date for display (like OralDefense.jsx)
+  const formatDateMonthDayYear = (dateStr) => {
+    if (!dateStr || dateStr === "null") return "--";
+   
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return "--";
+     
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      return date.toLocaleDateString('en-US', options);
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "--";
+    }
+  };
+
+
   /* ===== Title gate (Passed => require title) ===== */
   const [pmUid, setPmUid] = useState("");
   const [modalTeam, setModalTeam] = useState(null); // { id, name }
   const [titleGateChecked, setTitleGateChecked] = useState(false);
+
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -655,8 +753,10 @@ const ProjectManagerDashboard = () => {
     return () => unsub();
   }, []);
 
+
   useEffect(() => {
     if (!pmUid || titleGateChecked) return;
+
 
     (async () => {
       try {
@@ -665,21 +765,25 @@ const ProjectManagerDashboard = () => {
         let teamsSnap = await getDocs(query(teamsRef, where("manager.uid", "==", pmUid)));
         let pmTeams = teamsSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
 
+
         if (pmTeams.length === 0) {
           const altSnap = await getDocs(query(teamsRef, where("managerUid", "==", pmUid)));
           pmTeams = altSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
         }
+
 
         if (pmTeams.length === 0) {
           setTitleGateChecked(true);
           return;
         }
 
+
         // 2) For each team, require title if:
         //    - titleDefenseSchedules has verdict "Passed"
         //    - teamSystemTitles does NOT exist
         for (const t of pmTeams) {
           const teamId = t.id;
+
 
           const passSnap = await getDocs(
             query(
@@ -691,8 +795,10 @@ const ProjectManagerDashboard = () => {
           const hasPassed = passSnap.size > 0;
           if (!hasPassed) continue;
 
+
           const titleDoc = await getDoc(doc(db, "teamSystemTitles", teamId));
           const hasTitle = titleDoc.exists() && !!titleDoc.data()?.systemTitle;
+
 
           if (!hasTitle) {
             setModalTeam({ id: teamId, name: t.name || "Unnamed Team" });
@@ -700,6 +806,7 @@ const ProjectManagerDashboard = () => {
             return; // show 1 modal only
           }
         }
+
 
         setTitleGateChecked(true);
       } catch (e) {
@@ -709,21 +816,38 @@ const ProjectManagerDashboard = () => {
     })();
   }, [pmUid, titleGateChecked]);
 
-  // Load PM-created tasks and compute dashboard data
+
+  // Load PM-created tasks and compute dashboard data - UPDATED
   useEffect(() => {
     if (!pmUid) return;
-    (async () => {
-      try {
-        const defs = [
-          { key: "title", coll: "titleDefenseTasks" },
-          { key: "oral", coll: "oralDefenseTasks" },
-          { key: "final", coll: "finalDefenseTasks" },
-          { key: "redef", coll: "finalRedefenseTasks" },
-        ];
 
+
+    // Set up real-time listeners for all task collections
+    const taskDefs = [
+      { key: "title", coll: "titleDefenseTasks" },
+      { key: "oral", coll: "oralDefenseTasks" },
+      { key: "final", coll: "finalDefenseTasks" },
+      { key: "redef", coll: "finalRedefenseTasks" },
+    ];
+
+
+    const unsubscribeListeners = taskDefs.map((def) =>
+      onSnapshot(
+        query(collection(db, def.coll), where("createdBy.uid", "==", pmUid)),
+        (snapshot) => {
+          // When any task collection updates, reload all data
+          loadAllTasks();
+        }
+      )
+    );
+
+
+    const loadAllTasks = async () => {
+      try {
         const snaps = await Promise.all(
-          defs.map((d) => getDocs(query(collection(db, d.coll), where("createdBy.uid", "==", pmUid))))
+          taskDefs.map((d) => getDocs(query(collection(db, d.coll), where("createdBy.uid", "==", pmUid))))
         );
+       
         const all = [];
         snaps.forEach((s) => {
           s.forEach((dx) => {
@@ -732,50 +856,63 @@ const ProjectManagerDashboard = () => {
           });
         });
 
-        // Upcoming: nearest future dueAtMs
+
+        // Upcoming: nearest future dueAtMs (only active tasks, not completed)
         const now = Date.now();
         const upcomingRaw = all
-  .filter((t) => typeof t.dueAtMs === "number" && t.dueAtMs >= now)
-  .filter(
-    (t) =>
-      typeof t.dueAtMs === "number" &&
-     t.dueAtMs >= now &&
-      String(t.status || "").toLowerCase() !== "completed"
-  )
-  .sort((a, b) => (a.dueAtMs || 0) - (b.dueAtMs || 0))
-  .slice(0, 5)
-  .map((t) => ({
-    name: t.team?.name || (t.assignees?.[0]?.name || "—"),
-    chapter: t.task || t.type || "Task",
-    date: fmtDate(t.dueDate || ""),
-    time: to12h(t.dueTime || ""),
-    color:
-      (t.status === "In Progress" && COLORS.inprogress) ||
-      (t.status === "To Review" && COLORS.toreview) ||
-      (t.status === "Completed" && COLORS.completed) ||
-      COLORS.todo,
-  }));
-        if (upcomingRaw.length > 0) setUpcoming(upcomingRaw);
+          .filter((t) =>
+            typeof t.dueAtMs === "number" &&
+            t.dueAtMs >= now &&
+            String(t.status || "").toLowerCase() !== "completed"
+          )
+          .sort((a, b) => (a.dueAtMs || 0) - (b.dueAtMs || 0))
+          .slice(0, 5)
+          .map((t) => {
+            // Get assignee name - similar to OralDefense logic
+            let assigneeName = "Team";
+            if (t.assignees && t.assignees.length > 0) {
+              if (t.assignees[0].uid === 'team') {
+                assigneeName = "Team";
+              } else {
+                assigneeName = t.assignees[0].name || "—";
+              }
+            }
+
+
+            return {
+              name: assigneeName,
+              chapter: t.task || t.type || "Task",
+              date: formatDateMonthDayYear(t.dueDate || ""),
+              time: to12h(t.dueTime || ""),
+              color: statusColor(t.status || "To Do"),
+            };
+          });
+       
+        setUpcoming(upcomingRaw);
+
 
         // Weekly summary: counts by status (simple total)
         const counts = { todo: 0, inprogress: 0, toreview: 0, completed: 0, missed: 0 };
         const nowMs = Date.now();
+       
         all.forEach((t) => {
-  const s = String(t.status || "To Do").toLowerCase();
-  const isOverdue = typeof t.dueAtMs === "number" && t.dueAtMs < nowMs && (t.status || "") !== "Completed";
+          const s = String(t.status || "To Do").toLowerCase();
+          const isOverdue = typeof t.dueAtMs === "number" && t.dueAtMs < nowMs && (t.status || "") !== "Completed";
 
-  if (isOverdue) {
-    counts.missed++;
-  } else if (s.includes("review")) {
-    counts.toreview++;
-  } else if (s.includes("progress")) {
-    counts.inprogress++;
-  } else if (s.includes("complete")) {
-    counts.completed++;
-  } else {
-    counts.todo++;
-  }
-});
+
+          if (isOverdue) {
+            counts.missed++;
+          } else if (s.includes("review")) {
+            counts.toreview++;
+          } else if (s.includes("progress")) {
+            counts.inprogress++;
+          } else if (s.includes("complete")) {
+            counts.completed++;
+          } else {
+            counts.todo++;
+          }
+        });
+       
         setWeekly([
           { key: "todo", label: "To Do", value: counts.todo, color: COLORS.todo },
           { key: "inprogress", label: "In Progress", value: counts.inprogress, color: COLORS.inprogress },
@@ -783,6 +920,7 @@ const ProjectManagerDashboard = () => {
           { key: "completed", label: "Completed", value: counts.completed, color: COLORS.completed },
           { key: "missed", label: "Missed", value: counts.missed, color: COLORS.missed },
         ]);
+
 
         // Donut: percentage from counts
         const total = counts.todo + counts.inprogress + counts.toreview + counts.completed + counts.missed;
@@ -795,30 +933,63 @@ const ProjectManagerDashboard = () => {
           { key: "missed", label: "Missed", pct: pct(counts.missed), color: COLORS.missed },
         ]);
 
-        // Recent tasks - Only show 4 tasks
+
+        // Recent tasks - Only show 4 most recently created tasks
         const recent = all
-          .map((t, i) => ({
-            createdKey: t.createdAt?.toMillis?.() || 0,
-            assigned: t.assignees?.[0]?.name || "—",
-            task: t.task || t.type || "Task",
-            subtask: t.type || "—",
-            element: t.team?.name || "—",
-            created: t.createdAt?.toDate?.()?.toLocaleDateString?.() || "—",
-            due: fmtDate(t.dueDate || ""),
-            time: to12h(t.dueTime || ""),
-            status: t.status || "To Do",
-            phase: t.phase || "Design",
-          }))
+          .map((t) => {
+            // Get assignee name
+            let assigneeName = "Team";
+            if (t.assignees && t.assignees.length > 0) {
+              if (t.assignees[0].uid === 'team') {
+                assigneeName = "Team";
+              } else {
+                assigneeName = t.assignees[0].name || "—";
+              }
+            }
+
+
+            // FIXED: Elements column - match OralDefense.jsx behavior
+            let elementValue = "--";
+            if (t.elements && t.elements !== "--" && t.elements !== "null") {
+              elementValue = t.elements;
+            }
+
+
+            return {
+              createdKey: t.createdAt?.toMillis?.() || 0,
+              assigned: assigneeName,
+              task: t.task || t.type || "Task",
+              subtask: t.subtasks || "--",
+              element: elementValue, // FIXED: Use proper elements field
+              created: t.createdAt?.toDate?.()?.toLocaleDateString?.() || "--",
+              due: formatDateMonthDayYear(t.dueDate || ""),
+              time: to12h(t.dueTime || ""),
+              status: t.status || "To Do",
+              phase: t.phase || "--",
+            };
+          })
           .filter((x) => x.createdKey > 0)
           .sort((a, b) => b.createdKey - a.createdKey)
           .slice(0, 4)
           .map((x, i) => ({ no: i + 1, ...x }));
-        if (recent.length > 0) setRecentTasks(recent);
+       
+        setRecentTasks(recent);
       } catch (e) {
-        console.error("Title gate check failed:", e);
+        console.error("Dashboard data load failed:", e);
       }
-    })();
+    };
+
+
+    // Initial load
+    loadAllTasks();
+
+
+    // Cleanup listeners
+    return () => {
+      unsubscribeListeners.forEach(unsub => unsub && unsub());
+    };
   }, [pmUid]);
+
 
   return (
     <div className="space-y-6 md:space-y-8 w-full">
@@ -829,6 +1000,7 @@ const ProjectManagerDashboard = () => {
         </h3>
         <UpcomingTasksCarousel tasks={upcoming} />
       </section>
+
 
       {/* BOTTOM ROW: Weekly Summary + Team Progress */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full">
@@ -852,6 +1024,7 @@ const ProjectManagerDashboard = () => {
             </div>
           </div>
         </Card>
+
 
         {/* Team Progress */}
         <Card className="w-full">
@@ -880,11 +1053,13 @@ const ProjectManagerDashboard = () => {
         </Card>
       </section>
 
+
       {/* RECENT TASKS CREATED */}
       <section className="space-y-3 w-full">
         <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
           RECENT TASKS CREATED
         </h3>
+
 
         <div className="bg-white border border-neutral-200 rounded-[20px] shadow overflow-hidden w-full">
           <div className="overflow-x-auto w-full">
@@ -896,7 +1071,7 @@ const ProjectManagerDashboard = () => {
                   <th className="py-3 pr-2 md:pr-3">Assigned</th>
                   <th className="py-3 pr-2 md:pr-3">Task</th>
                   <th className="py-3 pr-2 md:pr-3 hidden sm:table-cell">Subtask</th>
-                  <th className="py-3 pr-2 md:pr-3">Element</th>
+                  <th className="py-3 pr-2 md:pr-3">Elements</th>
                   <th className="py-3 pr-2 md:pr-3 hidden lg:table-cell">
                     <div className="inline-flex items-center gap-2 whitespace-nowrap">
                       <CalendarDays className="w-4 h-4" /> Date Created
@@ -939,6 +1114,7 @@ const ProjectManagerDashboard = () => {
                   </tr>
                 ))}
 
+
                 {recentTasks.length === 0 && (
                   <tr>
                     <td colSpan={10} className="py-10 text-center text-neutral-500">
@@ -952,6 +1128,7 @@ const ProjectManagerDashboard = () => {
         </div>
       </section>
 
+
       {/* CALENDAR */}
       <section className="space-y-3 w-full">
         <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
@@ -959,6 +1136,7 @@ const ProjectManagerDashboard = () => {
         </h3>
         <CalendarCard pmUid={pmUid} />
       </section>
+
 
       {/* === Title requirement modal (opens when Passed & no title yet) === */}
       {modalTeam && (
@@ -974,4 +1152,6 @@ const ProjectManagerDashboard = () => {
   );
 };
 
+
 export default ProjectManagerDashboard;
+

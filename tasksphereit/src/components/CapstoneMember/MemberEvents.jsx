@@ -12,11 +12,14 @@ import {
 } from "lucide-react";
 import { getEventsForUser } from "../../services/events";
 
+
 /* ===== Firestore (for view-only files modal) ===== */
 import { db } from "../../config/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
+
 const MAROON = "#6A0F14";
+
 
 const to12h = (t) => {
   if (!t) return "";
@@ -26,6 +29,7 @@ const to12h = (t) => {
   return `${hh}:${String(M || 0).padStart(2, "0")} ${ampm}`;
 };
 
+
 const CardTable = ({ children }) => (
   <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
     <div className="overflow-x-auto">
@@ -34,16 +38,19 @@ const CardTable = ({ children }) => (
   </div>
 );
 
+
 const Pill = ({ children }) => (
   <span className="px-3 py-1 rounded-full text-xs inline-flex border border-neutral-300 text-neutral-700">
     {children}
   </span>
 );
 
+
 /* ---------------- Files (view-only) Modal ---------------- */
 function FilesModal({ open, row, onClose }) {
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState([]);
+
 
   useEffect(() => {
     let alive = true;
@@ -51,6 +58,7 @@ function FilesModal({ open, row, onClose }) {
       if (!open || !row?.id) return;
       setLoading(true);
       try {
+        // Read fresh from Firestore so we don't depend on the list response
         const snap = await getDoc(doc(db, "manuscriptSubmissions", row.id));
         const data = snap.exists() ? snap.data() : {};
         const list = Array.isArray(data.fileUrl) ? data.fileUrl : [];
@@ -68,7 +76,9 @@ function FilesModal({ open, row, onClose }) {
     };
   }, [open, row?.id]);
 
+
   if (!open || !row) return null;
+
 
   return (
     <div className="fixed inset-0 z-50">
@@ -95,6 +105,7 @@ function FilesModal({ open, row, onClose }) {
             </button>
           </div>
 
+
           {/* Body (scrollable) */}
           <div className="flex-1 px-5 pb-5 overflow-y-auto">
             <div className="rounded-xl border border-neutral-200">
@@ -106,7 +117,7 @@ function FilesModal({ open, row, onClose }) {
                   <div className="text-sm text-neutral-600">Loading…</div>
                 ) : files.length === 0 ? (
                   <div className="text-sm text-neutral-600">
-                    There’s no uploaded file yet.
+                    There's no uploaded file yet.
                   </div>
                 ) : (
                   <ul className="space-y-2">
@@ -152,6 +163,7 @@ function FilesModal({ open, row, onClose }) {
             </div>
           </div>
 
+
           {/* Footer */}
           <div className="flex justify-end gap-2 px-5 pb-4 pt-2">
             <button
@@ -167,6 +179,47 @@ function FilesModal({ open, row, onClose }) {
     </div>
   );
 }
+
+
+/* ============================ Updated Category Card ============================ */
+function CategoryCard({ title, icon: Icon, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="cursor-pointer relative w-[160px] h-[220px] rounded-2xl bg-white border-2 border-gray-200 shadow-lg transition-all duration-300
+                 hover:shadow-2xl hover:-translate-y-2 hover:border-gray-300 active:scale-[0.98] text-neutral-800 overflow-hidden group"
+    >
+      {/* Bottom accent only - removed left side accent */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-6 rounded-b-2xl transition-all duration-300 group-hover:h-8"
+        style={{ background: MAROON }}
+      />
+     
+      {/* Central content area */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 pb-10">
+        {/* Task icon - centered in main white area with animation */}
+        <div className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+          <Icon className="w-16 h-16 mb-4 text-black" />
+        </div>
+       
+        {/* Title text - positioned below icon */}
+        <span className="text-base font-bold text-center leading-tight text-black transition-all duration-300 group-hover:scale-105">
+          {title}
+        </span>
+      </div>
+
+
+      {/* Subtle glow effect on hover */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+           style={{
+             boxShadow: `0 0 20px ${MAROON}40`,
+             background: `radial-gradient(circle at center, transparent 0%, ${MAROON}10 100%)`
+           }} />
+    </button>
+  );
+}
+
 
 /* ============================ Main ============================ */
 export default function MemberEvents() {
@@ -186,8 +239,10 @@ export default function MemberEvents() {
     (searchParams.get("tab") || "title").toLowerCase()
   );
 
+
   // View-only files modal state
   const [filesRow, setFilesRow] = useState(null);
+
 
   useEffect(() => {
     let alive = true;
@@ -216,6 +271,8 @@ export default function MemberEvents() {
     };
   }, []);
 
+
+  // sync URL
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     if (view === "menu") next.delete("view");
@@ -226,41 +283,25 @@ export default function MemberEvents() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, defTab]);
 
+
+  /* ===== Updated Header to match ProjectManagerTasks ===== */
   const Header = (
     <div className="space-y-2">
-      <div
-        className="flex items-center gap-2 text-[18px] font-semibold"
-        style={{ color: MAROON }}
-      >
+      <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
         <ClipboardList className="w-5 h-5" />
         <span>Events</span>
       </div>
-      <div className="h-[3px] w-full" style={{ backgroundColor: MAROON }} />
+      {/* Divider with rounded edges - matching ProjectManagerTasks */}
+      <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
     </div>
   );
 
-  const CategoryCard = ({ title, icon: Icon, onClick }) => (
-    <button
-      onClick={onClick}
-      className="w-[220px] h-[120px] rounded-xl border border-neutral-200 bg-white shadow hover:shadow-md text-left overflow-hidden"
-    >
-      <div className="h-full flex">
-        <div className="w-2" style={{ backgroundColor: MAROON }} />
-        <div className="flex-1 p-4 flex items-center gap-3">
-          <Icon className="w-8 h-8 text-neutral-800" />
-          <div className="text-[14px] font-semibold text-neutral-800">
-            {title}
-          </div>
-        </div>
-      </div>
-    </button>
-  );
 
   if (view === "menu") {
     return (
       <div className="space-y-4">
         {Header}
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-6">
           <CategoryCard
             title="Manuscript Results"
             icon={BookOpenCheck}
@@ -276,10 +317,13 @@ export default function MemberEvents() {
     );
   }
 
+
   return (
     <div className="space-y-4">
       {Header}
 
+
+      {/* manuscript-only view */}
       {view === "manuscript" && (
         <section>
           <div className="flex items-center gap-2 mb-2">
@@ -313,6 +357,7 @@ export default function MemberEvents() {
                   <td className="py-2 pr-3">{`${r.plag ?? 0}%`}</td>
                   <td className="py-2 pr-3">{`${r.ai ?? 0}%`}</td>
 
+
                   {/* View-only files button */}
                   <td className="py-2 pr-3">
                     <button
@@ -325,6 +370,7 @@ export default function MemberEvents() {
                     </button>
                   </td>
 
+
                   <td className="py-2 pr-6">
                     <Pill>{r.verdict}</Pill>
                   </td>
@@ -332,6 +378,7 @@ export default function MemberEvents() {
               ))}
             </tbody>
           </CardTable>
+
 
           {/* View-only Files Modal */}
           <FilesModal
@@ -342,6 +389,8 @@ export default function MemberEvents() {
         </section>
       )}
 
+
+      {/* defenses view with tabs */}
       {view === "defenses" && (
         <>
           <div className="flex gap-2 mb-3">
@@ -349,7 +398,7 @@ export default function MemberEvents() {
               { key: "title", label: "Title Defense" },
               { key: "oral", label: "Oral Defense" },
               { key: "final", label: "Final Defense" },
-              { key: "redef", label: "Final Re-Defense" },
+              // Removed Final Re-Defense tab
             ].map((t) => (
               <button
                 key={t.key}
@@ -363,6 +412,7 @@ export default function MemberEvents() {
               </button>
             ))}
           </div>
+
 
           {defTab === "title" && (
             <section>
@@ -380,6 +430,7 @@ export default function MemberEvents() {
                   <tr className="bg-neutral-50/80 text-neutral-600">
                     <th className="text-left py-2 pl-6 pr-3">NO</th>
                     <th className="text-left py-2 pr-3">Team</th>
+                    <th className="text-left py-2 pr-3">Title</th>
                     <th className="text-left py-2 pr-3">Date</th>
                     <th className="text-left py-2 pr-3">Time</th>
                     <th className="text-left py-2 pr-3">Panelist</th>
@@ -394,6 +445,7 @@ export default function MemberEvents() {
                     >
                       <td className="py-2 pl-6 pr-3">{idx + 1}.</td>
                       <td className="py-2 pr-3">{r.teamName}</td>
+                      <td className="py-2 pr-3">{r.title}</td>
                       <td className="py-2 pr-3">{r.date}</td>
                       <td className="py-2 pr-3">
                         {r.timeStart ? to12h(r.timeStart) : ""}
@@ -412,6 +464,7 @@ export default function MemberEvents() {
               </CardTable>
             </section>
           )}
+
 
           {defTab === "oral" && (
             <section>
@@ -463,6 +516,7 @@ export default function MemberEvents() {
               </CardTable>
             </section>
           )}
+
 
           {defTab === "final" && (
             <section>
@@ -526,69 +580,12 @@ export default function MemberEvents() {
             </section>
           )}
 
-          {defTab === "redef" && (
-            <section>
-              <div className="flex items-center gap-2 mb-2">
-                <GraduationCap className="w-5 h-5" color={MAROON} />
-                <h2
-                  className="text-[17px] font-semibold"
-                  style={{ color: MAROON }}
-                >
-                  Final Re-Defense
-                </h2>
-              </div>
-              <CardTable>
-                <thead>
-                  <tr className="bg-neutral-50/80 text-neutral-600">
-                    <th className="text-left py-2 pl-6 pr-3">NO</th>
-                    <th className="text-left py-2 pr-3">Team</th>
-                    <th className="text-left py-2 pr-3">Title</th>
-                    <th className="text-left py-2 pr-3">Date</th>
-                    <th className="text-left py-2 pr-3">Time</th>
-                    <th className="text-left py-2 pr-3">Panelist</th>
-                    <th className="text-left py-2 pr-6">Verdict</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(rows.finalRedefense || []).length ? (
-                    rows.finalRedefense.map((r, idx) => (
-                      <tr
-                        key={`frd-${r.id}`}
-                        className="border-t border-neutral-200"
-                      >
-                        <td className="py-2 pl-6 pr-3">{idx + 1}.</td>
-                        <td className="py-2 pr-3">{r.teamName}</td>
-                        <td className="py-2 pr-3">{r.title}</td>
-                        <td className="py-2 pr-3">{r.date}</td>
-                        <td className="py-2 pr-3">
-                          {r.timeStart ? to12h(r.timeStart) : ""}
-                        </td>
-                        <td className="py-2 pr-3">
-                          {Array.isArray(r.panelists)
-                            ? r.panelists.join(", ")
-                            : ""}
-                        </td>
-                        <td className="py-2 pr-6">
-                          <Pill>{r.verdict || "Pending"}</Pill>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr className="border-t border-neutral-200">
-                      <td
-                        className="py-6 text-center text-neutral-500"
-                        colSpan={7}
-                      >
-                        No final re-defense items yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </CardTable>
-            </section>
-          )}
+
+          {/* Removed Final Re-Defense section */}
         </>
       )}
     </div>
   );
 }
+
+

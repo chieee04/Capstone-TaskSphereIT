@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Users, ChevronRight, ChevronLeft, FileText } from "lucide-react";
+import { Users, ChevronRight, FileText, ClipboardList } from "lucide-react";
+
 
 /* ===== Firebase ===== */
 import { auth, db } from "../../config/firebase";
@@ -13,23 +14,25 @@ import {
   where,
 } from "firebase/firestore";
 
-/* ---------------------- SMALL HELPERS ---------------------- */
-const cardBase =
-  "bg-white border border-neutral-200 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.08)] overflow-hidden hover:translate-y-[-2px] transition-transform";
-const maroon = "#6A0F14";
+
+/* ---------------------- CONSTANTS & HELPERS ---------------------- */
+const MAROON = "#3B0304";
+
 
 const emptyProgress = { todo: 0, inprogress: 0, review: 0, done: 0, missed: 0 };
+
 
 /** Builds stroke segments for an SVG donut */
 function useDonutSegments(progress) {
   return useMemo(() => {
     const parts = [
-      { key: "todo", label: "To Do", color: "#F5B700" },
-      { key: "inprogress", label: "In Progress", color: "#63A46C" },
-      { key: "review", label: "To Review", color: "#7C5CC4" },
-      { key: "done", label: "Completed", color: maroon },
-      { key: "missed", label: "Missed", color: "#D11A2A" },
+      { key: "todo", label: "To Do", color: "#FABC3F" },
+      { key: "inprogress", label: "In Progress", color: "#809D3C" },
+      { key: "review", label: "To Review", color: "#578FCA" },
+      { key: "done", label: "Completed", color: "#AA60C8" },
+      { key: "missed", label: "Missed", color: MAROON },
     ];
+
 
     const total = parts.reduce((s, p) => s + (progress[p.key] || 0), 0) || 1;
     let acc = 0;
@@ -47,17 +50,19 @@ function useDonutSegments(progress) {
       return seg;
     });
 
-    const completion =
-      (progress.done || 0) / total > 0
-        ? Math.round(((progress.done || 0) / total) * 100)
-        : 0;
+
+    // Calculate completion percentage: (Completed tasks / Total tasks) * 100
+    const completion = total > 0 ? Math.round((progress.done / total) * 100) : 0;
+
 
     return { segments, completion, total, parts };
   }, [progress]);
 }
 
+
 /* ----------------------- formatting helpers ----------------------- */
 const isTs = (v) => v && typeof v === "object" && typeof v.toDate === "function";
+
 
 const fmtDate = (v) => {
   try {
@@ -68,6 +73,7 @@ const fmtDate = (v) => {
     return "—";
   }
 };
+
 
 const fmtTime = (v) => {
   if (!v) return "—";
@@ -82,39 +88,61 @@ const fmtTime = (v) => {
   }
 };
 
+
 const fmtTimeRange = (start, end) => {
   if (!start && !end) return "—";
   if (start && end) return `${fmtTime(start)}–${fmtTime(end)}`;
   return fmtTime(start || end);
 };
 
-/* ----------------------- UI SUBPARTS ----------------------- */
+
+/* ----------------------- UPDATED CARD COMPONENTS ----------------------- */
 function TeamCard({ team, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`${cardBase} w-64 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[${maroon}]/60 hover:shadow-lg transition-shadow`}
-      aria-label={`Open ${team.name} summary`}
+      className="cursor-pointer relative w-[160px] h-[220px] rounded-2xl bg-white border-2 border-gray-200 shadow-lg transition-all duration-300
+                 hover:shadow-2xl hover:-translate-y-2 hover:border-gray-300 active:scale-[0.98] text-neutral-800 overflow-hidden group"
     >
-      <div className="p-4 pb-5">
-        <div className="grid place-items-center mb-2">
-          <Users className="w-10 h-10" />
+      {/* REMOVED: Left side accent bar */}
+     
+      {/* Bottom accent - reduced height */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-6 rounded-b-2xl transition-all duration-300 group-hover:h-8"
+        style={{ background: MAROON }}
+      />
+     
+      {/* Central content area */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 pb-10">
+        {/* Team icon - centered in main white area with animation */}
+        <div className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+          <Users className="w-16 h-16 mb-4 text-black" />
         </div>
-        <div className="text-center">
-          {/* ONLY the team name */}
-          <p className="font-medium text-neutral-800">{team.name || "—"}</p>
-          {/* Title line (or "--") */}
-          <p className="mt-1 text-[13px] text-neutral-600">
-            <span className="font-semibold">Title:</span>{" "}
-            {team.systemTitle || "--"}
-          </p>
-        </div>
+       
+        {/* Team name text - positioned below icon */}
+        <span className="text-base font-bold text-center leading-tight text-black transition-all duration-300 group-hover:scale-105">
+          {team.name || "—"}
+        </span>
+
+
+        {/* System title - smaller text below team name */}
+        <span className="text-xs text-neutral-600 text-center mt-2 transition-all duration-300 group-hover:scale-105">
+          {team.systemTitle || "--"}
+        </span>
       </div>
-      <div className="h-5" style={{ backgroundColor: maroon }} />
+
+
+      {/* Subtle glow effect on hover */}
+      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+           style={{
+             boxShadow: `0 0 20px ${MAROON}40`,
+             background: `radial-gradient(circle at center, transparent 0%, ${MAROON}10 100%)`
+           }} />
     </button>
   );
 }
+
 
 function Donut({ progress }) {
   const { segments, completion } = useDonutSegments(progress || emptyProgress);
@@ -123,12 +151,14 @@ function Donut({ progress }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
 
+
   return (
-    <div className={`${cardBase}`}>
+    <div className="bg-white border border-neutral-200 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.08)] overflow-hidden">
       <div className="p-5">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold">Tasks Progress</p>
         </div>
+
 
         <div className="flex gap-6 items-center">
           <svg
@@ -162,15 +192,24 @@ function Donut({ progress }) {
             >
               <div className="w-full h-full grid place-items-center">
                 <div className="text-4xl font-bold text-neutral-800">{completion}%</div>
+                <div className="text-sm text-neutral-500 mt-1">Completed</div>
               </div>
             </foreignObject>
           </svg>
 
-          <div className="grid gap-2 text-sm">
+
+          {/* UPDATED: Perfectly circular bullets for legend */}
+          <div className="grid gap-3 text-sm">
             {segments.map((s) => (
-              <div key={s.key} className="flex items-center gap-2">
-                <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: s.color }} />
-                <span className="text-neutral-700">{s.label}</span>
+              <div key={s.key} className="flex items-center gap-3">
+                <div
+                  className="w-4 h-4 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: s.color }}
+                />
+                <div className="flex items-center gap-2">
+                  <span className="text-neutral-700 whitespace-nowrap">{s.label}</span>
+                  <span className="text-neutral-500 text-xs">({s.value})</span>
+                </div>
               </div>
             ))}
           </div>
@@ -180,9 +219,10 @@ function Donut({ progress }) {
   );
 }
 
+
 function MembersTable({ members }) {
   return (
-    <div className={`${cardBase}`}>
+    <div className="bg-white border border-neutral-200 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.08)] overflow-hidden">
       <div className="p-5">
         <p className="text-sm font-semibold mb-3">Team</p>
         <div className="overflow-x-auto">
@@ -217,50 +257,101 @@ function MembersTable({ members }) {
   );
 }
 
+
+/* ----------------------- Status Badge Component ----------------------- */
+const StatusBadge = ({ value }) => {
+  const STATUS_COLORS = {
+    "To Do": "#FABC3F",
+    "In Progress": "#809D3C",
+    "To Review": "#578FCA",
+    "Completed": "#AA60C8",
+    "Missed": "#3B0304",
+  };
+ 
+  const backgroundColor = STATUS_COLORS[value] || "#6B7280";
+ 
+  if (!value || value === "null") return <span>--</span>;
+ 
+  return (
+    <span
+      className="inline-flex items-center px-2.5 py-0.5 rounded text-[12px] font-medium text-white"
+      style={{ backgroundColor }}
+    >
+      {value}
+    </span>
+  );
+};
+
+
+const RevisionPill = ({ value }) =>
+  value && value !== "null" && value !== "No Revision" ? (
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[12px] font-medium bg-neutral-100 border border-neutral-200">
+      {value}
+    </span>
+  ) : (
+    <span>--</span>
+  );
+
+
+/* ----------------------- UPDATED Tasks Table ----------------------- */
 function TasksTable({ tasks, loading }) {
   return (
-    <div className={`${cardBase}`}>
+    <div className="bg-white border border-neutral-200 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.08)] overflow-hidden">
       <div className="p-5">
         <p className="text-sm font-semibold mb-3">Team Tasks</p>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[1400px]">
             <thead>
               <tr className="text-left text-neutral-500">
                 <th className="py-2 pr-3 w-16">NO</th>
-                <th className="py-2 pr-3">Task</th>
+                <th className="py-2 pr-3">Task Type</th>
+                <th className="py-2 pr-3">Tasks</th>
                 <th className="py-2 pr-3">Subtask</th>
                 <th className="py-2 pr-3">Elements</th>
+                <th className="py-2 pr-3">Date Created</th>
                 <th className="py-2 pr-3">Due Date</th>
                 <th className="py-2 pr-3">Time</th>
-                <th className="py-2 pr-3">Revisions NO</th>
+                <th className="py-2 pr-3">Date Completed</th>
+                <th className="py-2 pr-3">Revision NO</th>
+                <th className="py-2 pr-3">Status</th>
+                <th className="py-2 pr-3">Project Phase</th>
                 <th className="py-2 pr-3">Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr className="border-t border-neutral-200">
-                  <td className="py-6 pr-3 text-neutral-500" colSpan={8}>
+                  <td className="py-6 pr-3 text-neutral-500" colSpan={13}>
                     Loading tasks…
                   </td>
                 </tr>
               ) : tasks.length === 0 ? (
                 <tr className="border-t border-neutral-200">
-                  <td className="py-6 pr-3 text-neutral-500" colSpan={8}>
-                    No tasks yet.
+                  <td className="py-6 pr-3 text-neutral-500" colSpan={13}>
+                    No tasks found for this team.
                   </td>
                 </tr>
               ) : (
                 tasks.map((t, i) => (
-                  <tr key={`${t._id || t.no}-${i}`} className="border-t border-neutral-200">
+                  <tr key={`${t._id || t.no}-${i}`} className="border-t border-neutral-200 hover:bg-neutral-50">
                     <td className="py-2 pr-3">{i + 1}.</td>
-                    <td className="py-2 pr-3">{t.task}</td>
-                    <td className="py-2 pr-3">{t.subtask}</td>
-                    <td className="py-2 pr-3">{t.elements}</td>
-                    <td className="py-2 pr-3">{t.dueDate}</td>
-                    <td className="py-2 pr-3">{t.time}</td>
-                    <td className="py-2 pr-3">{t.revisions}</td>
+                    <td className="py-2 pr-3">{t.taskType || "—"}</td>
+                    <td className="py-2 pr-3">{t.task || "—"}</td>
+                    <td className="py-2 pr-3">{t.subtask || "—"}</td>
+                    <td className="py-2 pr-3">{t.elements || "—"}</td>
+                    <td className="py-2 pr-3">{t.dateCreated || "—"}</td>
+                    <td className="py-2 pr-3">{t.dueDate || "—"}</td>
+                    <td className="py-2 pr-3">{t.time || "—"}</td>
+                    <td className="py-2 pr-3">{t.dateCompleted || "—"}</td>
                     <td className="py-2 pr-3">
-                      <button className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded border border-neutral-300 hover:bg-neutral-100">
+                      <RevisionPill value={t.revisions} />
+                    </td>
+                    <td className="py-2 pr-3">
+                      <StatusBadge value={t.status} />
+                    </td>
+                    <td className="py-2 pr-3">{t.projectPhase || "—"}</td>
+                    <td className="py-2 pr-3">
+                      <button className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded border border-neutral-300 hover:bg-neutral-100 transition-colors">
                         <FileText className="w-4 h-4" /> View
                       </button>
                     </td>
@@ -275,35 +366,42 @@ function TasksTable({ tasks, loading }) {
   );
 }
 
+
 /* ----------------------- MAIN COMPONENT ----------------------- */
 const TeamsSummary = () => {
   const [uid, setUid] = useState("");
   const [loading, setLoading] = useState(true);
-  const [teams, setTeams] = useState([]); // [{id, name, systemTitle, members, progress}]
+  const [teams, setTeams] = useState([]);
   const [selected, setSelected] = useState(null);
 
-  // new: tasks for the selected team
+
   const [tasksLoading, setTasksLoading] = useState(false);
   const [teamTasks, setTeamTasks] = useState([]);
+  const [teamProgress, setTeamProgress] = useState({});
+
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUid(u?.uid || ""));
     return () => unsub();
   }, []);
 
+
   // load advised teams + their titles and teamName (preferred)
   useEffect(() => {
     if (!uid) return;
     let alive = true;
+
 
     (async () => {
       setLoading(true);
       try {
         const teamsRef = collection(db, "teams");
 
+
         // primary: adviser.uid
         let snap = await getDocs(query(teamsRef, where("adviser.uid", "==", uid)));
         let docs = snap.docs;
+
 
         // fallback: adviserUid
         if (docs.length === 0) {
@@ -311,10 +409,12 @@ const TeamsSummary = () => {
           docs = alt.docs;
         }
 
+
         const enriched = await Promise.all(
           docs.map(async (d) => {
             const data = d.data() || {};
             const teamId = d.id;
+
 
             // Prefer teamName from teamSystemTitles/{teamId}, else teams/{id}.name
             let systemTitle = "";
@@ -328,7 +428,9 @@ const TeamsSummary = () => {
               }
             } catch {/* ignore */}
 
+
             const finalName = nameFromTitleDoc || (data.name || "Unnamed Team");
+
 
             const memberNames = Array.isArray(data.memberNames) ? data.memberNames : [];
             const managerName = data?.manager?.fullName || data?.managerName || "";
@@ -336,6 +438,7 @@ const TeamsSummary = () => {
               ...(managerName ? [{ name: managerName, role: "Project Manager" }] : []),
               ...memberNames.map((n) => ({ name: n, role: "Member" })),
             ];
+
 
             return {
               id: teamId,
@@ -347,6 +450,7 @@ const TeamsSummary = () => {
           })
         );
 
+
         if (alive) setTeams(enriched);
       } catch (e) {
         console.error("Failed to load advised teams:", e);
@@ -356,145 +460,224 @@ const TeamsSummary = () => {
       }
     })();
 
+
     return () => {
       alive = false;
     };
   }, [uid]);
 
-  /* ---------- NEW: fetch team tasks when a team is opened ---------- */
-  // --- replace the whole useEffect that loads tasks with this one ---
-useEffect(() => {
-  if (!selected) return;
-  const team = teams.find((t) => t.id === selected);
-  if (!team) return;
 
-  let alive = true;
-
-  const isTs = (v) => v && typeof v === "object" && typeof v.toDate === "function";
-  const fmtDate = (v) => {
-    try {
-      const d = isTs(v) ? v.toDate() : new Date(v);
-      return Number.isNaN(d.getTime())
-        ? "—"
-        : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-    } catch { return "—"; }
-  };
-  const fmtTime = (v) => {
-    try {
-      if (!v) return "—";
-      if (typeof v === "string") return v;
-      const d = isTs(v) ? v.toDate() : new Date(v);
-      return Number.isNaN(d.getTime())
-        ? "—"
-        : d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-    } catch { return "—"; }
-  };
-
-  const normalize = (d, col) => ({
-    _id: d.id || d.uid,
-    task: d.task || (col === "oralDefenseTasks" ? "Oral Defense" : "Final Defense"),
-    subtask: d.subtask || d.subTask || d.phase || "—",
-    elements: d.elements || d.element || d.type || "—", // your doc shows `type: "Discussion & Review"`
-    dueDate: fmtDate(d.dueDate || d.due || d.date),
-    time: fmtTime(d.dueTime || d.time),
-    revisions: d.revision || d.revisions || d.revisionCount || "—",
-  });
-
-  const fetchCol = async (colName) => {
-    const out = [];
-    // by team.id (correct path for your schema)
-    try {
-      const s1 = await getDocs(query(collection(db, colName), where("team.id", "==", team.id)));
-      s1.forEach((snap) => {
-        const d = { id: snap.id, ...snap.data() };
-        if ((d.taskManager || "") === "Adviser") out.push(normalize(d, colName));
-      });
-    } catch (e) { console.warn(`Query by team.id failed for ${colName}:`, e); }
-
-    // fallback by team.name
-    try {
-      const s2 = await getDocs(query(collection(db, colName), where("team.name", "==", team.name)));
-      s2.forEach((snap) => {
-        const d = { id: snap.id, ...snap.data() };
-        if ((d.taskManager || "") === "Adviser") {
-          if (!out.some((x) => x._id === snap.id)) out.push(normalize(d, colName));
-        }
-      });
-    } catch (e) { console.warn(`Query by team.name failed for ${colName}:`, e); }
-
-    return out;
-  };
-
-  (async () => {
-    setTasksLoading(true);
-    try {
-      const oral = await fetchCol("oralDefenseTasks");
-      const fin  = await fetchCol("finalDefenseTasks");
-      if (alive) setTeamTasks([...oral, ...fin]);
-    } catch (e) {
-      console.error("Failed loading team tasks:", e);
-      if (alive) setTeamTasks([]);
-    } finally {
-      if (alive) setTasksLoading(false);
+  /* ---------- UPDATED: Only fetch adviser tasks ---------- */
+  useEffect(() => {
+    if (!selected) {
+      setTeamTasks([]);
+      return;
     }
-  })();
+   
+    const team = teams.find((t) => t.id === selected);
+    if (!team) {
+      setTeamTasks([]);
+      return;
+    }
 
-  return () => { alive = false; };
-}, [selected, teams]);
+
+    let alive = true;
+
+
+    const isTs = (v) => v && typeof v === "object" && typeof v.toDate === "function";
+   
+    const fmtDateDetailed = (v) => {
+      try {
+        const d = isTs(v) ? v.toDate() : new Date(v);
+        return Number.isNaN(d.getTime())
+          ? "—"
+          : d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      } catch { return "—"; }
+    };
+
+
+    const fmtTime12Hour = (time24) => {
+      if (!time24 || time24 === "null") return "--";
+      try {
+        if (typeof time24 === "string") {
+          const [hours, minutes] = time24.split(':');
+          const hour = parseInt(hours, 10);
+          const period = hour >= 12 ? 'PM' : 'AM';
+          const hour12 = hour % 12 || 12;
+          return `${hour12}:${minutes} ${period}`;
+        }
+        return "--";
+      } catch {
+        return "--";
+      }
+    };
+
+
+    const normalize = (d, col) => {
+      // Determine task type based on collection and data
+      let taskType = "—";
+      if (d.type === "Documentation" || d.type === "System Development" || d.type === "Discussion & Review") {
+        taskType = d.type;
+      } else if (d.elements === "Documentation" || d.elements === "System Development" || d.elements === "Discussion & Review") {
+        taskType = d.elements;
+      } else {
+        // Default based on collection
+        if (col === "oralDefenseTasks") taskType = "Oral Defense";
+        if (col === "finalDefenseTasks") taskType = "Final Defense";
+        if (col === "finalRedefenseTasks") taskType = "Final Re-Defense";
+      }
+
+
+      // Format dates properly
+      const dateCreated = d.createdAt ? fmtDateDetailed(d.createdAt) : "—";
+      const dueDate = d.dueDate ? fmtDateDetailed(d.dueDate) : "—";
+      const dateCompleted = d.completedAt ? fmtDateDetailed(d.completedAt) : "—";
+     
+      return {
+        _id: d.id || d.uid,
+        taskType,
+        task: d.task || (col === "oralDefenseTasks" ? "Oral Defense" : "Final Defense"),
+        subtask: d.subtask || d.subTask || "—",
+        elements: d.elements || d.element || "—",
+        dateCreated,
+        dueDate,
+        time: fmtTime12Hour(d.dueTime || d.time),
+        dateCompleted,
+        revisions: d.revision || d.revisions || d.revisionCount || "No Revision",
+        status: d.status || "To Do",
+        projectPhase: d.phase || d.projectPhase || "—",
+      };
+    };
+
+
+    const fetchCol = async (colName) => {
+      const out = [];
+     
+      try {
+        // ONLY QUERY ADVISER TASKS - filter by taskManager = "Adviser"
+        const q = query(
+          collection(db, colName),
+          where("team.id", "==", team.id),
+          where("taskManager", "==", "Adviser")
+        );
+       
+        const snapshot = await getDocs(q);
+        snapshot.forEach((snap) => {
+          const d = { id: snap.id, ...snap.data() };
+          out.push(normalize(d, colName));
+        });
+
+
+      } catch (e) {
+        console.error(`Failed to fetch adviser tasks from ${colName}:`, e);
+      }
+
+
+      return out;
+    };
+
+
+    (async () => {
+      setTasksLoading(true);
+      try {
+        // Fetch from all task collections - ONLY ADVISER TASKS
+        const oral = await fetchCol("oralDefenseTasks");
+        const final = await fetchCol("finalDefenseTasks");
+        const redefense = await fetchCol("finalRedefenseTasks");
+       
+        // Combine all ADVISER tasks
+        const allTasks = [...oral, ...final, ...redefense];
+       
+        // Calculate progress based on ACTUAL ADVISER TASKS only
+        const progress = {
+          todo: allTasks.filter(task => task.status === "To Do").length,
+          inprogress: allTasks.filter(task => task.status === "In Progress").length,
+          review: allTasks.filter(task => task.status === "To Review").length,
+          done: allTasks.filter(task => task.status === "Completed").length,
+          missed: allTasks.filter(task => task.status === "Missed").length,
+        };
+
+
+        // Store progress separately to avoid re-rendering teams state
+        setTeamProgress(prev => ({
+          ...prev,
+          [team.id]: progress
+        }));
+       
+        // Sort by due date or creation date
+        allTasks.sort((a, b) => {
+          const dateA = new Date(a.dueDate || a.dateCreated || 0);
+          const dateB = new Date(b.dueDate || b.dateCreated || 0);
+          return dateA - dateB;
+        });
+
+
+        if (alive) {
+          setTeamTasks(allTasks);
+        }
+      } catch (e) {
+        console.error("Failed loading adviser tasks:", e);
+        if (alive) setTeamTasks([]);
+      } finally {
+        if (alive) {
+          setTasksLoading(false);
+        }
+      }
+    })();
+
+
+    return () => { alive = false; };
+  }, [selected, teams]);
+
+
+  // Get current team's progress (ADVISER TASKS ONLY)
+  const currentTeamProgress = selected ? teamProgress[selected] : emptyProgress;
 
 
   if (selected) {
     const team = teams.find((t) => t.id === selected);
 
+
     return (
-      <div className="space-y-5">
-        {/* Breadcrumb + title (use team name) */}
-        <div className="flex items-center gap-2 text-sm">
-          <Users className="w-4 h-4" />
-          <span className="font-medium">Teams Summary</span>
-          <ChevronRight className="w-4 h-4 text-neutral-500" />
-          <span className="font-semibold">{team?.name || "—"}</span>
-        </div>
-        <div className="h-[2px] w-full" style={{ backgroundColor: maroon }} />
-
-        {/* team name + system title line */}
-        <div className="text-sm">
-          <span className="font-semibold">Team:</span> {team?.name || "—"}{" "}
-          <span className="mx-3 text-neutral-300">|</span>
-          <span className="font-semibold">System Title:</span>{" "}
-          {team?.systemTitle || "--"}
+      <div className="space-y-4">
+        {/* UPDATED HEADER - Consistent with tasks view */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
+            <Users className="w-5 h-5" />
+            <span>Teams Summary</span>
+            <ChevronRight className="w-4 h-4 text-neutral-500" />
+            <span>{team?.name || "—"}</span>
+          </div>
+          <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
         </div>
 
-        {/* Back */}
-        <button
-          onClick={() => setSelected(null)}
-          className="cursor-pointer inline-flex items-center gap-1 text-sm px-3 py-1.5 rounded-md border border-neutral-300 hover:bg-neutral-100"
-          type="button"
-        >
-          <ChevronLeft className="w-4 h-4 " />
-          Back to Teams
-        </button>
 
         {/* Top row: members + donut */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MembersTable members={team?.members || []} />
-          <Donut progress={team?.progress || emptyProgress} />
+          <Donut progress={currentTeamProgress || emptyProgress} />
         </div>
 
-        {/* Tasks (from oralDefenseTasks + finalDefenseTasks, taskManager=Adviser) */}
+
+        {/* Tasks from ALL task collections for this team - ADVISER TASKS ONLY */}
         <TasksTable tasks={teamTasks} loading={tasksLoading} />
       </div>
     );
   }
 
+
   // CARD GRID VIEW
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Users className="w-5 h-5" />
-        <h2 className="text-lg font-semibold">Teams Summary</h2>
+      {/* UPDATED HEADER - Consistent with tasks view */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
+          <Users className="w-5 h-5" />
+          <span>Teams Summary</span>
+        </div>
+        <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
-      <div className="h-[2px] w-full" style={{ backgroundColor: maroon }} />
+
 
       {loading ? (
         <div className="text-sm text-neutral-500 px-1 py-6">Loading teams…</div>
@@ -503,7 +686,7 @@ useEffect(() => {
           No teams under your advisory.
         </div>
       ) : (
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-6">
           {teams.map((team) => (
             <TeamCard
               key={team.id}
@@ -517,3 +700,5 @@ useEffect(() => {
   );
 };
 export default TeamsSummary;
+
+
