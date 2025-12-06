@@ -10,30 +10,31 @@ import {
   ListChecks,
   LogOut,
   X,
+  ChevronLeft,
 } from "lucide-react";
 import TaskSphereLogo from "../../assets/imgs/TaskSphereLogo.png";
 import AdviserHeader from "./AdviserHeader";
 import AdviserFooter from "./AdviserFooter";
 import NotificationBanner from "../common/NotificationBanner";
 
-
 import AdviserProfile from "./AdviserProfile";
-
 
 // Firebase
 import { auth } from "../../config/firebase";
 import { signOut } from "firebase/auth";
 
+const navItemClasses = (isActive) =>
+  `flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+    isActive
+      ? "bg-[#6A0F14]/10 text-[#6A0F14]"
+      : "text-[#6A0F14] hover:bg-neutral-100"
+  }`;
 
 const AdviserLayout = () => {
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-
-  // PROFILE DRAWER STATE
   const [showProfile, setShowProfile] = useState(false);
-
 
   // Close sidebars on Esc
   useEffect(() => {
@@ -48,6 +49,18 @@ const AdviserLayout = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, [showProfile, sidebarOpen]);
 
+  // Prevent body scroll when sidebar or profile is open
+  useEffect(() => {
+    if (sidebarOpen || showProfile) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [sidebarOpen, showProfile]);
 
   // Close mobile sidebar when navigating
   const handleNavigation = () => {
@@ -55,15 +68,6 @@ const AdviserLayout = () => {
       setSidebarOpen(false);
     }
   };
-
-
-  const item = (isActive) =>
-    `flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-      isActive
-        ? "bg-[#6A0F14]/10 text-[#6A0F14]"
-        : "text-neutral-700 hover:bg-neutral-100"
-    }`;
-
 
   const handleLogout = async () => {
     try {
@@ -82,56 +86,53 @@ const AdviserLayout = () => {
     }
   };
 
-
   return (
     <div className="flex h-screen overflow-hidden bg-neutral-50">
       {/* Desktop Sidebar - Only visible on lg and up */}
-      <aside className="hidden lg:flex lg:flex-col w-64 bg-white border-r border-neutral-200 flex-shrink-0">
+      <aside className="hidden lg:flex lg:flex-col w-64 min-w-[16rem] shrink-0 bg-white border-r border-neutral-200">
         <div className="flex flex-col h-full py-6">
           <div className="flex items-center justify-center mb-8 px-4">
             <img src={TaskSphereLogo} alt="TaskSphere IT" className="h-10" />
           </div>
 
-
-          <nav className="flex-1 px-4 space-y-1">
+          <nav className="flex-1 px-4 space-y-2">
             <NavLink
               to="/adviser/dashboard"
-              className={({ isActive }) => item(isActive)}
+              className={({ isActive }) => navItemClasses(isActive)}
             >
               <Home className="w-5 h-5" /> Dashboard
             </NavLink>
             <NavLink
               to="/adviser/teams-summary"
-              className={({ isActive }) => item(isActive)}
+              className={({ isActive }) => navItemClasses(isActive)}
             >
               <FileText className="w-5 h-5" /> Teams Summary
             </NavLink>
             <NavLink
               to="/adviser/tasks"
-              className={({ isActive }) => item(isActive)}
+              className={({ isActive }) => navItemClasses(isActive)}
             >
               <ListChecks className="w-5 h-5" /> Tasks
             </NavLink>
             <NavLink
               to="/adviser/teams-board"
-              className={({ isActive }) => item(isActive)}
+              className={({ isActive }) => navItemClasses(isActive)}
             >
               <Users className="w-5 h-5" /> Teams Board
             </NavLink>
             <NavLink
               to="/adviser/task-record"
-              className={({ isActive }) => item(isActive)}
+              className={({ isActive }) => navItemClasses(isActive)}
             >
               <ClipboardList className="w-5 h-5" /> Task Record
             </NavLink>
             <NavLink
               to="/adviser/events"
-              className={({ isActive }) => item(isActive)}
+              className={({ isActive }) => navItemClasses(isActive)}
             >
               <Calendar className="w-5 h-5" /> Events
             </NavLink>
           </nav>
-
 
           <div className="mt-auto px-4">
             <button
@@ -146,7 +147,6 @@ const AdviserLayout = () => {
         </div>
       </aside>
 
-
       {/* Mobile & Tablet Sidebar Overlay */}
       {sidebarOpen && (
         <>
@@ -156,11 +156,11 @@ const AdviserLayout = () => {
           />
           {/* Mobile & Tablet Sidebar Panel */}
           <aside
-            className="fixed left-0 top-0 z-[51] h-full w-64 bg-white border-r border-neutral-200 shadow-2xl lg:hidden transition-transform duration-300"
+            className="fixed left-0 top-0 z-[51] h-full w-64 bg-white border-r border-neutral-200 shadow-2xl lg:hidden transform transition-transform duration-300 ease-in-out"
             role="dialog"
             aria-modal="true"
           >
-            <div className="flex flex-col h-full py-6">
+            <div className="flex flex-col h-full py-6 overflow-y-auto">
               <div className="flex items-center justify-between mb-8 px-4">
                 <img src={TaskSphereLogo} alt="TaskSphere IT" className="h-10" />
                 <button
@@ -171,52 +171,50 @@ const AdviserLayout = () => {
                 </button>
               </div>
 
-
-              <nav className="flex-1 px-4 space-y-1">
+              <nav className="flex-1 px-4 space-y-2">
                 <NavLink
                   to="/adviser/dashboard"
                   onClick={handleNavigation}
-                  className={({ isActive }) => item(isActive)}
+                  className={({ isActive }) => navItemClasses(isActive)}
                 >
                   <Home className="w-5 h-5" /> Dashboard
                 </NavLink>
                 <NavLink
                   to="/adviser/teams-summary"
                   onClick={handleNavigation}
-                  className={({ isActive }) => item(isActive)}
+                  className={({ isActive }) => navItemClasses(isActive)}
                 >
                   <FileText className="w-5 h-5" /> Teams Summary
                 </NavLink>
                 <NavLink
                   to="/adviser/tasks"
                   onClick={handleNavigation}
-                  className={({ isActive }) => item(isActive)}
+                  className={({ isActive }) => navItemClasses(isActive)}
                 >
                   <ListChecks className="w-5 h-5" /> Tasks
                 </NavLink>
                 <NavLink
                   to="/adviser/teams-board"
                   onClick={handleNavigation}
-                  className={({ isActive }) => item(isActive)}
+                  className={({ isActive }) => navItemClasses(isActive)}
                 >
                   <Users className="w-5 h-5" /> Teams Board
                 </NavLink>
                 <NavLink
                   to="/adviser/task-record"
                   onClick={handleNavigation}
-                  className={({ isActive }) => item(isActive)}
+                  className={({ isActive }) => navItemClasses(isActive)}
                 >
                   <ClipboardList className="w-5 h-5" /> Task Record
                 </NavLink>
                 <NavLink
                   to="/adviser/events"
                   onClick={handleNavigation}
-                  className={({ isActive }) => item(isActive)}
+                  className={({ isActive }) => navItemClasses(isActive)}
                 >
                   <Calendar className="w-5 h-5" /> Events
                 </NavLink>
               </nav>
-
 
               <div className="mt-auto px-4">
                 <button
@@ -233,42 +231,59 @@ const AdviserLayout = () => {
         </>
       )}
 
-
-      {/* Main column - Full width on all screens */}
-      <div className="flex-1 flex flex-col min-h-0 w-full min-w-0">
-        {/* Pass the opener to the header */}
+      {/* Main column */}
+      <div 
+        className={`flex-1 flex flex-col min-h-0 w-full lg:w-[calc(100%-16rem)]`}
+      >
+        {/* FIXED: Pass the correct prop name to the header */}
         <AdviserHeader
-          onProfileClick={() => setShowProfile(true)}
+          onOpenProfile={() => setShowProfile(true)}
           onMenuClick={() => setSidebarOpen(true)}
         />
 
-
-        {/* Scroll area - Better responsive padding */}
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8">
-          <NotificationBanner role="Adviser" />
-          <Outlet />
-        </main>
-
-
+        {/* Better scroll handling for wide tables */}
+        <div className="flex-1 min-h-0 overflow-y-auto w-full">
+          <main className="h-full w-full">
+            <div className="min-h-full w-full">
+              <div className="w-full">
+                <div className="px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8 min-w-0">
+                  <NotificationBanner role="Adviser" />
+                  <div className="w-full">
+                    <Outlet />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+        
         <AdviserFooter />
       </div>
 
-
-      {/* PROFILE DRAWER */}
+      {/* Profile Drawer */}
       {showProfile && (
         <>
-          {/* Overlay */}
           <div
             className="fixed inset-0 z-[60] bg-black/40"
             onClick={() => setShowProfile(false)}
           />
-          {/* Panel */}
           <aside
             className="fixed right-0 top-0 z-[61] h-full w-full max-w-md bg-white border-l border-neutral-200 shadow-2xl"
             role="dialog"
             aria-modal="true"
           >
             <div className="h-full overflow-y-auto p-4 sm:p-6">
+              {/* Profile header with close arrow */}
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-neutral-200">
+                <h2 className="text-lg font-semibold text-[#6A0F14]">Profile</h2>
+                <button
+                  onClick={() => setShowProfile(false)}
+                  className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+                  aria-label="Close profile"
+                >
+                  <ChevronLeft className="w-5 h-5 text-[#6A0F14]" />
+                </button>
+              </div>
               <AdviserProfile />
             </div>
           </aside>
@@ -278,7 +293,4 @@ const AdviserLayout = () => {
   );
 };
 
-
 export default AdviserLayout;
-
-

@@ -9,6 +9,7 @@ import {
   LogOut,
   KanbanSquare,
   X,
+  ChevronLeft,
 } from "lucide-react";
 import TaskSphereLogo from "../../assets/imgs/TaskSphereLogo.png";
 import ProjectManagerHeader from "./ProjectManagerHeader";
@@ -48,7 +49,7 @@ export default function ProjectManagerLayout() {
 
   // Prevent body scroll when sidebar is open
   useEffect(() => {
-    if (sidebarOpen || showProfile) { // Added showProfile to prevent scroll when profile is open
+    if (sidebarOpen || showProfile) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -57,7 +58,7 @@ export default function ProjectManagerLayout() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [sidebarOpen, showProfile]); // Added showProfile dependency
+  }, [sidebarOpen, showProfile]);
 
   // Close mobile sidebar when navigating
   const handleNavigation = () => {
@@ -215,9 +216,9 @@ export default function ProjectManagerLayout() {
         </>
       )}
 
-      {/* Main column - FIXED WIDTH ISSUE HERE */}
+      {/* Main column */}
       <div 
-        className={`flex-1 flex flex-col min-h-0 w-full lg:w-[calc(100%-16rem)]`} // <- FIX 1: Explicitly set width on lg screens
+        className={`flex-1 flex flex-col min-h-0 w-full lg:w-[calc(100%-16rem)]`}
       >
         {/* Pass the opener to the header */}
         <ProjectManagerHeader 
@@ -225,16 +226,13 @@ export default function ProjectManagerLayout() {
           onMenuClick={() => setSidebarOpen(true)}
         />
 
-        {/* FIXED: Better scroll handling for wide tables */}
-        {/* Make this the scrollable container for the main content */}
-        <div className="flex-1 min-h-0 overflow-y-auto w-full"> {/* <- FIX 2: Ensure overflow is auto on the content wrapper */}
-          <main className="h-full w-full"> {/* Removed redundant overflow-auto from main */}
+        {/* Better scroll handling for wide tables */}
+        <div className="flex-1 min-h-0 overflow-y-auto w-full">
+          <main className="h-full w-full">
             <div className="min-h-full w-full">
-              {/* FIXED: Remove max-width constraints to allow proper horizontal scrolling */}
               <div className="w-full">
                 <div className="px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8 min-w-0">
                   <NotificationBanner role="Project Manager" />
-                  {/* FIXED: Allow content to determine its own width */}
                   <div className="w-full">
                     <Outlet />
                   </div>
@@ -260,6 +258,17 @@ export default function ProjectManagerLayout() {
             aria-modal="true"
           >
             <div className="h-full overflow-y-auto p-4 sm:p-6">
+              {/* ADDED: Profile header with close arrow */}
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-neutral-200">
+                <h2 className="text-lg font-semibold text-[#6A0F14]">Profile</h2>
+                <button
+                  onClick={() => setShowProfile(false)}
+                  className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+                  aria-label="Close profile"
+                >
+                  <ChevronLeft className="w-5 h-5 text-[#6A0F14]" />
+                </button>
+              </div>
               <ProjectManagerProfile />
             </div>
           </aside>

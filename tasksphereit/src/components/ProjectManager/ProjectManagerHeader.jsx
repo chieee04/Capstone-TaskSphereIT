@@ -1,3 +1,4 @@
+//project manager layout.txt
 // src/components/ProjectManager/ProjectManagerHeader.jsx
 import React from "react";
 import { Menu, User, NotebookText } from "lucide-react";
@@ -21,7 +22,7 @@ export default function ProjectManagerHeader({ onOpenProfile, onMenuClick }) {
           </button>
           {/* Logo for mobile/tablet when sidebar is hidden */}
           <div className="lg:hidden flex items-center flex-shrink-0">
-            <span className="text-base font-semibold text-[#6A0F14] whitespace-nowrap">TaskSphere</span>
+            <span className="text-base font-semibold text-[#6A0F14] whitespace-nowrap">TaskSphere IT</span>
           </div>
         </div>
 

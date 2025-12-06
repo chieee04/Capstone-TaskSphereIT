@@ -1,37 +1,71 @@
 // src/components/CapstoneMember/MemberLayout.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  Home,
+  Calendar,
+  ClipboardList,
+  File,
+  FileText,
+  LogOut,
+  X,
+  ChevronLeft,
+} from "lucide-react";
 import TaskSphereLogo from "../../assets/imgs/TaskSphereLogo.png";
 import MemberHeader from "./MemberHeader";
 import MemberFooter from "./MemberFooter";
 import MemberProfile from "./MemberProfile";
 import NotificationBanner from "../common/NotificationBanner";
 
+// Firebase
 import { auth } from "../../config/firebase";
 import { signOut } from "firebase/auth";
 
-// ⬇️ add the missing icons
-import {
-  Home,
-  ClipboardList,
-  File,
-  FileText,
-  Calendar,
-  LogOut,
-} from "lucide-react";
+const navItemClasses = (isActive) =>
+  `flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+    isActive
+      ? "bg-[#6A0F14]/10 text-[#6A0F14]"
+      : "text-[#6A0F14] hover:bg-neutral-100"
+  }`;
 
- function MemberLayout() {
+export default function MemberLayout() {
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ⬇️ bring back the sidebar item style helper
-  const navItemClasses = (isActive) =>
-    `flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium ${
-      isActive
-        ? "bg-[#6A0F14]/10 text-[#6A0F14]"
-        : "text-neutral-700 hover:bg-neutral-100"
-    }`;
+  // Close sidebars on Esc
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        if (showProfile) setShowProfile(false);
+        if (sidebarOpen) setSidebarOpen(false);
+      }
+    };
+    
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showProfile, sidebarOpen]);
+
+  // Prevent body scroll when sidebar is open
+  useEffect(() => {
+    if (sidebarOpen || showProfile) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [sidebarOpen, showProfile]);
+
+  // Close mobile sidebar when navigating
+  const handleNavigation = () => {
+    if (sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -41,7 +75,7 @@ import {
       localStorage.removeItem("role");
       navigate("/login", { replace: true });
     } catch (e) {
-      console.error(e);
+      console.error("Logout failed:", e);
       localStorage.removeItem("uid");
       localStorage.removeItem("role");
       navigate("/login", { replace: true });
@@ -52,14 +86,14 @@ import {
 
   return (
     <div className="flex h-screen overflow-hidden bg-neutral-50">
-      {/* Sidebar */}
-      <aside className="hidden md:flex md:flex-col w-64 bg-white border-r border-neutral-200">
+      {/* Desktop Sidebar - Only visible on md and up */}
+      <aside className="hidden md:flex md:flex-col w-64 min-w-[16rem] shrink-0 bg-white border-r border-neutral-200">
         <div className="flex flex-col h-full py-6">
           <div className="flex items-center justify-center mb-8 px-4">
             <img src={TaskSphereLogo} alt="TaskSphere IT" className="h-10" />
           </div>
 
-          <nav className="flex-1 px-4 space-y-1">
+          <nav className="flex-1 px-4 space-y-2">
             <NavLink
               to="/member/dashboard"
               className={({ isActive }) => navItemClasses(isActive)}
@@ -100,10 +134,9 @@ import {
 
           <div className="mt-auto px-4">
             <button
-              type="button"
               onClick={handleLogout}
               disabled={loggingOut}
-              className="w-full flex items-center gap-3 justify-center text-sm font-medium text-[#6A0F14] border border-[#6A0F14] rounded-full px-4 py-2 hover:bg-[#6A0F14]/10 disabled:opacity-60"
+              className="cursor-pointer w-full flex items-center justify-center gap-3 text-sm font-medium text-[#6A0F14] border border-[#6A0F14] rounded-full px-4 py-2 hover:bg-[#6A0F14]/10 disabled:opacity-60 transition-colors"
             >
               <LogOut className="w-5 h-5" />
               {loggingOut ? "Signing out…" : "Sign Out"}
@@ -112,19 +145,120 @@ import {
         </div>
       </aside>
 
+      {/* Mobile & Tablet Sidebar Overlay */}
+      {sidebarOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-[50] bg-black/40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+          {/* Mobile & Tablet Sidebar Panel */}
+          <aside
+            className="fixed left-0 top-0 z-[51] h-full w-64 bg-white border-r border-neutral-200 shadow-2xl md:hidden transform transition-transform duration-300 ease-in-out"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex flex-col h-full py-6 overflow-y-auto">
+              <div className="flex items-center justify-between mb-8 px-4">
+                <img src={TaskSphereLogo} alt="TaskSphere IT" className="h-10" />
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <nav className="flex-1 px-4 space-y-2">
+                <NavLink
+                  to="/member/dashboard"
+                  onClick={handleNavigation}
+                  className={({ isActive }) => navItemClasses(isActive)}
+                >
+                  <Home className="w-5 h-5" /> Dashboard
+                </NavLink>
+                <NavLink
+                  to="/member/tasks"
+                  onClick={handleNavigation}
+                  className={({ isActive }) => navItemClasses(isActive)}
+                >
+                  <ClipboardList className="w-5 h-5" /> Tasks
+                </NavLink>
+                <NavLink
+                  to="/member/adviser-tasks"
+                  onClick={handleNavigation}
+                  className={({ isActive }) => navItemClasses(isActive)}
+                >
+                  <File className="w-5 h-5" /> Adviser Tasks
+                </NavLink>
+                <NavLink
+                  to="/member/tasks-board"
+                  onClick={handleNavigation}
+                  className={({ isActive }) => navItemClasses(isActive)}
+                >
+                  <FileText className="w-5 h-5" /> Tasks Board
+                </NavLink>
+                <NavLink
+                  to="/member/tasks-record"
+                  onClick={handleNavigation}
+                  className={({ isActive }) => navItemClasses(isActive)}
+                >
+                  <ClipboardList className="w-5 h-5" /> Tasks Record
+                </NavLink>
+                <NavLink
+                  to="/member/events"
+                  onClick={handleNavigation}
+                  className={({ isActive }) => navItemClasses(isActive)}
+                >
+                  <Calendar className="w-5 h-5" /> Events
+                </NavLink>
+              </nav>
+
+              <div className="mt-auto px-4">
+                <button
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="cursor-pointer w-full flex items-center justify-center gap-3 text-sm font-medium text-[#6A0F14] border border-[#6A0F14] rounded-full px-4 py-2 hover:bg-[#6A0F14]/10 disabled:opacity-60 transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  {loggingOut ? "Signing out…" : "Sign Out"}
+                </button>
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
+
       {/* Main column */}
-      <div className="flex-1 flex flex-col min-h-0">
-        <MemberHeader onOpenProfile={() => setShowProfile(true)} />
+      <div 
+        className={`flex-1 flex flex-col min-h-0 w-full md:w-[calc(100%-16rem)]`}
+      >
+        {/* FIXED: Pass the correct prop name to the header */}
+        <MemberHeader 
+          onOpenProfile={() => setShowProfile(true)}
+          onMenuClick={() => setSidebarOpen(true)}
+        />
 
-        <main className="flex-1 min-h-0 overflow-y-auto px-4 py-6 md:px-8">
-          <NotificationBanner role="Member" />
-          <Outlet />
-        </main>
-
+        {/* Better scroll handling for wide tables */}
+        <div className="flex-1 min-h-0 overflow-y-auto w-full">
+          <main className="h-full w-full">
+            <div className="min-h-full w-full">
+              <div className="w-full">
+                <div className="px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8 min-w-0">
+                  <NotificationBanner role="Member" />
+                  <div className="w-full">
+                    <Outlet />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+        
         <MemberFooter />
       </div>
 
-      {/* Profile Drawer (same width as Instructor) */}
+      {/* Profile Drawer */}
       {showProfile && (
         <>
           <div
@@ -132,13 +266,21 @@ import {
             onClick={() => setShowProfile(false)}
           />
           <aside
-            className="fixed right-0 top-0 z-[61] h-full
-                       w-[560px] md:w-[520px] sm:w-[480px]
-                       bg-white border-l border-neutral-200 shadow-2xl"
+            className="fixed right-0 top-0 z-[61] h-full w-full max-w-md bg-white border-l border-neutral-200 shadow-2xl"
             role="dialog"
             aria-modal="true"
           >
-            <div className="h-full overflow-y-auto p-6">
+            <div className="h-full overflow-y-auto p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-neutral-200">
+                <h2 className="text-lg font-semibold text-[#6A0F14]">Profile</h2>
+                <button
+                  onClick={() => setShowProfile(false)}
+                  className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+                  aria-label="Close profile"
+                >
+                  <ChevronLeft className="w-5 h-5 text-[#6A0F14]" />
+                </button>
+              </div>
               <MemberProfile />
             </div>
           </aside>
@@ -147,5 +289,3 @@ import {
     </div>
   );
 }
-
-export default MemberLayout

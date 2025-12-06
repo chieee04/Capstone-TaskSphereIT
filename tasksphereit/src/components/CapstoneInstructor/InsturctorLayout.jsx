@@ -1,28 +1,72 @@
-import React, { useState } from "react";
+// src/components/CapstoneInstructor/InstructorLayout.jsx
+import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Home, ClipboardList, Users, Calendar, Shield, LogOut, X } from "lucide-react";
+import {
+  Home,
+  Calendar,
+  Users,
+  ClipboardList,
+  LogOut,
+  X,
+  ChevronLeft,
+} from "lucide-react";
 import TaskSphereLogo from "../../assets/imgs/TaskSphereLogo.png";
 import InstructorHeader from "./InstructorHeader";
 import InstructorFooter from "./InstructorFooter";
+import NotificationBanner from "../common/NotificationBanner";
 
-// 👉 Import your profile component here
+// Import your profile component here
 import InstructorProfile from "./InstructorProfile";
 
 // Firebase
 import { auth } from "../../config/firebase";
 import { signOut } from "firebase/auth";
 
+const navItemClasses = (isActive) =>
+  `flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+    isActive
+      ? "bg-[#6A0F14]/10 text-[#6A0F14]"
+      : "text-[#6A0F14] hover:bg-neutral-100"
+  }`;
+
 const InstructorLayout = () => {
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
-
-  // NEW: control the profile overlay
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
-  const navItemClasses = (isActive) =>
-    `flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium ${
-      isActive ? "bg-[#6A0F14]/10 text-[#6A0F14]" : "text-neutral-700 hover:bg-neutral-100"
-    }`;
+  // Close sidebars on Esc
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        if (showProfile) setShowProfile(false);
+        if (sidebarOpen) setSidebarOpen(false);
+      }
+    };
+    
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showProfile, sidebarOpen]);
+
+  // Prevent body scroll when sidebar is open
+  useEffect(() => {
+    if (sidebarOpen || showProfile) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [sidebarOpen, showProfile]);
+
+  // Close mobile sidebar when navigating
+  const handleNavigation = () => {
+    if (sidebarOpen) {
+      setSidebarOpen(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -42,36 +86,46 @@ const InstructorLayout = () => {
   };
 
   return (
-    // Lock the window: full viewport height + no window scroll
     <div className="flex h-screen overflow-hidden bg-neutral-50">
-      {/* Sidebar */}
-      <aside className="hidden md:flex md:flex-col w-64 bg-white border-r border-neutral-200">
+      {/* Desktop Sidebar - Only visible on md and up */}
+      <aside className="hidden md:flex md:flex-col w-64 min-w-[16rem] shrink-0 bg-white border-r border-neutral-200">
         <div className="flex flex-col h-full py-6">
           <div className="flex items-center justify-center mb-8 px-4">
             <img src={TaskSphereLogo} alt="TaskSphere IT" className="h-10" />
           </div>
 
-          <nav className="flex-1 px-4 space-y-1">
-            <NavLink to="/instructor/dashboard" className={({ isActive }) => navItemClasses(isActive)}>
+          <nav className="flex-1 px-4 space-y-2">
+            <NavLink
+              to="/instructor/dashboard"
+              className={({ isActive }) => navItemClasses(isActive)}
+            >
               <Home className="w-5 h-5" /> Dashboard
             </NavLink>
-            <NavLink to="/instructor/enroll" className={({ isActive }) => navItemClasses(isActive)}>
+            <NavLink
+              to="/instructor/enroll"
+              className={({ isActive }) => navItemClasses(isActive)}
+            >
               <ClipboardList className="w-5 h-5" /> Enroll
             </NavLink>
-            <NavLink to="/instructor/teams" className={({ isActive }) => navItemClasses(isActive)}>
+            <NavLink
+              to="/instructor/teams"
+              className={({ isActive }) => navItemClasses(isActive)}
+            >
               <Users className="w-5 h-5" /> Teams
             </NavLink>
-            <NavLink to="/instructor/schedule" className={({ isActive }) => navItemClasses(isActive)}>
+            <NavLink
+              to="/instructor/schedule"
+              className={({ isActive }) => navItemClasses(isActive)}
+            >
               <Calendar className="w-5 h-5" /> Schedule
             </NavLink>
-            
           </nav>
 
           <div className="mt-auto px-4">
             <button
               onClick={handleLogout}
               disabled={loggingOut}
-              className="cursor-pointer w-full flex items-center justify-center gap-3 text-sm font-medium text-[#6A0F14] border border-[#6A0F14] rounded-full px-4 py-2 hover:bg-[#6A0F14]/10 disabled:opacity-60"
+              className="cursor-pointer w-full flex items-center justify-center gap-3 text-sm font-medium text-[#6A0F14] border border-[#6A0F14] rounded-full px-4 py-2 hover:bg-[#6A0F14]/10 disabled:opacity-60 transition-colors"
             >
               <LogOut className="w-5 h-5" />
               {loggingOut ? "Signing out…" : "Sign Out"}
@@ -80,47 +134,132 @@ const InstructorLayout = () => {
         </div>
       </aside>
 
-      {/* Main area */}
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* Pass a click handler down to open the profile */}
-        <InstructorHeader onProfileClick={() => setShowProfile(true)} />
+      {/* Mobile & Tablet Sidebar Overlay */}
+      {sidebarOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-[50] bg-black/40 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+          {/* Mobile & Tablet Sidebar Panel */}
+          <aside
+            className="fixed left-0 top-0 z-[51] h-full w-64 bg-white border-r border-neutral-200 shadow-2xl md:hidden transform transition-transform duration-300 ease-in-out"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="flex flex-col h-full py-6 overflow-y-auto">
+              <div className="flex items-center justify-between mb-8 px-4">
+                <img src={TaskSphereLogo} alt="TaskSphere IT" className="h-10" />
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-        <main className="flex-1 min-h-0 overflow-y-auto px-4 py-6 md:px-8">
-          <Outlet />
-        </main>
+              <nav className="flex-1 px-4 space-y-2">
+                <NavLink
+                  to="/instructor/dashboard"
+                  onClick={handleNavigation}
+                  className={({ isActive }) => navItemClasses(isActive)}
+                >
+                  <Home className="w-5 h-5" /> Dashboard
+                </NavLink>
+                <NavLink
+                  to="/instructor/enroll"
+                  onClick={handleNavigation}
+                  className={({ isActive }) => navItemClasses(isActive)}
+                >
+                  <ClipboardList className="w-5 h-5" /> Enroll
+                </NavLink>
+                <NavLink
+                  to="/instructor/teams"
+                  onClick={handleNavigation}
+                  className={({ isActive }) => navItemClasses(isActive)}
+                >
+                  <Users className="w-5 h-5" /> Teams
+                </NavLink>
+                <NavLink
+                  to="/instructor/schedule"
+                  onClick={handleNavigation}
+                  className={({ isActive }) => navItemClasses(isActive)}
+                >
+                  <Calendar className="w-5 h-5" /> Schedule
+                </NavLink>
+              </nav>
 
+              <div className="mt-auto px-4">
+                <button
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="cursor-pointer w-full flex items-center justify-center gap-3 text-sm font-medium text-[#6A0F14] border border-[#6A0F14] rounded-full px-4 py-2 hover:bg-[#6A0F14]/10 disabled:opacity-60 transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  {loggingOut ? "Signing out…" : "Sign Out"}
+                </button>
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
+
+      {/* Main column */}
+      <div 
+        className={`flex-1 flex flex-col min-h-0 w-full md:w-[calc(100%-16rem)]`}
+      >
+        {/* FIXED: Pass the correct prop name to the header */}
+        <InstructorHeader
+          onOpenProfile={() => setShowProfile(true)}
+          onMenuClick={() => setSidebarOpen(true)}
+        />
+
+        {/* Better scroll handling for wide tables */}
+        <div className="flex-1 min-h-0 overflow-y-auto w-full">
+          <main className="h-full w-full">
+            <div className="min-h-full w-full">
+              <div className="w-full">
+                <div className="px-3 py-4 sm:px-4 sm:py-6 md:px-6 lg:px-8 min-w-0">
+                  <NotificationBanner role="Instructor" />
+                  <div className="w-full">
+                    <Outlet />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+        
         <InstructorFooter />
       </div>
 
-      {/* Profile Overlay (owned by the layout so it can render above all routes) */}
+      {/* Profile Drawer */}
       {showProfile && (
-        <div className="fixed inset-0 z-50">
-          {/* Backdrop */}
+        <>
           <div
-            className="absolute inset-0 bg-black/40"
+            className="fixed inset-0 z-[60] bg-black/40"
             onClick={() => setShowProfile(false)}
-            aria-hidden="true"
           />
-          {/* Right-side drawer */}
-          <div className="absolute right-0 top-0 h-full w-full max-w-[560px] bg-white shadow-2xl border-l border-neutral-200 flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200">
-              <h2 className="text-[16px] font-semibold text-[#6A0F14]">Profile</h2>
-              <button
-                onClick={() => setShowProfile(false)}
-                className="p-2 rounded-md hover:bg-neutral-100"
-                aria-label="Close profile"
-              >
-                <X className="w-5 h-5 text-neutral-600" />
-              </button>
-            </div>
-
-            {/* Content area: render your profile component here */}
-            <div className="flex-1 overflow-y-auto p-5">
+          <aside
+            className="fixed right-0 top-0 z-[61] h-full w-full max-w-md bg-white border-l border-neutral-200 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="h-full overflow-y-auto p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-neutral-200">
+                <h2 className="text-lg font-semibold text-[#6A0F14]">Profile</h2>
+                <button
+                  onClick={() => setShowProfile(false)}
+                  className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+                  aria-label="Close profile"
+                >
+                  <ChevronLeft className="w-5 h-5 text-[#6A0F14]" />
+                </button>
+              </div>
               <InstructorProfile />
             </div>
-          </div>
-        </div>
+          </aside>
+        </>
       )}
     </div>
   );

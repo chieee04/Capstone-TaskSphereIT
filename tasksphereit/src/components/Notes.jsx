@@ -88,6 +88,7 @@ const roleRoutingMap = {
     sub: "projectManagerNotes",
   },
   member: { role: "Member", doc: "member", sub: "memberNotes" },
+  instructor: { role: "Instructor", doc: "instructor", sub: "instructorNotes" },
 };
 
 /* ---------------- Image Upload Functions ---------------- */
@@ -258,7 +259,8 @@ function Modal({ title, children, onClose }) {
         />
         <div className="relative max-h-[90vh] w-[min(900px,92vw)] overflow-auto rounded-2xl border border-neutral-200 bg-white p-4 shadow-2xl">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-base font-semibold">{title}</h3>
+            <h3 className="text-base font-semibold">{title}
+            </h3>
             <button
               className="p-2 rounded-md hover:bg-neutral-100 cursor-pointer"
               onClick={handleClose}

@@ -1,3 +1,4 @@
+//instructor teams [eto yung meron title pero hindi ko mafetch].txt
 // src/components/CapstoneInstructor/InstructorTeams.jsx
 import React, { useEffect, useState } from "react";
 import {
@@ -9,6 +10,7 @@ import {
   CirclePlus,
   Edit3,
   Trash2,
+  Users2,
 } from "lucide-react";
 import TeamIcon from "../../assets/imgs/InstructorTeamIcon.png";
 import AdviserIcon from "../../assets/imgs/InstructoIconAdviser.png";
@@ -17,6 +19,9 @@ import { useInstructorTeams } from "./InstructorFunctions/InstructorTeamsFunctio
 import Select from "react-select";
 import Swal from "sweetalert2";
 
+// Import Firebase directly
+import { db } from "../../config/firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 const MAROON = "#6A0F14";
 
@@ -39,6 +44,13 @@ const InstructorTeams = () => {
   const [transferUser, setTransferUser] = useState(null);
   const [transferFromTeam, setTransferFromTeam] = useState(null);
   const [transferToTeamId, setTransferToTeamId] = useState("");
+
+  // State for transferring team to another adviser
+  const [transferTeam, setTransferTeam] = useState(null);
+  const [transferToAdviserId, setTransferToAdviserId] = useState("");
+
+  // State for team system titles
+  const [teamSystemTitles, setTeamSystemTitles] = useState({});
 
   const {
     allUsers,
@@ -73,6 +85,7 @@ const InstructorTeams = () => {
     dissolveTeam,
     editTeam,
     transferTeamMember,
+    transferTeamAdviser,
   } = useInstructorTeams();
 
   const uniqByUid = (arr) => {
@@ -85,6 +98,31 @@ const InstructorTeams = () => {
     return Array.from(m.values());
   };
 
+  // Load team system titles from manuscript submissions
+  useEffect(() => {
+    const loadSystemTitles = async () => {
+      try {
+        // Load manuscript submissions to get system titles
+        const submissionsSnap = await getDocs(collection(db, "manuscriptSubmissions"));
+        const titlesMap = {};
+        
+        submissionsSnap.forEach((doc) => {
+          const data = doc.data();
+          if (data.teamId && data.title && data.title.trim() !== "") {
+            titlesMap[data.teamId] = data.title;
+          }
+        });
+        
+        setTeamSystemTitles(titlesMap);
+      } catch (error) {
+        console.error("Failed to load system titles:", error);
+        setTeamSystemTitles({});
+      }
+    };
+
+    loadSystemTitles();
+  }, []);
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
@@ -92,125 +130,145 @@ const InstructorTeams = () => {
         setOpenAssign(false);
         setMenuOpenId(null);
         setEtTeam(null);
+        setTransferTeam(null);
       }
     };
-    if (openCreate || openAssign || menuOpenId || etTeam)
+    if (openCreate || openAssign || menuOpenId || etTeam || transferTeam)
       window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openCreate, openAssign, menuOpenId, etTeam, setMenuOpenId]);
+  }, [openCreate, openAssign, menuOpenId, etTeam, setMenuOpenId, transferTeam]);
 
-  const LabelBar = ({ children }) => (
-    <div className="mt-auto w-full bg-[#6A0F14] text-white text-xs font-medium px-4 py-2 rounded-b-xl whitespace-normal break-words leading-snug min-h-[40px]">
-      {children}
-    </div>
-  );
-
-  const TeamCard = ({ team }) => (
-    <div
-      className="
-      relative flex flex-col bg-white border border-neutral-200 rounded-xl 
-      shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer
-      h-48 sm:h-52 md:h-56 lg:h-60
-    "
-      onClick={() => {
-        setEtTeam(team);
-        setEtManagerId(team.manager?.uid || "");
-        setEtTeamName(team.name || "");
-        setEtMemberIds(team.memberUids || []);
-        setEtMemberPick("");
-        setMenuOpenId(null);
-      }}
-    >
-      {/* Menu Button */}
-      <button
-        className="absolute top-2 right-2 p-1 rounded-full hover:bg-neutral-100 z-30"
-        aria-label="More actions"
-        onClick={(e) => {
-          e.stopPropagation(); // prevent triggering card click
-          setMenuOpenId(menuOpenId === team.id ? null : team.id);
-        }}
-      >
-        <MoreVertical className="w-4 h-4 text-neutral-500" />
-      </button>
-
-      {menuOpenId === team.id && (
-        <div
-          className="absolute right-2 top-9 z-40 w-40 rounded-lg border border-neutral-200 bg-white shadow-lg"
-          onClick={(e) => e.stopPropagation()}
+  // TeamCard with system title display
+  const TeamCard = ({ team, showTransferOption = false, currentAdviser = null }) => {
+    const hasEtAl = team.name && team.name.includes("Et Al");
+    const systemTitle = teamSystemTitles[team.id] || team.systemTitle || team.title || "";
+    
+    return (
+      <div className="relative w-[160px] h-[220px]">
+        {/* Main Card Button */}
+        <button
+          type="button"
+          onClick={() => {
+            setEtTeam(team);
+            setEtManagerId(team.manager?.uid || "");
+            setEtTeamName(team.name || "");
+            setEtMemberIds(team.memberUids || []);
+            setEtMemberPick("");
+            setMenuOpenId(null);
+          }}
+          className="cursor-pointer w-full h-full rounded-2xl bg-white border-2 border-gray-200 shadow-lg text-neutral-800 overflow-hidden"
         >
-          <button
-            className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-            onClick={async () => {
-  setMenuOpenId(null);
+          {/* Bottom accent - only show for teams with "Et Al" in name */}
+          {hasEtAl && (
+            <div 
+              className="absolute bottom-0 left-0 right-0 h-5 rounded-b-2xl"
+              style={{ background: MAROON }}
+            />
+          )}
+          
+          {/* Central content area */}
+          <div className={`absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 ${hasEtAl ? 'pb-9' : 'pb-5'}`}>
+            {/* Team icon - smaller size and NO animation */}
+            <div>
+              <img src={TeamIcon} alt="" className="w-14 h-14 mb-3 object-contain" />
+            </div>
+            
+            {/* Team name text - smaller font size */}
+            <span className="text-[15px] font-bold text-center leading-tight text-black">
+              {team.name || "—"}
+            </span>
 
-  const result = await Swal.fire({
-    title: `Dissolve Team?`,
-    html: `Dissolve team <b>"${team.name}"</b>?`,
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#6A0F14",
-    cancelButtonColor: "#9ca3af",
-    confirmButtonText: "Yes, dissolve",
-    cancelButtonText: "Cancel",
-  });
+            {/* System title - smaller font size, limited to 2 lines */}
+            <span className="text-[11px] text-neutral-600 text-center mt-1.5 leading-tight min-h-[2.5rem] flex items-center justify-center" style={{ 
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
+            }}>
+              {systemTitle || "No title set"}
+            </span>
+          </div>
+        </button>
 
-  if (!result.isConfirmed) return;
+        {/* Original Kebab Menu Button - positioned inside the main button */}
+        <button
+          className="absolute top-2 right-2 p-1 hover:bg-neutral-100 z-30"
+          aria-label="More actions"
+          onClick={(e) => {
+            e.stopPropagation(); // prevent triggering card click
+            setMenuOpenId(menuOpenId === team.id ? null : team.id);
+          }}
+        >
+          <MoreVertical className="w-4 h-4 text-neutral-500" />
+        </button>
 
-  await dissolveTeam(team.id);
-
-  Swal.fire({
-    icon: "success",
-    title: "Team Dissolved",
-    text: `Team "${team.name}" has been dissolved successfully.`,
-    timer: 2000,
-    showConfirmButton: false,
-  });
-}}
-
+        {/* Dropdown Menu */}
+        {menuOpenId === team.id && (
+          <div
+            className="absolute right-2 top-9 z-40 w-40 rounded-lg border border-neutral-200 bg-white shadow-lg py-1"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Trash2 className="w-4 h-4" /> Dissolve
-          </button>
-        </div>
-      )}
-      <div className="flex flex-1 items-center justify-center">
-        <img src={TeamIcon} alt="" className="w-15 h-15 object-contain" />
+            {/* Transfer Team option - only show when in adviser view */}
+            {showTransferOption && (
+              <button
+                className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMenuOpenId(null);
+                  setTransferTeam({
+                    teamId: team.id,
+                    teamName: team.name,
+                    currentAdviserId: currentAdviser?.uid || currentAdviser?.id
+                  });
+                }}
+              >
+                <Users2 className="w-4 h-4" /> Transfer Team
+              </button>
+            )}
+            
+            <button
+              className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setMenuOpenId(null);
+
+                const result = await Swal.fire({
+                  title: `Dissolve Team?`,
+                  html: `Dissolve team <b>"${team.name}"</b>?`,
+                  icon: "warning",
+                  showCancelButton: true,
+                  confirmButtonColor: MAROON,
+                  cancelButtonColor: "#9ca3af",
+                  confirmButtonText: "Yes, dissolve",
+                  cancelButtonText: "Cancel",
+                });
+
+                if (!result.isConfirmed) return;
+
+                await dissolveTeam(team.id);
+
+                Swal.fire({
+                  icon: "success",
+                  title: "Team Dissolved",
+                  text: `Team "${team.name}" has been dissolved successfully.`,
+                  timer: 2000,
+                  showConfirmButton: false,
+                });
+              }}
+            >
+              <Trash2 className="w-4 h-4" /> Dissolve
+            </button>
+          </div>
+        )}
       </div>
-
-      <LabelBar>{team.name}</LabelBar>
-    </div>
-  );
-
-  const handleTransferMember = async () => {
-    if (!transferUser || !transferFromTeam || !transferToTeamId) return;
-
-    try {
-      const success = await transferTeamMember(
-        transferUser,
-        transferFromTeam,
-        transferToTeamId
-      );
-
-      if (success) {
-        setTransferUser(null);
-        setTransferFromTeam(null);
-        setTransferToTeamId("");
-
-        // Refresh the current team data in the edit dialog
-        if (etTeam && etTeam.id === transferFromTeam) {
-          setEtMemberIds((prev) => prev.filter((id) => id !== transferUser));
-        }
-
-        console.log("Member transferred successfully!");
-      }
-    } catch (error) {
-      console.error("Failed to transfer member:", error);
-      alert("Failed to transfer member. Please try again.");
-    }
+    );
   };
 
   const AdviserCard = ({ name, uid }) => {
     const [showAdviserModal, setShowAdviserModal] = useState(false);
-    const [menuOpenId, setMenuOpenId] = useState(null);
+    const [modalMenuOpenId, setModalMenuOpenId] = useState(null);
 
     // Filter teams for this adviser
     const adviserTeams = teams.filter(
@@ -224,31 +282,168 @@ const InstructorTeams = () => {
     // Extract just the last name for display
     const displayName = name.split(",")[0];
 
+    // TeamCard for use inside the adviser modal (with separate menu state)
+    const ModalTeamCard = ({ team, showTransferOption = false, currentAdviser = null }) => {
+      const hasEtAl = team.name && team.name.includes("Et Al");
+      const systemTitle = teamSystemTitles[team.id] || team.systemTitle || team.title || "";
+      
+      return (
+        <div className="relative w-[160px] h-[220px]">
+          {/* Main Card Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setEtTeam(team);
+              setEtManagerId(team.manager?.uid || "");
+              setEtTeamName(team.name || "");
+              setEtMemberIds(team.memberUids || []);
+              setEtMemberPick("");
+              setModalMenuOpenId(null);
+            }}
+            className="cursor-pointer w-full h-full rounded-2xl bg-white border-2 border-gray-200 shadow-lg text-neutral-800 overflow-hidden"
+          >
+            {/* Bottom accent - only show for teams with "Et Al" in name */}
+            {hasEtAl && (
+              <div 
+                className="absolute bottom-0 left-0 right-0 h-5 rounded-b-2xl"
+                style={{ background: MAROON }}
+              />
+            )}
+            
+            {/* Central content area */}
+            <div className={`absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 ${hasEtAl ? 'pb-9' : 'pb-5'}`}>
+              {/* Team icon - smaller size and NO animation */}
+              <div>
+                <img src={TeamIcon} alt="" className="w-14 h-14 mb-3 object-contain" />
+              </div>
+              
+              {/* Team name text - smaller font size */}
+              <span className="text-[15px] font-bold text-center leading-tight text-black">
+                {team.name || "—"}
+              </span>
+
+              {/* System title - smaller font size, limited to 2 lines */}
+              <span className="text-[11px] text-neutral-600 text-center mt-1.5 leading-tight min-h-[2.5rem] flex items-center justify-center" style={{ 
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden'
+              }}>
+                {systemTitle || "No title set"}
+              </span>
+            </div>
+          </button>
+
+          {/* Original Kebab Menu Button - positioned inside the main button */}
+          <button
+            className="absolute top-2 right-2 p-1 hover:bg-neutral-100 z-30"
+            aria-label="More actions"
+            onClick={(e) => {
+              e.stopPropagation(); // prevent triggering card click
+              setModalMenuOpenId(modalMenuOpenId === team.id ? null : team.id);
+            }}
+          >
+            <MoreVertical className="w-4 h-4 text-neutral-500" />
+          </button>
+
+          {/* Dropdown Menu */}
+          {modalMenuOpenId === team.id && (
+            <div
+              className="absolute right-2 top-9 z-40 w-40 rounded-lg border border-neutral-200 bg-white shadow-lg py-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Transfer Team option - only show when in adviser view */}
+              {showTransferOption && (
+                <button
+                  className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setModalMenuOpenId(null);
+                    setTransferTeam({
+                      teamId: team.id,
+                      teamName: team.name,
+                      currentAdviserId: currentAdviser?.uid || currentAdviser?.id
+                    });
+                  }}
+                >
+                  <Users2 className="w-4 h-4" /> Transfer Team
+                </button>
+              )}
+              
+              <button
+                className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setModalMenuOpenId(null);
+
+                  const result = await Swal.fire({
+                    title: `Dissolve Team?`,
+                    html: `Dissolve team <b>"${team.name}"</b>?`,
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: MAROON,
+                    cancelButtonColor: "#9ca3af",
+                    confirmButtonText: "Yes, dissolve",
+                    cancelButtonText: "Cancel",
+                  });
+
+                  if (!result.isConfirmed) return;
+
+                  await dissolveTeam(team.id);
+
+                  Swal.fire({
+                    icon: "success",
+                    title: "Team Dissolved",
+                    text: `Team "${team.name}" has been dissolved successfully.`,
+                    timer: 2000,
+                    showConfirmButton: false,
+                  });
+                }}
+              >
+                <Trash2 className="w-4 h-4" /> Dissolve
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    };
+
     return (
       <>
         {/* Tapable Card */}
-        <div
-          className="relative bg-white border border-neutral-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer transform hover:scale-[1.02] transition-transform"
+        <button
+          type="button"
           onClick={handleCardClick}
+          className="cursor-pointer relative w-[160px] h-[220px] rounded-2xl bg-white border-2 border-gray-200 shadow-lg text-neutral-800 overflow-hidden"
         >
-          <div
-            className="absolute inset-y-0 left-0 w-3"
-            style={{ background: MAROON }}
+          {/* Left vertical shaded part - NO animation */}
+          <div 
+            className="absolute left-0 top-0 bottom-0 w-3 rounded-l-2xl"
+            style={{ 
+              backgroundColor: MAROON
+            }}
           />
-          <div className="px-6 py-8 flex flex-col items-center justify-center gap-4">
-            <img
-              src={AdviserIcon}
-              alt=""
-              className="w-14 h-14 object-contain"
-            />
-            <div className="text-neutral-900 font-semibold text-lg text-center leading-snug">
-              {displayName}
+          
+          {/* Central content area */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 pb-5">
+            {/* Adviser icon - smaller size and NO animation */}
+            <div>
+              <img src={AdviserIcon} alt="" className="w-14 h-14 mb-3 object-contain" />
             </div>
-            <div className="text-sm text-neutral-500 text-center">
+            
+            {/* Adviser name text - smaller font size */}
+            <span className="text-[15px] font-bold text-center leading-tight text-black">
+              {displayName || "—"}
+            </span>
+
+            {/* Team count - smaller font size */}
+            <span className="text-[11px] text-neutral-600 text-center mt-1.5">
               {adviserTeams.length} team{adviserTeams.length !== 1 ? "s" : ""}
-            </div>
+            </span>
           </div>
-        </div>
+        </button>
 
         {/* Adviser Modal */}
         {showAdviserModal && (
@@ -266,7 +461,7 @@ const InstructorTeams = () => {
               <div className="flex justify-between items-center px-6 py-4 border-b">
                 <div>
                   <h2 className="text-xl font-semibold text-neutral-900">
-                    Teams under: <span className="text-[#6A0F14]">{name}</span>
+                    Teams Under: <span style={{ color: MAROON }}>{name}</span>
                   </h2>
                   <p className="text-sm text-neutral-500 mt-1">
                     {adviserTeams.length} team
@@ -298,96 +493,85 @@ const InstructorTeams = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="flex flex-wrap gap-6">
                       {adviserTeams.map((team) => (
-                        <div
-                          key={team.id}
-                          className="
-                            relative flex flex-col bg-white border border-neutral-200 rounded-xl 
-                            shadow-sm hover:shadow-md transition-shadow overflow-hidden cursor-pointer 
-                            h-48 sm:h-52 md:h-56
-                          "
-                          onClick={() => {
-                            setEtTeam(team);
-                            setEtManagerId(team.manager?.uid || "");
-                            setEtTeamName(team.name || "");
-                            setEtMemberIds(team.memberUids || []);
-                            setEtMemberPick("");
-                            setMenuOpenId(null);
-                          }}
-                        >
-                          {/* Menu Button */}
-                          <button
-                            className="absolute top-2 right-2 p-1 rounded-full hover:bg-neutral-100 z-30"
-                            aria-label="Team options"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setMenuOpenId(
-                                menuOpenId === team.id ? null : team.id
-                              );
-                            }}
-                          >
-                            <MoreVertical className="w-4 h-4 text-neutral-500" />
-                          </button>
-
-                          {/* Dropdown Menu */}
-                          {menuOpenId === team.id && (
-                            <div
-                              className="absolute right-2 top-9 z-40 w-40 rounded-lg border border-neutral-200 bg-white shadow-lg py-1"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                                onClick={() => {
-                                  setMenuOpenId(null);
-                                  if (
-                                    window.confirm(
-                                      `Are you sure you want to dissolve team "${team.name}"?`
-                                    )
-                                  ) {
-                                    dissolveTeam(team.id);
-                                  }
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" /> Dissolve
-                              </button>
-                            </div>
-                          )}
-
-                          {/* Team Icon */}
-                          <div className="flex flex-1 items-center justify-center">
-                            <img
-                              src={TeamIcon}
-                              alt="Team"
-                              className="w-16 h-16 object-contain opacity-80"
-                            />
-                          </div>
-
-                          {/* Footer Label */}
-                          <div className="bg-[#6A0F14] text-white text-center py-2 px-3 text-sm font-medium truncate">
-                            {team.name}
-                          </div>
-                        </div>
+                        <ModalTeamCard 
+                          key={team.id} 
+                          team={team} 
+                          showTransferOption={true}
+                          currentAdviser={{ name, uid }}
+                        />
                       ))}
                     </div>
                   )}
                 </div>
-              </div>
-
-              {/* Footer */}
-              <div className="px-6 py-4 flex justify-end gap-2 border-t bg-neutral-50">
-                <button
-                  onClick={() => setShowAdviserModal(false)}
-                  className="px-6 py-2.5 bg-[#6A0F14] text-white rounded-lg hover:bg-[#5a0d12] transition-colors font-medium"
-                >
-                  Close
-                </button>
               </div>
             </div>
           </div>
         )}
       </>
     );
+  };
+
+  const handleTransferMember = async () => {
+    if (!transferUser || !transferFromTeam || !transferToTeamId) return;
+
+    try {
+      const success = await transferTeamMember(
+        transferUser,
+        transferFromTeam,
+        transferToTeamId
+      );
+
+      if (success) {
+        setTransferUser(null);
+        setTransferFromTeam(null);
+        setTransferToTeamId("");
+
+        // Refresh the current team data in the edit dialog
+        if (etTeam && etTeam.id === transferFromTeam) {
+          setEtMemberIds((prev) => prev.filter((id) => id !== transferUser));
+        }
+
+        console.log("Member transferred successfully!");
+      }
+    } catch (error) {
+      console.error("Failed to transfer member:", error);
+      alert("Failed to transfer member. Please try again.");
+    }
+  };
+
+  // Handle transferring team to another adviser
+  const handleTransferTeam = async () => {
+    if (!transferTeam || !transferToAdviserId) return;
+
+    const result = await Swal.fire({
+      title: `Transfer Team?`,
+      html: `Transfer team <b>"${transferTeam.teamName}"</b> to selected adviser?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: MAROON,
+      cancelButtonColor: "#9ca3af",
+      confirmButtonText: "Yes, transfer",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!result.isConfirmed) return;
+
+    const success = await transferTeamAdviser(transferTeam.teamId, transferToAdviserId);
+    
+    if (success) {
+      Swal.fire({
+        icon: "success",
+        title: "Team Transferred",
+        text: `Team "${transferTeam.teamName}" has been transferred successfully.`,
+        timer: 2000,
+        showConfirmButton: false,
+      });
+      
+      setTransferTeam(null);
+      setTransferToAdviserId("");
+    }
   };
 
   const teamCards = teams.map((t) => <TeamCard key={t.id} team={t} />);
@@ -405,7 +589,7 @@ const InstructorTeams = () => {
             {view === "teams" ? "Teams" : "Advisers"}
           </h2>
         </div>
-        <div className="mt-3 h-[2px] w-full bg-[#6A0F14]" />
+        <div className="mt-3 h-[2px] w-full" style={{ backgroundColor: MAROON }} />
       </div>
 
       {/* ===== Toggle + Actions ===== */}
@@ -415,9 +599,10 @@ const InstructorTeams = () => {
             onClick={() => setView("teams")}
             className={`px-3 py-1.5 text-sm rounded-full cursor-pointer  ${
               view === "teams"
-                ? "bg-[#6A0F14] text-white"
+                ? "text-white"
                 : "text-neutral-800 hover:bg-neutral-100"
             }`}
+            style={view === "teams" ? { backgroundColor: MAROON } : {}}
           >
             Teams
           </button>
@@ -425,9 +610,10 @@ const InstructorTeams = () => {
             onClick={() => setView("advisers")}
             className={`px-3 py-1.5 text-sm rounded-full cursor-pointer  ${
               view === "advisers"
-                ? "bg-[#6A0F14] text-white"
+                ? "text-white"
                 : "text-neutral-800 hover:bg-neutral-100"
             }`}
+            style={view === "advisers" ? { backgroundColor: MAROON } : {}}
           >
             Adviser
           </button>
@@ -448,7 +634,7 @@ const InstructorTeams = () => {
       </div>
 
       {/* Cards grid */}
-      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="mt-6 flex flex-wrap gap-6">
         {view === "teams" ? teamCards : adviserItems}
       </div>
 
@@ -469,7 +655,7 @@ const InstructorTeams = () => {
               <div className="px-5 pt-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-neutral-900">
-                    <PlusCircle className="w-5 h-5 text-[#6A0F14]" />
+                    <PlusCircle className="w-5 h-5" style={{ color: MAROON }} />
                     <h3 className="text-base font-semibold">Create Team</h3>
                   </div>
                   <button
@@ -480,7 +666,7 @@ const InstructorTeams = () => {
                     <X className="w-5 h-5 text-neutral-600" />
                   </button>
                 </div>
-                <div className="mt-3 h-[2px] bg-[#6A0F14]" />
+                <div className="mt-3 h-[2px]" style={{ backgroundColor: MAROON }} />
               </div>
 
               <div className="px-5 py-5 space-y-4">
@@ -674,17 +860,12 @@ const InstructorTeams = () => {
 
               <div className="px-5 pb-5 flex justify-end gap-2">
                 <button
-                  onClick={() => setOpenCreate(false)}
-                  className="px-4 py-2 rounded-full border border-neutral-300 text-sm hover:bg-neutral-100"
-                >
-                  Cancel
-                </button>
-                <button
                   onClick={async () => {
                     const ok = await saveCreateTeam();
                     if (ok) setOpenCreate(false);
                   }}
-                  className="px-5 py-2 rounded-full bg-[#6A0F14] text-white text-sm hover:bg-[#5c0d12]"
+                  style={{ backgroundColor: MAROON }}
+                  className="px-5 py-2 rounded-full text-white text-sm hover:bg-[#5c0d12]"
                   disabled={!ctManagerId}
                 >
                   Save
@@ -712,7 +893,7 @@ const InstructorTeams = () => {
               <div className="px-5 pt-5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-neutral-900">
-                    <PlusCircle className="w-5 h-5 text-[#6A0F14]" />
+                    <PlusCircle className="w-5 h-5" style={{ color: MAROON }} />
                     <h3 className="text-base font-semibold">Assign Adviser</h3>
                   </div>
                   <button
@@ -723,7 +904,7 @@ const InstructorTeams = () => {
                     <X className="w-5 h-5 text-neutral-600" />
                   </button>
                 </div>
-                <div className="mt-3 h-[2px] bg-[#6A0F14]" />
+                <div className="mt-3 h-[2px]" style={{ backgroundColor: MAROON }} />
               </div>
 
               <div className="px-5 py-5 space-y-4">
@@ -781,17 +962,12 @@ const InstructorTeams = () => {
 
               <div className="px-5 pb-5 flex justify-end gap-2">
                 <button
-                  onClick={() => setOpenAssign(false)}
-                  className="px-4 py-2 rounded-full border border-neutral-300 text-sm hover:bg-neutral-100"
-                >
-                  Cancel
-                </button>
-                <button
                   onClick={async () => {
                     const ok = await saveAssign();
                     if (ok) setOpenAssign(false);
                   }}
-                  className="px-5 py-2 rounded-full bg-[#6A0F14] text-white text-sm hover:bg-[#5c0d12]"
+                  style={{ backgroundColor: MAROON }}
+                  className="px-5 py-2 rounded-full text-white text-sm hover:bg-[#5c0d12]"
                   disabled={
                     !asTeamId ||
                     !asAdviserUid ||
@@ -824,7 +1000,7 @@ const InstructorTeams = () => {
             {/* Header */}
             <div className="flex justify-between items-center px-4 sm:px-6 py-4 border-b">
               <h2 className="text-lg font-semibold text-neutral-900 truncate">
-                Edit Team: <span className="text-[#6A0F14]">{etTeamName}</span>
+                Edit Team: <span style={{ color: MAROON }}>{etTeamName}</span>
               </h2>
               <button
                 onClick={() => setEtTeam(null)}
@@ -899,7 +1075,8 @@ const InstructorTeams = () => {
                         }
                         setEtMemberPick("");
                       }}
-                      className="bg-[#6A0F14] text-white px-4 py-2 rounded-md text-sm hover:bg-[#5c0d12] whitespace-nowrap"
+                      style={{ backgroundColor: MAROON }}
+                      className="text-white px-4 py-2 rounded-md text-sm hover:bg-[#5c0d12] whitespace-nowrap"
                       disabled={!etMemberPick}
                     >
                       Add Member
@@ -1145,21 +1322,21 @@ setEtMemberIds(prev => {
                                 onClick={() =>
                                   setActiveMenu(activeMenu === uid ? null : uid)
                                 }
-                                className="p-1 hover:bg-neutral-100 rounded"
+                                className="p-1 hover:bg-neutral-100"
                               >
                                 <MoreVertical className="w-5 h-5 text-neutral-600 hover:text-black cursor-pointer" />
                               </button>
 
                               {activeMenu === uid && (
                                 <div
-                                  className={`absolute right-0 min-w-44 bg-white border rounded-md shadow-lg text-left z-50 ${
+                                  className={`absolute right-0 w-40 bg-white border rounded-md shadow-lg text-left z-50 ${
                                     index >= etMemberIds.length - 2
                                       ? "bottom-full mb-2"
                                       : "top-full mt-2"
                                   }`}
                                 >
                                   <button
-                                    className={`w-full text-left px-4 py-2 text-sm ${
+                                    className={`w-full text-left px-3 py-2 text-sm ${
                                       isPM
                                         ? "text-neutral-400 cursor-not-allowed opacity-50"
                                         : "hover:bg-neutral-100 cursor-pointer"
@@ -1177,7 +1354,7 @@ setEtMemberIds(prev => {
 
                                   <button
                                     disabled={isPM}
-                                    className={`w-full text-left px-4 py-2 text-sm ${
+                                    className={`w-full text-left px-3 py-2 text-sm ${
                                       isPM
                                         ? "text-neutral-400 cursor-default"
                                         : "text-red-600 hover:bg-neutral-100"
@@ -1206,12 +1383,6 @@ setEtMemberIds(prev => {
             {/* Footer */}
             <div className="px-4 sm:px-6 py-4 flex justify-end gap-2 border-t bg-neutral-50">
               <button
-                onClick={() => setEtTeam(null)}
-                className="px-4 py-2 border rounded-full text-sm hover:bg-neutral-100"
-              >
-                Cancel
-              </button>
-              <button
                 onClick={async () => {
                   const ok = await editTeam(etTeam.id, {
                     managerUid: etManagerId,
@@ -1221,7 +1392,8 @@ setEtMemberIds(prev => {
                   if (ok) setEtTeam(null);
                 }}
                 disabled={!String(etTeamName).trim() || !etManagerId}
-                className="bg-[#6A0F14] text-white px-6 py-2 rounded-full text-sm hover:bg-[#5c0d12] disabled:bg-neutral-400 disabled:cursor-not-allowed"
+                style={{ backgroundColor: MAROON }}
+                className="text-white px-6 py-2 rounded-full text-sm hover:bg-[#5c0d12] disabled:bg-neutral-400 disabled:cursor-not-allowed"
               >
                 Save Changes
               </button>
@@ -1264,7 +1436,7 @@ setEtMemberIds(prev => {
                   <X className="w-5 h-5 text-neutral-600" />
                 </button>
               </div>
-              <div className="mt-3 h-[2px] bg-[#6A0F14]" />
+              <div className="mt-3 h-[2px]" style={{ backgroundColor: MAROON }} />
             </div>
 
             {/* Content */}
@@ -1293,21 +1465,89 @@ setEtMemberIds(prev => {
             {/* Footer */}
             <div className="px-5 pb-5 flex justify-end gap-2">
               <button
-                onClick={() => {
-                  setTransferUser(null);
-                  setTransferFromTeam(null);
-                  setTransferToTeamId("");
-                }}
-                className="px-4 py-2 rounded-full border border-neutral-300 text-sm hover:bg-neutral-100"
-              >
-                Cancel
-              </button>
-              <button
                 onClick={handleTransferMember}
                 disabled={!transferToTeamId}
-                className="px-5 py-2 rounded-full bg-[#6A0F14] text-white text-sm hover:bg-[#5c0d12] disabled:bg-neutral-400 disabled:cursor-not-allowed"
+                style={{ backgroundColor: MAROON }}
+                className="px-5 py-2 rounded-full text-white text-sm hover:bg-[#5c0d12] disabled:bg-neutral-400 disabled:cursor-not-allowed"
               >
                 Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Team Modal */}
+      {transferTeam && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            setTransferTeam(null);
+            setTransferToAdviserId("");
+          }}
+        >
+          <div
+            className="bg-white rounded-xl w-full max-w-md shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-5 pt-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-neutral-900">
+                  Transfer Team
+                </h3>
+                <button
+                  className="p-2 rounded-full hover:bg-neutral-100"
+                  onClick={() => {
+                    setTransferTeam(null);
+                    setTransferToAdviserId("");
+                  }}
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5 text-neutral-600" />
+                </button>
+              </div>
+              <div className="mt-3 h-[2px]" style={{ backgroundColor: MAROON }} />
+            </div>
+
+            {/* Content */}
+            <div className="px-5 py-5 space-y-4">
+              <div>
+                <p className="text-sm text-neutral-600 mb-4">
+                  Transfer team <strong>"{transferTeam.teamName}"</strong> to another adviser.
+                </p>
+                
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Select New Adviser
+                </label>
+                <select
+                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6A0F14]/30"
+                  value={transferToAdviserId}
+                  onChange={(e) => setTransferToAdviserId(e.target.value)}
+                >
+                  <option value="">Select adviser</option>
+                  {advisers
+                    .filter((adviser) => (adviser.uid || adviser.id) !== transferTeam.currentAdviserId)
+                    .map((adviser) => (
+                      <option key={adviser.uid || adviser.id} value={adviser.uid || adviser.id}>
+                        {adviser.fullName}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 pb-5 flex justify-end gap-2">
+              <button
+                onClick={handleTransferTeam}
+                disabled={!transferToAdviserId}
+                style={{ backgroundColor: MAROON }}
+                className="px-5 py-2 rounded-full text-white text-sm hover:bg-[#5c0d12] disabled:bg-neutral-400 disabled:cursor-not-allowed"
+              >
+                Transfer Team
               </button>
             </div>
           </div>

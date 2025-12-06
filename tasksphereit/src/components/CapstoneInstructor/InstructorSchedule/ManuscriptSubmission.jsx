@@ -1,3 +1,4 @@
+//manuscript submission.txt
 // src/components/CapstoneInstructor/ManuscriptSubmission.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -7,7 +8,6 @@ import {
   Download,
   MoreVertical,
   Calendar as CalIcon,
-  Calendar,
   Clock,
   ChevronDown,
   ChevronRight,
@@ -87,11 +87,14 @@ const getLastName = (fullName) => {
   return parts[parts.length - 1] || "";
 };
  
-// Generate time options with 30-minute intervals
+// Generate time options with 30-minute intervals from 6:00 AM to 5:00 PM
 const generateTimeOptions = () => {
   const times = [];
-  for (let hour = 0; hour < 24; hour++) {
+  for (let hour = 6; hour <= 17; hour++) { // 6 AM to 5 PM
     for (let minute = 0; minute < 60; minute += 30) {
+      // Skip times after 5:00 PM
+      if (hour === 17 && minute > 0) break;
+      
       const timeString = `${hour.toString().padStart(2, "0")}:${minute
         .toString()
         .padStart(2, "0")}`;
@@ -194,15 +197,15 @@ export default function ManuscriptSubmission() {
   /* ===== Submissions list ===== */
   const [submissions, setSubmissions] = useState([]); // [{id, ...}]
   const [loadingSubmissions, setLoadingSubmissions] = useState(true);
+
+  /* ===== Team System Titles ===== */
+  const [teamSystemTitles, setTeamSystemTitles] = useState({}); // {teamId: systemTitle}
  
   // Row menu
   const [menuOpenId, setMenuOpenId] = useState(null);
  
   // Filter dropdown state
   const [filterOpen, setFilterOpen] = useState(false);
- 
-  // Tooltip state for verdict
-  const [showVerdictTooltip, setShowVerdictTooltip] = useState(null);
  
   /* ===== Files viewer modal ===== */
   const [filesRow, setFilesRow] = useState(null);
@@ -221,14 +224,6 @@ export default function ManuscriptSubmission() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  };
- 
-  // Show tooltip for 5 seconds
-  const showTooltipFor5Sec = (scheduleId) => {
-    setShowVerdictTooltip(scheduleId);
-    setTimeout(() => {
-      setShowVerdictTooltip(null);
-    }, 5000);
   };
  
   // Load Teams that passed title defense with "Approved" verdict and get project manager info
@@ -333,6 +328,20 @@ export default function ManuscriptSubmission() {
  
     return () => unsubscribe();
   }, []);
+
+  // Load team system titles
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "teamSystemTitles"), (snapshot) => {
+      const titlesMap = {};
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        titlesMap[doc.id] = data.systemTitle; // teamId -> systemTitle
+      });
+      setTeamSystemTitles(titlesMap);
+    });
+
+    return () => unsubscribe();
+  }, []);
  
   // Load Manuscript Submissions - Only for teams with "Approved" verdict in Title Defense
   const loadSubmissions = async () => {
@@ -375,12 +384,15 @@ export default function ManuscriptSubmission() {
           // Find team info to get manager's last name
           const teamInfo = teamOptions.find(t => t.id === teamId);
           const teamName = teamInfo ? teamInfo.managerLastName : "etal etal";
+
+          // Get system title if available
+          const systemTitle = teamSystemTitles[teamId] || "";
  
           const currentDate = new Date();
           const manuscriptData = {
             teamId: teamId,
             teamName: teamName,
-            title: "", // Empty title to be filled later
+            title: systemTitle, // Use system title if available
             date: currentDate.toISOString().split("T")[0], // Current date as default
             duetime: currentDate.toTimeString().slice(0, 5),
             plag: 0,
@@ -415,12 +427,15 @@ export default function ManuscriptSubmission() {
           // Get current team name based on latest manager info
           const teamInfo = teamOptions.find(t => t.id === teamId);
           const currentTeamName = teamInfo ? teamInfo.managerLastName : d?.teamName || "etal etal";
+
+          // Get system title for this team - use the one from teamSystemTitles state
+          const systemTitle = teamSystemTitles[teamId] || d?.title || "";
  
           rows.push({
             id: docX.id,
             teamId: teamId,
             teamName: currentTeamName,
-            title: d?.title || "",
+            title: systemTitle, // Use system title from teamSystemTitles
             date: d?.date || "",
             duetime: d?.duetime || "",
             plag: Number(d?.plag ?? 0),
@@ -435,9 +450,13 @@ export default function ManuscriptSubmission() {
         }
       });
  
-      // Sort by date, then by time (empty times first), then by creation date
+      // Sort by re-submissions first, then by date, then by time (empty times first), then by creation date
       rows.sort((a, b) => {
-        // First by date
+        // Put re-submissions first
+        if (a.isReSubmission && !b.isReSubmission) return -1;
+        if (!a.isReSubmission && b.isReSubmission) return 1;
+        
+        // Then by date
         const ad = a.date || "",
           bd = b.date || "";
         if (ad < bd) return -1;
@@ -472,33 +491,27 @@ export default function ManuscriptSubmission() {
       setLoadingSubmissions(false);
     }
   };
+
+  // Update submissions when teamSystemTitles changes
+  useEffect(() => {
+    if (Object.keys(teamSystemTitles).length > 0 && submissions.length > 0) {
+      const updatedSubmissions = submissions.map(submission => {
+        const systemTitle = teamSystemTitles[submission.teamId];
+        if (systemTitle && systemTitle !== submission.title) {
+          return {
+            ...submission,
+            title: systemTitle
+          };
+        }
+        return submission;
+      });
+      setSubmissions(updatedSubmissions);
+    }
+  }, [teamSystemTitles]);
  
   useEffect(() => {
     loadSubmissions();
-  }, [teamOptions]); // Reload when teamOptions change (manager updates)
- 
-  // verdict updater
-  const handleChangeVerdict = async (submissionId, newVerdict) => {
-    try {
-      setSubmissions((prev) =>
-        prev.map((s) =>
-          s.id === submissionId ? { ...s, verdict: newVerdict } : s
-        )
-      );
-      await updateDoc(doc(db, COLLECTION, submissionId), {
-        verdict: newVerdict,
-      });
-      showAlert("Success", "Verdict updated successfully.", "success");
-    } catch (e) {
-      console.error("Failed to update verdict:", e);
-      await loadSubmissions();
-      showAlert(
-        "Error",
-        "Failed to update verdict. Please try again.",
-        "error"
-      );
-    }
-  };
+  }, [teamOptions, teamSystemTitles]); // Reload when teamOptions or teamSystemTitles change
  
   // Handle inline edit save
   const handleSaveEdit = async (submissionId, updatedData) => {
@@ -544,7 +557,7 @@ export default function ManuscriptSubmission() {
     }
   };
  
-  // Handle submission re-submission
+  // Handle submission re-submission - UPDATED: Put at top
   const handleScheduleReSubmission = async (originalSubmission) => {
     try {
       const newSubmission = {
@@ -563,10 +576,21 @@ export default function ManuscriptSubmission() {
         file: "—",
       };
  
-      await addDoc(collection(db, COLLECTION), newSubmission);
+      const docRef = await addDoc(collection(db, COLLECTION), newSubmission);
+ 
+      // Update local state immediately to put the new re-submission at the top
+      setSubmissions((prev) => {
+        const newSubmissionWithId = {
+          ...newSubmission,
+          id: docRef.id,
+          teamName: originalSubmission.teamName // Preserve team name
+        };
+        
+        // Put the new re-submission at the beginning of the array
+        return [newSubmissionWithId, ...prev];
+      });
  
       setMenuOpenId(null);
-      await loadSubmissions();
  
       showAlert(
         "Success",
@@ -614,14 +638,27 @@ export default function ManuscriptSubmission() {
     }
   };
  
-  // Check if verdict can be edited (date must be passed)
-  const canEditVerdict = (submission) => {
-    return isDatePassed(submission.date, submission.duetime);
+  // Check if submission details can be edited (verdict must not be "Approved")
+  const canEditSubmission = (submission) => {
+    return submission.verdict !== "Approved";
   };
  
-  // Check if submission details can be edited (verdict must not be "Passed")
-  const canEditSubmission = (submission) => {
-    return submission.verdict !== "Passed";
+  // Check if re-submission can be scheduled (verdict must be "Recheck")
+  const canScheduleReSubmission = (submission) => {
+    return submission.verdict === "Recheck";
+  };
+ 
+  // Get verdict badge style
+  const getVerdictStyle = (verdict) => {
+    switch (verdict) {
+      case "Approved":
+        return "bg-green-100 text-green-800 border border-green-200";
+      case "Recheck":
+        return "bg-yellow-100 text-yellow-800 border border-yellow-200";
+      case "Pending":
+      default:
+        return "bg-gray-100 text-gray-800 border border-gray-200";
+    }
   };
  
   // search filter (client-side) - only search team name and title
@@ -723,7 +760,7 @@ export default function ManuscriptSubmission() {
         all: "All Submissions",
         Pending: "Pending",
         Recheck: "Recheck",
-        Passed: "Passed",
+        Approved: "Approved",
       },
       inputValue: "all",
       showCancelButton: true,
@@ -876,7 +913,7 @@ export default function ManuscriptSubmission() {
  
     const verdictColor = (v) => {
       const s = String(v || "").toLowerCase();
-      if (s === "passed") return [34, 139, 34];
+      if (s === "approved") return [34, 139, 34];
       if (s === "recheck") return [217, 168, 30];
       return [106, 15, 20]; // Pending/others
     };
@@ -1069,31 +1106,11 @@ export default function ManuscriptSubmission() {
           </button>
         </td>
  
-        {/* Verdict */}
+        {/* Verdict - Display only (static badge) */}
         <td className="px-4 py-3">
-          <div className="relative inline-flex items-center">
-            <select
-              value={submission.verdict || "Pending"}
-              onChange={(e) =>
-                handleChangeVerdict(submission.id, e.target.value)
-              }
-              disabled={!canEditVerdict(submission)}
-              className={`appearance-none pr-8 pl-3 py-1.5 rounded-md border text-sm ${
-                canEditVerdict(submission)
-                  ? ""
-                  : "opacity-60 cursor-not-allowed"
-              }`}
-              style={{ borderColor: MAROON, color: "#111827" }}
-            >
-              <option>Pending</option>
-              <option>Recheck</option>
-              <option>Passed</option>
-            </select>
-            <ChevronDown
-              size={16}
-              className="absolute right-2 pointer-events-none text-neutral-500"
-            />
-          </div>
+          <span className={`px-3 py-1.5 rounded-md text-sm font-semibold ${getVerdictStyle(submission.verdict)}`}>
+            {submission.verdict}
+          </span>
         </td>
  
         {/* Action buttons */}
@@ -1143,19 +1160,8 @@ export default function ManuscriptSubmission() {
  
       {/* actions */}
       <div className="mt-6 space-y-4">
-        {/* Row 1: Back + Export (aligned) */}
+        {/* Row 1: Export only (Back button removed) */}
         <div className="flex items-center gap-3">
-          <Btn
-            icon={ChevronLeft}
-            variant="outline"
-            onClick={() =>
-              window.history.length
-                ? window.history.back()
-                : navigate("/instructor/schedule")
-            }
-          >
-            Back to Schedule
-          </Btn>
           <Btn icon={Download} variant="outline" onClick={handleExportPDF}>
             Export PDF
           </Btn>
@@ -1233,16 +1239,16 @@ export default function ManuscriptSubmission() {
                     </button>
                     <button
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 ${
-                        filterVerdict === "Passed"
+                        filterVerdict === "Approved"
                           ? "bg-neutral-50 font-medium"
                           : ""
                       }`}
                       onClick={() => {
-                        setFilterVerdict("Passed");
+                        setFilterVerdict("Approved");
                         setFilterOpen(false);
                       }}
                     >
-                      Passed
+                      Approved
                     </button>
                   </div>
                 </div>
@@ -1356,8 +1362,8 @@ export default function ManuscriptSubmission() {
  
                 const isChecked = selected.has(s.id);
                 const rowColor = getRowBackgroundColor(s.verdict);
-                const canEditVerdictNow = canEditVerdict(s);
                 const canEditSubmissionNow = canEditSubmission(s);
+                const canScheduleReSubmissionNow = canScheduleReSubmission(s);
                 const fileCount = Array.isArray(s.fileUrl)
                   ? s.fileUrl.length
                   : 0;
@@ -1413,95 +1419,82 @@ export default function ManuscriptSubmission() {
                       </button>
                     </td>
  
-                    {/* Verdict */}
+                    {/* Verdict - Display only (static badge for all verdicts) */}
                     <td className="px-4 py-3">
-                      <div className="relative inline-flex items-center">
-                        <select
-                          value={s.verdict || "Pending"}
-                          onChange={(e) =>
-                            handleChangeVerdict(s.id, e.target.value)
-                          }
-                          onFocus={() => {
-                            if (!canEditVerdictNow && s.verdict === "Pending") {
-                              showTooltipFor5Sec(s.id);
-                            }
-                          }}
-                          disabled={!canEditVerdictNow || bulkMode}
-                          className={`appearance-none pr-8 pl-3 py-1.5 rounded-md border text-sm ${
-                            !canEditVerdictNow || bulkMode
-                              ? "opacity-60 cursor-not-allowed"
-                              : ""
-                          }`}
-                          style={{
-                            borderColor: MAROON,
-                            color: s.verdict === "Failed" ? "white" : "#111827",
-                            backgroundColor:
-                              s.verdict === "Failed" ? "transparent" : "white",
-                          }}
-                        >
-                          <option>Pending</option>
-                          <option>Recheck</option>
-                          <option>Passed</option>
-                        </select>
-                        <ChevronDown
-                          size={16}
-                          className="absolute right-2 pointer-events-none text-neutral-500"
-                        />
-                        {showVerdictTooltip === s.id &&
-                          !canEditVerdictNow &&
-                          s.verdict === "Pending" && (
-                            <div className="absolute -top-8 left-0 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-200 shadow-sm z-10">
-                              Set verdict after submission date
-                            </div>
-                          )}
-                      </div>
+                      <span className={`px-3 py-1.5 rounded-md text-sm font-semibold ${getVerdictStyle(s.verdict)}`}>
+                        {s.verdict}
+                      </span>
                     </td>
  
-                    {/* Row actions - Kebab menu with Update, Schedule Re-Submission, and Remove */}
+                    {/* Row actions - Kebab menu for ALL rows */}
                     <td className="px-2 py-3 relative">
-                      <button
-                        disabled={bulkMode}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md ${
-                          bulkMode
-                            ? "opacity-40 cursor-not-allowed"
-                            : "hover:bg-neutral-100"
-                        }`}
-                        onClick={() =>
-                          setMenuOpenId(menuOpenId === s.id ? null : s.id)
-                        }
-                      >
-                        <MoreVertical size={18} />
-                      </button>
+                      {!bulkMode && (
+                        <>
+                          <button
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-neutral-100"
+                            onClick={() =>
+                              setMenuOpenId(menuOpenId === s.id ? null : s.id)
+                            }
+                          >
+                            <MoreVertical size={18} />
+                          </button>
  
-                      {!bulkMode && menuOpenId === s.id && (
-                        <div className="absolute right-2 mt-1 z-20 w-48 rounded-md border bg-white shadow">
-                          <button
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2"
-                            onClick={() => {
-                              setEditingId(s.id);
-                              setMenuOpenId(null);
-                            }}
-                            disabled={!canEditSubmissionNow}
-                          >
-                            <Check size={14} />
-                            Update
-                          </button>
-                          <button
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2"
-                            onClick={() => handleScheduleReSubmission(s)}
-                            disabled={s.verdict === "Passed"}
-                          >
-                            <RotateCcw size={14} />
-                            Schedule Re-Submission
-                          </button>
-                          <button
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2 text-red-600"
-                            onClick={() => handleDeleteSubmission(s)}
-                          >
-                            <Trash2 size={14} />
-                            Remove
-                          </button>
-                        </div>
+                          {menuOpenId === s.id && (
+                            <div className="absolute right-2 mt-1 z-20 w-48 rounded-md border bg-white shadow">
+                              {/* Update option - only for non-Approved verdicts */}
+                              <button
+                                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
+                                  canEditSubmissionNow
+                                    ? "hover:bg-neutral-50"
+                                    : "opacity-50 cursor-not-allowed text-neutral-400"
+                                }`}
+                                onClick={() => {
+                                  if (canEditSubmissionNow) {
+                                    setEditingId(s.id);
+                                    setMenuOpenId(null);
+                                  }
+                                }}
+                                disabled={!canEditSubmissionNow}
+                              >
+                                <Check size={14} />
+                                Update
+                              </button>
+                              
+                              {/* Schedule Re-Submission option - only for Recheck verdict */}
+                              <button
+                                className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
+                                  canScheduleReSubmissionNow
+                                    ? "hover:bg-neutral-50"
+                                    : "opacity-50 cursor-not-allowed text-neutral-400"
+                                }`}
+                                onClick={() => {
+                                  if (canScheduleReSubmissionNow) {
+                                    handleScheduleReSubmission(s);
+                                    setMenuOpenId(null);
+                                  }
+                                }}
+                                disabled={!canScheduleReSubmissionNow}
+                              >
+                                <RotateCcw size={14} />
+                                Schedule Re-Submission
+                              </button>
+                              
+                              {/* Remove option - only for re-submission schedules */}
+                              {s.isReSubmission && (
+                                <button
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2 text-red-600"
+                                  onClick={() => {
+                                    handleDeleteSubmission(s);
+                                    setMenuOpenId(null);
+                                  }}
+                                >
+                                  <Trash2 size={14} />
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </>
                       )}
                     </td>
                   </tr>
@@ -1569,7 +1562,7 @@ function ViewTeamDialog({ schedule, onClose }) {
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y/1/2 w-[760px] max-w-[92vw]">
+      <div className="absolute left-1/2 top-1/2 -translate-x/1/2 -translate-y/1/2 w-[760px] max-w-[92vw]">
         <div className="rounded-2xl bg-white border border-neutral-200 shadow-2xl focus:outline-none p-0">
           {/* header */}
           <div className="px-6 pt-5 pb-3">

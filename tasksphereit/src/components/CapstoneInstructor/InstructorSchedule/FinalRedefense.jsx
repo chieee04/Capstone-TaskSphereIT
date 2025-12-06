@@ -1,4 +1,4 @@
-// src/components/CapstoneInstructor/InstructorSchedule/FinalReDefense.jsx
+// src/components/CapstoneInstructor/InstructorSchedule/FinalDefense.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -21,7 +21,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Swal from "sweetalert2";
- 
+
 /* ===== Firestore ===== */
 import { db } from "../../../config/firebase";
 import {
@@ -34,20 +34,21 @@ import {
   query,
   where,
   addDoc,
+  onSnapshot,
 } from "firebase/firestore";
 import { notifyTeamSchedule } from "../../../services/notifications";
- 
+
 /* ===== PDF ===== */
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
- 
+
 /* ---- logos for PDF (DCT left, CCS right, TaskSphere footer-left) ---- */
 import DCTLOGO from "../../../assets/imgs/pdf imgs/DCTLOGO.png";
 import CCSLOGO from "../../../assets/imgs/pdf imgs/CCSLOGO.png";
 import TASKSPHERELOGO from "../../../assets/imgs/pdf imgs/TASKSPHERELOGO.png";
- 
+
 const MAROON = "#6A0F14";
- 
+
 /* ===== helpers ===== */
 const MONTHS = [
   "Jan",
@@ -68,7 +69,7 @@ const fmtDate = (yyyy_mm_dd) => {
   const [y, m, d] = yyyy_mm_dd.split("-");
   return `${MONTHS[Number(m) - 1]} ${Number(d)}, ${y}`;
 };
- 
+
 const fmtTime = (time) => {
   const isBlankish = (v) =>
     v == null || ["", "-", "—", "——"].includes(String(v).trim());
@@ -82,11 +83,12 @@ const fmtTime = (time) => {
   };
   return to12h(time);
 };
- 
-// Generate time options with 30-minute intervals
+
+// Generate time options with 30-minute intervals from 6:00 AM to 5:00 PM
 const generateTimeOptions = () => {
   const times = [];
-  for (let hour = 0; hour < 24; hour++) {
+  // Start from 6:00 AM (06:00) to 5:00 PM (17:00)
+  for (let hour = 6; hour <= 17; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
       const timeString = `${hour.toString().padStart(2, "0")}:${minute
         .toString()
@@ -96,38 +98,38 @@ const generateTimeOptions = () => {
   }
   return times;
 };
- 
+
 const TIME_OPTIONS = generateTimeOptions();
- 
+
 // Check if date has passed (including time) - for verdict editing
 const isDatePassed = (dateStr, timeStr) => {
   if (!dateStr) return false;
- 
+
   const now = new Date();
   const scheduleDateTime = new Date(dateStr);
- 
+
   if (timeStr) {
     const [hours, minutes] = timeStr.split(":").map(Number);
     scheduleDateTime.setHours(hours, minutes, 0, 0);
   } else {
     scheduleDateTime.setHours(23, 59, 59, 999); // End of day if no time
   }
- 
+
   return scheduleDateTime < now;
 };
- 
+
 // Get current date in YYYY-MM-DD format for min date
 const getCurrentDate = () => {
   return new Date().toISOString().split("T")[0];
 };
- 
+
 // Format date and time for display in error messages
 const formatDateTimeForDisplay = (dateStr, timeStr) => {
   if (!dateStr) return "No date selected";
- 
+
   const date = new Date(dateStr);
   const formattedDate = fmtDate(dateStr);
- 
+
   if (timeStr) {
     const formattedTime = fmtTime(timeStr);
     return `${formattedDate} ${formattedTime}`;
@@ -135,7 +137,7 @@ const formatDateTimeForDisplay = (dateStr, timeStr) => {
     return formattedDate;
   }
 };
- 
+
 const Breadcrumbs = () => {
   const navigate = useNavigate();
   return (
@@ -147,45 +149,48 @@ const Breadcrumbs = () => {
         Schedule
       </button>
       <ChevronRight size={16} className="text-neutral-400" />
-      <span className="text-[15px] font-semibold">Final Re-Defense</span>
+      <span className="text-[15px] font-semibold">Final Defense</span>
       <ChevronRight size={16} className="text-neutral-400" />
       <span className="text-[15px]">Scheduled Teams</span>
     </div>
   );
 };
- 
-export default function FinalReDefense() {
+
+export default function FinalDefense() {
   const navigate = useNavigate();
   const [queryText, setQueryText] = useState("");
   const [filterVerdict, setFilterVerdict] = useState("all");
- 
+
   const [editingId, setEditingId] = useState(null);
   const [viewSchedule, setViewSchedule] = useState(null);
- 
+
   /* ===== Firestore-backed options ===== */
   const [teamOptions, setTeamOptions] = useState([]); // [{id, name}]
   const [loadingTeams, setLoadingTeams] = useState(true);
- 
+
   const [adviserOptions, setAdviserOptions] = useState([]); // ["Full Name", ...]
   const [loadingAdvisers, setLoadingAdvisers] = useState(true);
- 
+
   /* ===== Schedules list ===== */
   const [schedules, setSchedules] = useState([]); // [{id, ...}]
   const [loadingSchedules, setLoadingSchedules] = useState(true);
- 
+
+  /* ===== Team System Titles ===== */
+  const [teamSystemTitles, setTeamSystemTitles] = useState({}); // {teamId: systemTitle}
+
   // Row menu
   const [menuOpenId, setMenuOpenId] = useState(null);
- 
+
   // Filter dropdown state
   const [filterOpen, setFilterOpen] = useState(false);
- 
+
   // Tooltip state for verdict
   const [showVerdictTooltip, setShowVerdictTooltip] = useState(null);
- 
+
   /* ===== Bulk delete state ===== */
   const [bulkMode, setBulkMode] = useState(false);
   const [selected, setSelected] = useState(new Set());
- 
+
   const exitBulk = () => {
     setBulkMode(false);
     setSelected(new Set());
@@ -197,7 +202,7 @@ export default function FinalReDefense() {
       return next;
     });
   };
- 
+
   // Show tooltip for 5 seconds
   const showTooltipFor5Sec = (scheduleId) => {
     setShowVerdictTooltip(scheduleId);
@@ -205,7 +210,7 @@ export default function FinalReDefense() {
       setShowVerdictTooltip(null);
     }, 5000);
   };
- 
+
   // Show SweetAlert for various messages
   const showAlert = (title, text, icon = "info") => {
     Swal.fire({
@@ -215,38 +220,37 @@ export default function FinalReDefense() {
       confirmButtonColor: MAROON,
     });
   };
- 
-  // Load Teams for dropdown - only teams that passed Final Defense with "Re Defense" verdict
+
+  // Load Teams for dropdown - only teams that passed Oral Defense with "Approved" verdict
   const loadTeamOptions = async () => {
     setLoadingTeams(true);
     try {
-      // Get teams with "Re Defense" verdict in Final Defense
-      const finalDefenseSnap = await getDocs(
-        collection(db, "finalDefenseSchedules")
+      // Get teams with "Approved" verdict in Oral Defense
+      const oralDefenseSnap = await getDocs(
+        collection(db, "oralDefenseSchedules")
       );
-      const reDefenseTeamIds = new Set();
- 
-      finalDefenseSnap.forEach((docX) => {
+      const approvedTeamIds = new Set();
+
+      oralDefenseSnap.forEach((docX) => {
         const data = docX.data();
         const teamId = data?.teamId;
         const verdict = data?.verdict;
- 
-        // Changed from "Re-Defense" to "Re Defense" to match your database
-        if (teamId && verdict === "Re-Defense") {
-          reDefenseTeamIds.add(teamId);
+
+        if (teamId && verdict === "Approved") {
+          approvedTeamIds.add(teamId);
         }
       });
- 
-      // Load team details for Re-Defense teams
+
+      // Load team details for approved teams
       const teams = [];
       const teamsSnap = await getDocs(collection(db, "teams"));
       teamsSnap.forEach((docX) => {
         const data = docX.data();
-        if (data?.name && reDefenseTeamIds.has(docX.id)) {
+        if (data?.name && approvedTeamIds.has(docX.id)) {
           teams.push({ id: docX.id, name: data.name });
         }
       });
- 
+
       teams.sort((a, b) => a.name.localeCompare(b.name));
       setTeamOptions(teams);
     } catch (e) {
@@ -256,7 +260,7 @@ export default function FinalReDefense() {
       setLoadingTeams(false);
     }
   };
- 
+
   // Load Advisers from users where role == "Adviser"
   useEffect(() => {
     let alive = true;
@@ -295,7 +299,21 @@ export default function FinalReDefense() {
       alive = false;
     };
   }, []);
- 
+
+  // Load team system titles
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "teamSystemTitles"), (snapshot) => {
+      const titlesMap = {};
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        titlesMap[doc.id] = data.systemTitle; // teamId -> systemTitle
+      });
+      setTeamSystemTitles(titlesMap);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   // Button Component
   const Btn = ({
     children,
@@ -308,13 +326,13 @@ export default function FinalReDefense() {
       "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium cursor-pointer " +
       "focus:outline-none focus:ring-2 focus:ring-neutral-200 " +
       className;
- 
+
     const cls =
       variant === "solid"
         ? base + " text-white"
         : base +
           " border border-neutral-300 text-neutral-700 bg-white hover:bg-neutral-50";
- 
+
     const style = variant === "solid" ? { backgroundColor: MAROON } : undefined;
     return (
       <button {...props} className={cls} style={style}>
@@ -323,47 +341,81 @@ export default function FinalReDefense() {
       </button>
     );
   };
- 
-  // Load Schedules - Show ALL final Re-Defense schedules regardless of verdict
+
+  // Check if team exists and get current team name
+  const checkTeamExists = async (teamId) => {
+    try {
+      const teamDoc = await getDoc(doc(db, "teams", teamId));
+      if (!teamDoc.exists()) {
+        return { exists: false, name: null };
+      }
+      const teamData = teamDoc.data();
+      return { exists: true, name: teamData.name || null };
+    } catch (error) {
+      console.error("Error checking team existence:", error);
+      return { exists: false, name: null };
+    }
+  };
+
+  // Load Schedules - Only show teams that passed Oral Defense with "Approved" verdict
   const loadSchedules = async () => {
     setLoadingSchedules(true);
     try {
-      // Create a map of team IDs that passed Final Defense with "Re Defense" verdict
-      const finalDefenseSnap = await getDocs(
-        collection(db, "finalDefenseSchedules")
+      // Create a map of team IDs that passed Oral Defense with "Approved" verdict
+      const oralDefenseSnap = await getDocs(
+        collection(db, "oralDefenseSchedules")
       );
       const eligibleTeams = new Map();
- 
-      finalDefenseSnap.forEach((docX) => {
+
+      oralDefenseSnap.forEach((docX) => {
         const data = docX.data();
         const teamId = data?.teamId;
         const teamName = data?.teamName;
         const verdict = data?.verdict;
- 
-        // Changed from "Re-Defense" to "Re Defense" to match your database
-        if (teamId && teamName && verdict === "Re-Defense") {
+
+        if (teamId && teamName && verdict === "Approved") {
           eligibleTeams.set(teamId, teamName);
         }
       });
- 
-      // Load ALL final Re-Defense schedules - don't filter by eligible teams
-      const finalReDefenseSnap = await getDocs(
-        collection(db, "finalReDefenseSchedules")
+
+      // Load final defense schedules for eligible teams
+      const finalDefenseSnap = await getDocs(
+        collection(db, "finalDefenseSchedules")
       );
       const rows = [];
- 
-      finalReDefenseSnap.forEach((docX) => {
+
+      // Check each schedule for team existence and get current team name
+      for (const docX of finalDefenseSnap.docs) {
         const data = docX.data();
         const teamId = data?.teamId;
- 
-        // Include ALL schedules regardless of verdict
-        // Only check if team exists in eligible teams for initial creation
-        // But once created, keep showing even if approved
-        if (eligibleTeams.has(teamId) || data?.verdict === "Approved") {
+
+        // Check if team still exists
+        const { exists: teamExists, name: currentTeamName } = await checkTeamExists(teamId);
+
+        // If team doesn't exist, delete the schedule
+        if (!teamExists) {
+          try {
+            await deleteDoc(doc(db, "finalDefenseSchedules", docX.id));
+            console.log(`Deleted schedule for dissolved team: ${teamId}`);
+            continue; // Skip adding this schedule to the rows
+          } catch (deleteError) {
+            console.error("Error deleting schedule for dissolved team:", deleteError);
+          }
+        }
+
+        // Only include schedule if the team passed Oral Defense with "Approved" verdict
+        if (eligibleTeams.has(teamId)) {
+          // Use current team name if available, otherwise fall back to stored name
+          const teamName = currentTeamName || data?.teamName || "";
+          
+          // Get system title for this team
+          const systemTitle = teamSystemTitles[teamId] || data?.title || "";
+
           rows.push({
             id: docX.id,
-            teamName: data?.teamName || "",
+            teamName: teamName,
             teamId: teamId,
+            title: systemTitle, // Add title field
             date: data?.date || "",
             time: data?.time || "", // Single time field
             panelists: Array.isArray(data?.panelists) ? data.panelists : [],
@@ -373,16 +425,20 @@ export default function FinalReDefense() {
             originalScheduleId: data?.originalScheduleId || null,
           });
         }
-      });
- 
-      // Sort by date, then by time (empty times first), then by creation date
+      }
+
+      // Sort by isRePresentation first (Re-Defense schedules come first), then by date, then by time
       rows.sort((a, b) => {
-        // First by date
+        // First by isRePresentation (Re-Defense schedules first)
+        if (a.isRePresentation && !b.isRePresentation) return -1;
+        if (!a.isRePresentation && b.isRePresentation) return 1;
+
+        // Then by date
         const ad = a.date || "",
           bd = b.date || "";
         if (ad < bd) return -1;
         if (ad > bd) return 1;
- 
+
         // Then by time (empty times come first for re-presentations)
         const at = a.time || "",
           bt = b.time || "";
@@ -393,16 +449,16 @@ export default function FinalReDefense() {
           if (at < bt) return -1;
           if (at > bt) return 1;
         }
- 
+
         // Finally by creation date (newer first)
         const ac = a.createdAt?.toDate?.() || new Date(0);
         const bc = b.createdAt?.toDate?.() || new Date(0);
         return bc - ac; // Newer first
       });
- 
+
       setSchedules(rows);
     } catch (e) {
-      console.error("Failed to load final Re-Defense schedules:", e);
+      console.error("Failed to load final defense schedules:", e);
       showAlert(
         "Error",
         "Failed to load schedules. Please try again.",
@@ -412,12 +468,70 @@ export default function FinalReDefense() {
       setLoadingSchedules(false);
     }
   };
- 
+
+  // Real-time listener for team name changes
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "teams"), (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "modified") {
+          const teamId = change.doc.id;
+          const newTeamName = change.doc.data().name;
+
+          // Update schedules with the new team name
+          setSchedules(prevSchedules => 
+            prevSchedules.map(schedule => 
+              schedule.teamId === teamId 
+                ? { ...schedule, teamName: newTeamName }
+                : schedule
+            )
+          );
+        }
+      });
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Real-time listener for team deletions (dissolved teams)
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "teams"), (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "removed") {
+          const deletedTeamId = change.doc.id;
+
+          // Remove schedules for the dissolved team
+          setSchedules(prevSchedules => 
+            prevSchedules.filter(schedule => schedule.teamId !== deletedTeamId)
+          );
+        }
+      });
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Update schedules when teamSystemTitles changes
+  useEffect(() => {
+    if (Object.keys(teamSystemTitles).length > 0 && schedules.length > 0) {
+      const updatedSchedules = schedules.map(schedule => {
+        const systemTitle = teamSystemTitles[schedule.teamId];
+        if (systemTitle && systemTitle !== schedule.title) {
+          return {
+            ...schedule,
+            title: systemTitle
+          };
+        }
+        return schedule;
+      });
+      setSchedules(updatedSchedules);
+    }
+  }, [teamSystemTitles]);
+
   useEffect(() => {
     loadSchedules();
     loadTeamOptions();
-  }, []);
- 
+  }, [teamSystemTitles]); // Reload when teamSystemTitles change
+
   // verdict updater
   const handleChangeVerdict = async (scheduleId, newVerdict) => {
     try {
@@ -426,7 +540,7 @@ export default function FinalReDefense() {
           s.id === scheduleId ? { ...s, verdict: newVerdict } : s
         )
       );
-      await updateDoc(doc(db, "finalReDefenseSchedules", scheduleId), {
+      await updateDoc(doc(db, "finalDefenseSchedules", scheduleId), {
         verdict: newVerdict,
       });
       showAlert("Success", "Verdict updated successfully.", "success");
@@ -440,7 +554,7 @@ export default function FinalReDefense() {
       );
     }
   };
- 
+
   // Handle inline edit save
   const handleSaveEdit = async (scheduleId, updatedData) => {
     try {
@@ -461,10 +575,20 @@ export default function FinalReDefense() {
         );
         return;
       }
- 
+
+      // Validate maximum of 3 panelists
+      if (updatedData.panelists.length > 3) {
+        showAlert(
+          "Maximum Panelists",
+          "You can only add up to 3 panelists.",
+          "warning"
+        );
+        return;
+      }
+
       const selected = teamOptions.find((t) => t.name === updatedData.teamName);
       const teamId = selected?.id || null;
- 
+
       const payload = {
         teamId,
         teamName: updatedData.teamName,
@@ -474,18 +598,18 @@ export default function FinalReDefense() {
           ? updatedData.panelists
           : [],
       };
- 
-      await updateDoc(doc(db, "finalReDefenseSchedules", scheduleId), payload);
- 
+
+      await updateDoc(doc(db, "finalDefenseSchedules", scheduleId), payload);
+
       // Notify team (PM, Adviser, Members)
       await notifyTeamSchedule({
-        kind: "Final Re-Defense",
+        kind: "Final Defense",
         teamId,
         teamName: updatedData.teamName,
         date: updatedData.date,
         time: updatedData.time, // Single time field
       });
- 
+
       setEditingId(null);
       await loadSchedules();
       showAlert("Success", "Schedule updated successfully.", "success");
@@ -495,42 +619,53 @@ export default function FinalReDefense() {
       await loadSchedules();
     }
   };
- 
-  // Handle schedule Re-Defense
+
+  // Handle schedule re-defense
   const handleScheduleReDefense = async (originalSchedule) => {
     try {
+      // Check if verdict is Pending
+      if (originalSchedule.verdict === "Pending") {
+        showAlert(
+          "Cannot Schedule Re-Defense",
+          "Cannot schedule Re-Defense while verdict is still Pending.",
+          "warning"
+        );
+        return;
+      }
+
       const newSchedule = {
         teamId: originalSchedule.teamId,
         teamName: originalSchedule.teamName,
-        date: "", // Empty date for Re-Defense
-        time: "", // Empty time for Re-Defense
-        panelists: [], // Empty array - NO panelists copied for Re-Defense
+        title: originalSchedule.title || "", // Include title
+        date: "", // Empty date for re-defense
+        time: "", // Empty time for re-defense
+        panelists: [], // Empty array - NO panelists copied for re-defense
         verdict: "Pending",
         createdAt: new Date(),
         isRePresentation: true,
         originalScheduleId: originalSchedule.id,
       };
- 
-      await addDoc(collection(db, "finalReDefenseSchedules"), newSchedule);
- 
+
+      await addDoc(collection(db, "finalDefenseSchedules"), newSchedule);
+
       setMenuOpenId(null);
       await loadSchedules();
- 
+
       showAlert(
         "Success",
-        "Re-Defense scheduled successfully. Please set the new date, time, and panelists.",
+        "Re-defense scheduled successfully. Please set the new date, time, and panelists.",
         "success"
       );
     } catch (err) {
-      console.error("Failed to schedule Re-Defense:", err);
+      console.error("Failed to schedule re-defense:", err);
       showAlert(
         "Error",
-        "Failed to schedule Re-Defense. Please try again.",
+        "Failed to schedule re-defense. Please try again.",
         "error"
       );
     }
   };
- 
+
   // Handle individual schedule deletion
   const handleDeleteSchedule = async (schedule) => {
     const result = await Swal.fire({
@@ -543,11 +678,11 @@ export default function FinalReDefense() {
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "Cancel",
     });
- 
+
     if (!result.isConfirmed) return;
- 
+
     try {
-      await deleteDoc(doc(db, "finalReDefenseSchedules", schedule.id));
+      await deleteDoc(doc(db, "finalDefenseSchedules", schedule.id));
       setMenuOpenId(null);
       await loadSchedules();
       showAlert("Success", "Schedule deleted successfully.", "success");
@@ -560,35 +695,43 @@ export default function FinalReDefense() {
       );
     }
   };
- 
+
   // Check if verdict can be edited (date must be passed)
   const canEditVerdict = (schedule) => {
     return isDatePassed(schedule.date, schedule.time);
   };
- 
+
   // Check if schedule details can be edited (verdict must not be "Approved")
   const canEditSchedule = (schedule) => {
     return schedule.verdict !== "Approved";
   };
- 
-  // search filter (client-side) - only search team name
+
+  // Check if can schedule Re-Defense (cannot be Pending)
+  const canScheduleReDefense = (schedule) => {
+    return schedule.verdict !== "Pending";
+  };
+
+  // search filter (client-side) - search team name and title
   const filtered = useMemo(() => {
     let result = schedules;
- 
+
     // Apply verdict filter
     if (filterVerdict !== "all") {
       result = result.filter((s) => s.verdict === filterVerdict);
     }
- 
-    // Apply search text filter - only team name
+
+    // Apply search text filter - team name and title
     const q = queryText.trim().toLowerCase();
     if (q) {
-      result = result.filter((t) => t.teamName.toLowerCase().includes(q));
+      result = result.filter((t) =>
+        t.teamName.toLowerCase().includes(q) ||
+        t.title.toLowerCase().includes(q)
+      );
     }
- 
+
     return result;
   }, [queryText, filterVerdict, schedules]);
- 
+
   // Select-all works on the filtered (visible) list
   const allVisibleIds = useMemo(() => filtered.map((s) => s.id), [filtered]);
   const allSelected =
@@ -596,7 +739,7 @@ export default function FinalReDefense() {
   const toggleSelectAll = () => {
     setSelected((prev) => (allSelected ? new Set() : new Set(allVisibleIds)));
   };
- 
+
   // Delete button behavior
   const handleBulkDeleteClick = async () => {
     if (!bulkMode) {
@@ -611,7 +754,7 @@ export default function FinalReDefense() {
       );
       return;
     }
- 
+
     const result = await Swal.fire({
       title: "Confirm Delete",
       text: `Delete ${selected.size} selected schedule(s)? This cannot be undone.`,
@@ -622,13 +765,13 @@ export default function FinalReDefense() {
       confirmButtonText: "Yes, delete it!",
       cancelButtonText: "Cancel",
     });
- 
+
     if (!result.isConfirmed) return;
- 
+
     try {
       await Promise.all(
         Array.from(selected).map((id) =>
-          deleteDoc(doc(db, "finalReDefenseSchedules", id))
+          deleteDoc(doc(db, "finalDefenseSchedules", id))
         )
       );
       exitBulk();
@@ -648,7 +791,7 @@ export default function FinalReDefense() {
       await loadSchedules();
     }
   };
- 
+
   /* ===== PDF export with SweetAlert dropdown ===== */
   const loadImage = (src) =>
     new Promise((resolve, reject) => {
@@ -657,7 +800,7 @@ export default function FinalReDefense() {
       img.onerror = reject;
       img.src = src;
     });
- 
+
   const handleExportPDF = async () => {
     const { value: exportFilter } = await Swal.fire({
       title: "Export PDF",
@@ -668,7 +811,7 @@ export default function FinalReDefense() {
         all: "All Schedule",
         Pending: "Pending",
         Approved: "Approved",
-        "Re-Defense": "Re-Defense", // Updated to match database
+        "Re-Oral": "Re-Oral",
         Failed: "Failed",
       },
       inputValue: "all",
@@ -677,15 +820,15 @@ export default function FinalReDefense() {
       cancelButtonText: "Cancel",
       confirmButtonColor: MAROON,
     });
- 
+
     if (!exportFilter) return;
- 
+
     // Filter data based on selection
     let exportData = schedules;
     if (exportFilter !== "all") {
       exportData = schedules.filter((s) => s.verdict === exportFilter);
     }
- 
+
     if (exportData.length === 0) {
       Swal.fire({
         title: "No Data",
@@ -697,15 +840,15 @@ export default function FinalReDefense() {
       });
       return;
     }
- 
-    const title = `Final Re-Defense Schedule - ${
+
+    const title = `Final Defense Schedule - ${
       exportFilter === "all" ? "All" : exportFilter
     }`;
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const marginX = 40;
- 
+
     // preload images
     let dctImg, ccsImg, tsImg;
     try {
@@ -717,10 +860,10 @@ export default function FinalReDefense() {
     } catch {
       // continue even if images fail to load
     }
- 
+
     const drawHeader = () => {
       const topY = 24;
- 
+
       if (dctImg) {
         const sideW = 64;
         const sideH = (dctImg.height / dctImg.width) * sideW;
@@ -738,7 +881,7 @@ export default function FinalReDefense() {
           sideH
         );
       }
- 
+
       const headerY = 92;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
@@ -768,12 +911,12 @@ export default function FinalReDefense() {
         headerY + 64,
         { align: "center" }
       );
- 
+
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       const titleY = headerY + 96;
       doc.text(title, pageWidth / 2, titleY, { align: "center" });
- 
+
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.text(
@@ -784,13 +927,13 @@ export default function FinalReDefense() {
           align: "center",
         }
       );
- 
+
       doc.setDrawColor(180);
       doc.line(marginX, titleY + 26, pageWidth - marginX, titleY + 26);
- 
+
       return titleY + 38; // table start Y
     };
- 
+
     const drawFooter = () => {
       if (tsImg) {
         const logoW = 72;
@@ -799,39 +942,41 @@ export default function FinalReDefense() {
         const y = pageHeight - 20 - logoH;
         doc.addImage(tsImg, "PNG", x, y, logoW, logoH);
       }
- 
+
       const str = `Page ${doc.internal.getNumberOfPages()}`;
       doc.setFontSize(9);
       doc.setTextColor(120);
       doc.text(str, pageWidth - marginX, pageHeight - 14, { align: "right" });
     };
- 
+
     const tableYStart = drawHeader();
- 
+
     const contentWidth = pageWidth - marginX * 2;
     const W = {
-      no: 0.07 * contentWidth,
-      team: 0.23 * contentWidth,
-      date: 0.14 * contentWidth,
-      time: 0.14 * contentWidth,
-      pan: 0.3 * contentWidth,
+      no: 0.05 * contentWidth,
+      team: 0.18 * contentWidth,
+      title: 0.22 * contentWidth, // Added title column width
+      date: 0.12 * contentWidth,
+      time: 0.1 * contentWidth,
+      pan: 0.21 * contentWidth, // Adjusted panelists width
       ver: 0.12 * contentWidth,
     };
- 
+
     const verdictColor = (v) => {
       const s = String(v || "").toLowerCase();
       if (s === "approved") return [34, 139, 34];
-      if (s === "Re-Defense") return [217, 168, 30]; // Updated to match database
+      if (s === "re-oral") return [217, 168, 30];
       if (s === "failed") return [106, 15, 20]; // MAROON color for Failed
       return [106, 15, 20]; // Pending/others
     };
- 
+
     autoTable(doc, {
       startY: tableYStart,
-      head: [["NO", "Team", "Date", "Time", "Panelists", "Verdict"]],
+      head: [["NO", "Team", "Title", "Date", "Time", "Panelists", "Verdict"]], // Added Title column
       body: exportData.map((s, i) => [
         `${i + 1}.`,
         s.teamName || "",
+        s.title || "", // Added title data
         fmtDate(s.date) || "",
         fmtTime(s.time) || "",
         (s.panelists || []).join(", "),
@@ -854,15 +999,16 @@ export default function FinalReDefense() {
       columnStyles: {
         0: { cellWidth: W.no, halign: "left" },
         1: { cellWidth: W.team },
-        2: { cellWidth: W.date },
-        3: { cellWidth: W.time },
-        4: { cellWidth: W.pan },
-        5: { cellWidth: W.ver, halign: "center" },
+        2: { cellWidth: W.title }, // Added title column style
+        3: { cellWidth: W.date },
+        4: { cellWidth: W.time },
+        5: { cellWidth: W.pan },
+        6: { cellWidth: W.ver, halign: "center" },
       },
       margin: { left: marginX, right: marginX, bottom: 64 },
       tableWidth: contentWidth,
       didParseCell: (data) => {
-        if (data.section === "body" && data.column.index === 5) {
+        if (data.section === "body" && data.column.index === 6) {
           data.cell.styles.textColor = verdictColor(data.cell.text?.[0]);
           data.cell.styles.fontStyle = "bold";
         }
@@ -872,13 +1018,13 @@ export default function FinalReDefense() {
         drawFooter();
       },
     });
- 
+
     doc.save(
-      `final_redefense_schedule_${
+      `final_defense_schedule_${
         exportFilter === "all" ? "all" : exportFilter.toLowerCase()
       }_${new Date().toISOString().slice(0, 10)}.pdf`
     );
- 
+
     Swal.fire({
       title: "Export Successful!",
       text: `PDF exported with ${exportData.length} ${
@@ -888,7 +1034,7 @@ export default function FinalReDefense() {
       confirmButtonColor: MAROON,
     });
   };
- 
+
   // EditableRow component for inline editing
   const EditableRow = ({ schedule, onSave, onCancel }) => {
     const [editedData, setEditedData] = useState({
@@ -898,9 +1044,16 @@ export default function FinalReDefense() {
       panelists: [...(schedule.panelists || [])],
     });
     const [panelistPick, setPanelistPick] = useState("");
- 
+
     const addPanelist = (name) => {
       if (!name) return;
+      
+      // Check if maximum of 3 panelists is reached
+      if (editedData.panelists.length >= 3) {
+        showAlert("Maximum Panelists", "You can only add up to 3 panelists.", "warning");
+        return;
+      }
+
       if (!editedData.panelists.includes(name)) {
         setEditedData((prev) => ({
           ...prev,
@@ -909,27 +1062,32 @@ export default function FinalReDefense() {
       }
       setPanelistPick("");
     };
- 
+
     const removePanelist = (name) => {
       setEditedData((prev) => ({
         ...prev,
         panelists: prev.panelists.filter((n) => n !== name),
       }));
     };
- 
+
     const canEdit = canEditSchedule(schedule);
- 
+
     return (
       <tr className="bg-blue-50">
         <td className="px-4 py-3 text-neutral-600">
           {filtered.findIndex((s) => s.id === schedule.id) + 1}.
         </td>
- 
+
         {/* Team Name (readonly in edit mode) */}
         <td className="px-4 py-3 font-medium text-neutral-800">
           {schedule.teamName}
         </td>
- 
+
+        {/* Title (readonly) */}
+        <td className="px-4 py-3 font-medium text-neutral-800">
+          {schedule.title || "—"}
+        </td>
+
         {/* Date */}
         <td className="px-4 py-3">
           <div className="relative">
@@ -940,6 +1098,7 @@ export default function FinalReDefense() {
                 setEditedData((prev) => ({ ...prev, date: e.target.value }))
               }
               disabled={!canEdit}
+              min={getCurrentDate()} // Prevents past date selection
               className={`w-full px-2 py-1 rounded border text-sm ${
                 canEdit
                   ? "border-neutral-300"
@@ -949,7 +1108,7 @@ export default function FinalReDefense() {
             />
           </div>
         </td>
- 
+
         {/* Time Dropdown */}
         <td className="px-4 py-3">
           <div className="relative">
@@ -979,7 +1138,7 @@ export default function FinalReDefense() {
             />
           </div>
         </td>
- 
+
         {/* Panelists */}
         <td className="px-4 py-3">
           <div className="space-y-2">
@@ -987,9 +1146,9 @@ export default function FinalReDefense() {
               <select
                 value={panelistPick}
                 onChange={(e) => addPanelist(e.target.value)}
-                disabled={!canEdit}
+                disabled={!canEdit || editedData.panelists.length >= 3}
                 className={`w-full appearance-none pr-6 pl-2 py-1 rounded border text-sm ${
-                  canEdit
+                  canEdit && editedData.panelists.length < 3
                     ? "border-neutral-300 bg-white"
                     : "border-neutral-200 bg-neutral-100 cursor-not-allowed"
                 }`}
@@ -1005,6 +1164,11 @@ export default function FinalReDefense() {
                 size={14}
                 className="absolute right-2 top-1.5 text-neutral-500 pointer-events-none"
               />
+              {editedData.panelists.length >= 3 && (
+                <div className="text-xs text-orange-600 mt-1">
+                  Maximum of 3 panelists reached
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap gap-1">
               {editedData.panelists.map((p) => (
@@ -1032,7 +1196,7 @@ export default function FinalReDefense() {
             </div>
           </div>
         </td>
- 
+
         {/* Verdict */}
         <td className="px-4 py-3">
           <div className="relative inline-flex items-center">
@@ -1047,7 +1211,7 @@ export default function FinalReDefense() {
             >
               <option>Pending</option>
               <option>Approved</option>
-              <option>Re-Defense</option> {/* Updated to match database */}
+              <option>Re-Oral</option>
               <option>Failed</option>
             </select>
             <ChevronDown
@@ -1056,7 +1220,7 @@ export default function FinalReDefense() {
             />
           </div>
         </td>
- 
+
         {/* Action buttons */}
         <td className="px-2 py-3">
           <div className="flex items-center gap-1">
@@ -1079,7 +1243,7 @@ export default function FinalReDefense() {
       </tr>
     );
   };
- 
+
   // Get row background color based on verdict
   const getRowBackgroundColor = (verdict) => {
     if (verdict === "Failed") {
@@ -1087,7 +1251,7 @@ export default function FinalReDefense() {
     }
     return "";
   };
- 
+
   return (
     <div className="">
       <Breadcrumbs />
@@ -1097,33 +1261,22 @@ export default function FinalReDefense() {
           style={{ backgroundColor: MAROON, width: 260 }}
         />
       </div>
- 
+
       {/* actions */}
       <div className="mt-6 space-y-4">
-        {/* Row 1: Back + Export (aligned) */}
+        {/* Row 1: Export only (Back button removed) */}
         <div className="flex items-center gap-3">
-          <Btn
-            icon={ChevronLeft}
-            variant="outline"
-            onClick={() =>
-              window.history.length
-                ? window.history.back()
-                : navigate("/instructor/schedule")
-            }
-          >
-            Back to Schedule
-          </Btn>
           <Btn icon={Download} variant="outline" onClick={handleExportPDF}>
             Export PDF
           </Btn>
         </div>
- 
+
         {/* Row 2: Search (left) + Filter (right) */}
         <div className="flex items-center justify-between">
           <div className="relative">
             <input
               type="text"
-              placeholder="Search team name"
+              placeholder="Search team name or title"
               value={queryText}
               onChange={(e) => setQueryText(e.target.value)}
               className="pl-10 pr-3 py-2 w-72 rounded-md border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300"
@@ -1133,7 +1286,7 @@ export default function FinalReDefense() {
               className="absolute left-3 top-2.5 text-neutral-400"
             />
           </div>
- 
+
           <div className="flex items-center gap-3">
             {/* Filter Button */}
             <div className="relative">
@@ -1145,7 +1298,7 @@ export default function FinalReDefense() {
                 Filter
                 <ChevronDown size={16} />
               </button>
- 
+
               {filterOpen && (
                 <div className="absolute right-0 mt-1 z-20 w-48 rounded-md border bg-white shadow-lg">
                   <div className="py-1">
@@ -1190,16 +1343,16 @@ export default function FinalReDefense() {
                     </button>
                     <button
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 ${
-                        filterVerdict === "Re-Defense" // Updated to match database
+                        filterVerdict === "Re-Oral"
                           ? "bg-neutral-50 font-medium"
                           : ""
                       }`}
                       onClick={() => {
-                        setFilterVerdict("Re-Defense");
+                        setFilterVerdict("Re-Oral");
                         setFilterOpen(false);
                       }}
                     >
-                      Re Defense
+                      Re-Oral
                     </button>
                     <button
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 ${
@@ -1218,7 +1371,7 @@ export default function FinalReDefense() {
                 </div>
               )}
             </div>
- 
+
             {bulkMode && (
               <button
                 onClick={exitBulk}
@@ -1230,7 +1383,7 @@ export default function FinalReDefense() {
           </div>
         </div>
       </div>
- 
+
       {/* Active Filter Badge */}
       {filterVerdict !== "all" && (
         <div className="mt-4 flex items-center gap-2">
@@ -1246,7 +1399,7 @@ export default function FinalReDefense() {
           </div>
         </div>
       )}
- 
+
       {/* table */}
       <div className="mt-5 rounded-xl border border-neutral-200 bg-white shadow-[0_6px_18px_rgba(0,0,0,0.05)]">
         <table className="w-full text-sm">
@@ -1266,6 +1419,7 @@ export default function FinalReDefense() {
                 <th className="text-left px-4 py-3 w-16">NO</th>
               )}
               <th className="text-left px-4 py-3">Team</th>
+              <th className="text-left px-4 py-3">Title</th> {/* Added Title column */}
               <th className="text-left px-4 py-3">
                 <div className="inline-flex items-center gap-2">
                   <CalIcon size={16} /> Date
@@ -1284,19 +1438,20 @@ export default function FinalReDefense() {
           <tbody>
             {loadingSchedules ? (
               <tr>
-                <td className="px-4 py-6 text-neutral-500" colSpan={7}>
+                <td className="px-4 py-6 text-neutral-500" colSpan={8}> {/* Updated colSpan to 8 */}
                   Loading schedules…
                 </td>
               </tr>
             ) : schedules.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-neutral-500" colSpan={7}>
-                  No final Re-Defense schedules found for teams that have "Re-Defense" verdict in Final Defense.
+                <td className="px-4 py-6 text-neutral-500" colSpan={8}> {/* Updated colSpan to 8 */}
+                  No final defense schedules found for teams that passed Oral
+                  Defense with "Approved" verdict.
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-neutral-500" colSpan={7}>
+                <td className="px-4 py-6 text-neutral-500" colSpan={8}> {/* Updated colSpan to 8 */}
                   {filterVerdict !== "all"
                     ? `No ${filterVerdict.toLowerCase()} schedules found${
                         queryText ? ` for "${queryText}"` : ""
@@ -1318,12 +1473,13 @@ export default function FinalReDefense() {
                     />
                   );
                 }
- 
+
                 const isChecked = selected.has(s.id);
                 const rowColor = getRowBackgroundColor(s.verdict);
                 const canEditVerdictNow = canEditVerdict(s);
                 const canEditScheduleNow = canEditSchedule(s);
- 
+                const canScheduleReDefenseNow = canScheduleReDefense(s);
+
                 return (
                   <tr key={s.id} className={`${rowColor}`}>
                     {/* first column: checkbox or row number */}
@@ -1340,20 +1496,23 @@ export default function FinalReDefense() {
                     ) : (
                       <td className="px-4 py-3">{idx + 1}.</td>
                     )}
- 
+
                     <td className="px-4 py-3 font-medium">{s.teamName}</td>
- 
+
+                    {/* Title Column */}
+                    <td className="px-4 py-3">{s.title || "—"}</td>
+
                     {/* Date */}
                     <td className="px-4 py-3">{fmtDate(s.date) || "—"}</td>
- 
+
                     {/* Time */}
                     <td className="px-4 py-3">{fmtTime(s.time) || "—"}</td>
- 
+
                     {/* Panelists */}
                     <td className="px-4 py-3">
                       {s.panelists.length > 0 ? s.panelists.join(", ") : "—"}
                     </td>
- 
+
                     {/* Verdict */}
                     <td className="px-4 py-3">
                       <div className="relative inline-flex items-center">
@@ -1382,7 +1541,7 @@ export default function FinalReDefense() {
                         >
                           <option>Pending</option>
                           <option>Approved</option>
-                          <option>Re-Defense</option> {/* Updated to match database */}
+                          <option>Re-Oral</option>
                           <option>Failed</option>
                         </select>
                         <ChevronDown
@@ -1398,7 +1557,7 @@ export default function FinalReDefense() {
                           )}
                       </div>
                     </td>
- 
+
                     {/* Row actions - Kebab menu with Update, Schedule Re-Defense, and Remove */}
                     <td className="px-2 py-3 relative">
                       <button
@@ -1414,14 +1573,18 @@ export default function FinalReDefense() {
                       >
                         <MoreVertical size={18} />
                       </button>
- 
+
                       {!bulkMode && menuOpenId === s.id && (
                         <div className="absolute right-2 mt-1 z-20 w-48 rounded-md border bg-white shadow">
                           <button
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2"
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2 ${
+                              !canEditScheduleNow ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
                             onClick={() => {
-                              setEditingId(s.id);
-                              setMenuOpenId(null);
+                              if (canEditScheduleNow) {
+                                setEditingId(s.id);
+                                setMenuOpenId(null);
+                              }
                             }}
                             disabled={!canEditScheduleNow}
                           >
@@ -1429,20 +1592,29 @@ export default function FinalReDefense() {
                             Update
                           </button>
                           <button
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2"
-                            onClick={() => handleScheduleReDefense(s)}
-                            disabled={s.verdict === "Approved"}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2 ${
+                              !canScheduleReDefenseNow ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                            onClick={() => {
+                              if (canScheduleReDefenseNow) {
+                                handleScheduleReDefense(s);
+                              }
+                            }}
+                            disabled={!canScheduleReDefenseNow}
                           >
                             <RotateCcw size={14} />
                             Schedule Re-Defense
                           </button>
-                          <button
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2 text-red-600"
-                            onClick={() => handleDeleteSchedule(s)}
-                          >
-                            <Trash2 size={14} />
-                            Remove
-                          </button>
+                          {/* Show Remove button only for Re-Defense schedules */}
+                          {s.isRePresentation && (
+                            <button
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2 text-red-600"
+                              onClick={() => handleDeleteSchedule(s)}
+                            >
+                              <Trash2 size={14} />
+                              Remove
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>
@@ -1453,7 +1625,7 @@ export default function FinalReDefense() {
           </tbody>
         </table>
       </div>
- 
+
       {/* View Team Dialog */}
       {viewSchedule && (
         <ViewTeamDialog
@@ -1464,14 +1636,14 @@ export default function FinalReDefense() {
     </div>
   );
 }
- 
+
 /* ------- View Team Dialog ------- */
 function ViewTeamDialog({ schedule, onClose }) {
   const [loading, setLoading] = useState(true);
   const [adviser, setAdviser] = useState("-");
   const [manager, setManager] = useState("-");
   const [members, setMembers] = useState([]);
- 
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -1502,7 +1674,7 @@ function ViewTeamDialog({ schedule, onClose }) {
       alive = false;
     };
   }, [schedule?.teamId]);
- 
+
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -1524,7 +1696,7 @@ function ViewTeamDialog({ schedule, onClose }) {
               />
             </div>
           </div>
- 
+
           {/* body */}
           <div className="px-6 pb-6">
             <div className="grid grid-cols-2 gap-x-10 gap-y-6">
@@ -1537,7 +1709,7 @@ function ViewTeamDialog({ schedule, onClose }) {
                   {schedule?.teamName || "-"}
                 </div>
               </div>
- 
+
               {/* Adviser */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -1547,7 +1719,7 @@ function ViewTeamDialog({ schedule, onClose }) {
                   {loading ? "Loading…" : adviser}
                 </div>
               </div>
- 
+
               {/* Project Manager */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -1557,7 +1729,7 @@ function ViewTeamDialog({ schedule, onClose }) {
                   {loading ? "Loading…" : manager}
                 </div>
               </div>
- 
+
               {/* Members */}
               <div className="col-span-2">
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -1578,7 +1750,7 @@ function ViewTeamDialog({ schedule, onClose }) {
                 </div>
               </div>
             </div>
- 
+
             {/* footer */}
             <div className="mt-8 flex items-center justify-end">
               <button

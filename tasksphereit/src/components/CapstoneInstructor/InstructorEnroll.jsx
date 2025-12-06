@@ -1,3 +1,4 @@
+//instructor enroll.txt
 // src/components/CapstoneInstructor/InstructorEnroll.jsx
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import Swal from "sweetalert2";
@@ -57,6 +58,21 @@ const TABS = ["Adviser", "Student"];
 const STUDENT_ROLES = ["Project Manager", "Member"];
 const displayPlural = (tab) => (tab === "Student" ? "Students" : "Advisers");
 
+// Helper function to get current school year in format "2024-2025"
+const getCurrentSchoolYear = () => {
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth() + 1; // January is 0
+  
+  // If month is June or later (month 6-12), school year is currentYear - nextYear
+  // If month is January-May (month 1-5), school year is previousYear - currentYear
+  if (currentMonth >= 6) {
+    return `${currentYear}-${currentYear + 1}`;
+  } else {
+    return `${currentYear - 1}-${currentYear}`;
+  }
+};
+
 export const downloadTemplate = async () => {
   // For a PUBLIC bucket
   const { data } = supabase.storage
@@ -70,7 +86,11 @@ export const downloadTemplate = async () => {
   const blob = await res.blob();
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "User-Template.xlsx";
+  
+  // Updated template name with school year
+  const schoolYear = getCurrentSchoolYear();
+  a.download = `CCS-Capstone-Template-${schoolYear}.xlsx`;
+  
   document.body.appendChild(a);
   a.click();
   URL.revokeObjectURL(a.href);
@@ -349,7 +369,7 @@ const InstructorEnroll = () => {
       icon: "warning",
       title: "Cannot Delete",
       html: `You cannot delete this user because <b>${user.firstName} ${user.lastName}</b> is currently a Project Manager.`,
-      confirmButtonColor: "#6A0F14",
+      confirmButtonColor: "#3B0304",
     });
     return;
   }
@@ -360,7 +380,7 @@ const InstructorEnroll = () => {
     text: "Are you sure you want to remove it permanently?",
     icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: "#6A0F14",
+    confirmButtonColor: "#3B0304",
     cancelButtonColor: "#9ca3af",
     confirmButtonText: "Yes, remove it",
     cancelButtonText: "Cancel",
@@ -505,7 +525,7 @@ const InstructorEnroll = () => {
       icon: "warning",
       title: "Cannot Delete",
       html: `You cannot delete these users because they are currently Project Managers:<br><br>${listHtml}`,
-      confirmButtonColor: "#6A0F14",
+      confirmButtonColor: "#3B0304",
     });
     return;
   }
@@ -519,7 +539,7 @@ const InstructorEnroll = () => {
         : `Are you sure you want to remove these ${selectedIds.length} accounts permanently?`,
     icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: "#6A0F14",
+    confirmButtonColor: "#3B0304",
     cancelButtonColor: "#9ca3af",
     confirmButtonText: "Yes, remove them",
     cancelButtonText: "Cancel",
@@ -567,7 +587,7 @@ const InstructorEnroll = () => {
   const [exportOpen, setExportOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-50">
+    <div className="min-h-screen flex flex-col bg-neutral-50 p-4 md:p-6">
       <input
         ref={fileRef}
         type="file"
@@ -577,7 +597,7 @@ const InstructorEnroll = () => {
       />
 
       <main className="min-h-full flex flex-col">
-        {/* ===== Header + underline ===== */}
+        {/* ===== Updated Header + underline (Title Defense style) ===== */}
         <div>
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-neutral-800" />
@@ -585,51 +605,59 @@ const InstructorEnroll = () => {
               {displayPlural(selectedTab)}
             </h2>
           </div>
-          <div className="mt-3 h-[2px] w-full bg-[#6A0F14]" />
+          <div className="mt-3 h-[2px] w-full bg-[#3B0304]" />
         </div>
 
-        {/* ===== Action buttons (LEFT aligned) ===== */}
-        <div className="mt-5 flex justify-start">
-          {selectedIds.length > 0 ? (
-            <div className="flex gap-3 flex-wrap">
+        {/* ===== Updated Action buttons (Title Defense style) ===== */}
+        <div className="flex items-center justify-between gap-3 mb-4 mt-4">
+          <div className="flex items-center gap-2">
+            {/* Download Template Button */}
+            <button
+              onClick={downloadTemplate}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white shadow text-sm"
+              style={{ backgroundColor: "#3B0304" }}
+            >
+              <Download className="w-4 h-4" />
+              Download Template
+            </button>
+
+            {/* Import File Button */}
+            <button
+              onClick={triggerExcelModal}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white shadow text-sm"
+              style={{ backgroundColor: "#3B0304" }}
+            >
+              <Upload className="w-4 h-4" />
+              Import File
+            </button>
+
+            {/* Export Credentials Button */}
+            <button
+              onClick={() => setExportOpen(true)}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white shadow text-sm"
+              style={{ backgroundColor: "#3B0304" }}
+            >
+              <Download className="w-4 h-4" />
+              Export Credentials
+            </button>
+          </div>
+
+          {/* Bulk Actions (when items are selected) */}
+          {selectedIds.length > 0 && (
+            <div className="flex gap-2">
               <button
                 onClick={handleBulkResetDefault}
-                className="flex items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
+                className="flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
               >
                 <Undo2 className="w-4 h-4" />
                 Reset Selected
               </button>
               <button
                 onClick={handleBulkDelete}
-                className="flex items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                className="flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm text-red-700 hover:bg-red-50"
               >
                 <Trash2 className="w-4 h-4" />
                 Delete Selected
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-3 flex-wrap">
-              <button
-                onClick={() => setExportOpen(true)}
-                className="cursor-pointer flex items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
-              >
-                <Download className="w-4 h-4" />
-                Export Credentials
-              </button>
-              <button
-                onClick={triggerExcelModal}
-                className="cursor-pointer flex items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
-              >
-                <Upload className="w-4 h-4" />
-                Import File
-              </button>
-              {/* Static button only (no functionality yet) */}
-              <button
-                onClick={downloadTemplate}
-                className="cursor-pointer flex items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
-              >
-                <Download className="w-4 h-4" />
-                Download Template
               </button>
             </div>
           )}
@@ -656,7 +684,7 @@ const InstructorEnroll = () => {
                 }}
                 className={`cursor-pointer px-4 py-2 rounded-full text-sm font-medium ${
                   selectedTab === tab
-                    ? "bg-[#6A0F14] text-white"
+                    ? "bg-[#3B0304] text-white"
                     : "bg-neutral-200 text-neutral-700 hover:bg-neutral-300"
                 }`}
               >
@@ -676,7 +704,7 @@ const InstructorEnroll = () => {
                 value={qText}
                 onChange={(e) => setQText(e.target.value)}
                 placeholder="Search by ID, name, or email"
-                className="w-full rounded-full border border-neutral-300 bg-white py-2 pl-9 pr-3 text-sm text-neutral-700 outline-none focus:ring-2 focus:ring-[#6A0F14]/30"
+                className="w-full rounded-full border border-neutral-300 bg-white py-2 pl-9 pr-3 text-sm text-neutral-700 outline-none focus:ring-2 focus:ring-[#3B0304]/30"
               />
             </div>
 
@@ -971,9 +999,9 @@ const InstructorEnroll = () => {
             >
               <div className="flex flex-col items-center justify-center border border-neutral-200 rounded-2xl shadow-lg p-6 h-full hover:bg-neutral-50">
                 <div className="flex items-center justify-center h-16 w-16 rounded-full border border-neutral-300">
-                  <PlusCircle className="w-8 h-8 text-[#6A0F14]" />
+                  <PlusCircle className="w-8 h-8 text-[#3B0304]" />
                 </div>
-                <p className="mt-4 text-base font-semibold text-[#6A0F14] text-center uppercase tracking-wide">
+                <p className="mt-4 text-base font-semibold text-[#3B0304] text-center uppercase tracking-wide">
                   Add {selectedTab === "Student" ? "Student" : "Adviser"}
                 </p>
               </div>
@@ -982,7 +1010,7 @@ const InstructorEnroll = () => {
         </div>
       </main>
 
-      {/* Add  */}
+      {/* Add User Modal */}
       <AddUserModal
         open={openAddUserModal}
         form={form}
@@ -1003,6 +1031,7 @@ const InstructorEnroll = () => {
         isEditing={!!editingId}
       />
 
+      {/* Edit User Modal */}
       <EditUserModal
         open={openEditUserModal}
         form={form}
@@ -1120,6 +1149,8 @@ function ExportCredentialsModal({ onClose }) {
       // continue without images
     }
 
+    const headerHeight = 226; // Fixed header height
+
     const drawHeader = () => {
       const topY = 24;
 
@@ -1196,8 +1227,6 @@ function ExportCredentialsModal({ onClose }) {
 
       doc.setDrawColor(180);
       doc.line(marginX, titleY + 26, pageWidth - marginX, titleY + 26);
-
-      return titleY + 38; // table start Y
     };
 
     const drawFooter = () => {
@@ -1215,10 +1244,11 @@ function ExportCredentialsModal({ onClose }) {
       doc.text(str, pageWidth - marginX, pageHeight - 14, { align: "right" });
     };
 
-    const tableYStart = drawHeader();
+    // Draw header on first page
+    drawHeader();
 
     autoTable(doc, {
-      startY: tableYStart,
+      startY: headerHeight,
       head: [["NO", "Full Name", "UserID", "Password"]],
       body: rows.map((u, i) => [
         `${i + 1}.`,
@@ -1241,9 +1271,12 @@ function ExportCredentialsModal({ onClose }) {
         2: { cellWidth: 120 },
         3: { cellWidth: 140 },
       },
-      margin: { left: 40, right: 40, bottom: 64 },
-      didDrawPage: () => {
-        drawHeader();
+      margin: { top: headerHeight, left: 40, right: 40, bottom: 64 },
+      didDrawPage: (data) => {
+        // Only draw header on first page and when starting a new page
+        if (data.pageNumber === 1 || data.pageNumber > 1) {
+          drawHeader();
+        }
         drawFooter();
       },
     });
@@ -1279,14 +1312,14 @@ function ExportCredentialsModal({ onClose }) {
         <div className="rounded-2xl bg-white border border-neutral-200 shadow-2xl p-0">
           {/* Header */}
           <div className="px-6 pt-5 pb-3">
-            <div className="flex items-center gap-2 text-[16px] font-semibold text-[#6A0F14]">
+            <div className="flex items-center gap-2 text-[16px] font-semibold text-[#3B0304]">
               <Download size={18} />
               Export Credentials
             </div>
             <div className="mt-3 h-[2px] w-full bg-neutral-200">
               <div
                 className="h-[2px]"
-                style={{ backgroundColor: "#6A0F14", width: 190 }}
+                style={{ backgroundColor: "#3B0304", width: 190 }}
               />
             </div>
           </div>
@@ -1339,7 +1372,7 @@ function ExportCredentialsModal({ onClose }) {
                 className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-white ${
                   busy ? "opacity-60 cursor-not-allowed" : ""
                 }`}
-                style={{ backgroundColor: "#6A0F14" }}
+                style={{ backgroundColor: "#3B0304" }}
               >
                 {busy ? "Generating…" : "Generate PDF"}
               </button>

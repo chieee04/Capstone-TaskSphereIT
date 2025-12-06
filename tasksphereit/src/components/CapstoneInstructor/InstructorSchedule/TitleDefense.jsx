@@ -1,3 +1,4 @@
+//title defense.txt
 // src/components/CapstoneInstructor/InstructorSchedule/TitleDefense.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { onSnapshot } from "firebase/firestore";
@@ -84,11 +85,14 @@ const fmtTime = (time) => {
   return to12h(time);
 };
  
-// Generate time options with 30-minute intervals
+// Generate time options with 30-minute intervals from 6:00 AM to 5:00 PM
 const generateTimeOptions = () => {
   const times = [];
-  for (let hour = 0; hour < 24; hour++) {
+  for (let hour = 6; hour <= 17; hour++) { // 6 AM to 5 PM
     for (let minute = 0; minute < 60; minute += 30) {
+      // Skip times after 5:00 PM
+      if (hour === 17 && minute > 0) break;
+      
       const timeString = `${hour.toString().padStart(2, "0")}:${minute
         .toString()
         .padStart(2, "0")}`;
@@ -167,7 +171,7 @@ export default function TitleDefense() {
   const [teamOptions, setTeamOptions] = useState([]); // [{id, name}]
   const [loadingTeams, setLoadingTeams] = useState(true);
  
-  const [adviserOptions, setAdviserOptions] = useState([]); // ["Full Name", ...]
+  const [adviserOptions, setAdviserOptions] = useState([]); // [{name, displayName}, ...]
   const [loadingAdvisers, setLoadingAdvisers] = useState(true);
  
   /* ===== Schedules list ===== */
@@ -216,18 +220,60 @@ export default function TitleDefense() {
       confirmButtonColor: MAROON,
     });
   };
+
+  // Get current Capstone Instructor's name - SIMPLIFIED VERSION
+  const getCurrentCapstoneInstructorName = () => {
+    try {
+      // Get user data directly from localStorage
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Extract name fields
+      const firstName = userData.firstName || userData.firstname || '';
+      const middleName = userData.middleName || userData.middlename || '';
+      const lastName = userData.lastName || userData.lastname || '';
+      
+      // Format full name
+      const fullName = [firstName, middleName, lastName]
+        .filter(Boolean)
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+      
+      return fullName || null;
+      
+    } catch (error) {
+      console.error("Error getting current instructor:", error);
+      return null;
+    }
+  };
  
-  // Load Advisers from users where role == "Adviser"
+  // Load Advisers AND Capstone Instructors from users
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
+        // Get current Capstone Instructor name
+        const currentInstructorName = getCurrentCapstoneInstructorName();
+        
+        console.log("Current Instructor Name:", currentInstructorName);
+        
+        // Load both Advisers and Capstone Instructors from Firestore
         const qUsers = query(
           collection(db, "users"),
-          where("role", "==", "Adviser")
+          where("role", "in", ["Adviser", "Capstone Instructor"])
         );
         const snap = await getDocs(qUsers);
         const names = [];
+        
+        // Add current instructor to the list if we found a name
+        if (currentInstructorName) {
+          console.log("Adding current instructor to dropdown:", currentInstructorName);
+          names.push({
+            name: currentInstructorName,
+            displayName: currentInstructorName // No labels, just the name
+          });
+        }
+        
         snap.forEach((docX) => {
           const d = docX.data() || {};
           const full = [d.firstName, d.middleName, d.lastName]
@@ -235,16 +281,30 @@ export default function TitleDefense() {
             .join(" ")
             .replace(/\s+/g, " ")
             .trim();
-          if (full) names.push(full);
+          
+          if (full) {
+            // Don't add duplicates
+            if (!names.some(item => item.name === full)) {
+              names.push({
+                name: full,
+                displayName: full // No labels, just the name
+              });
+            }
+          }
         });
-        names.sort((a, b) => a.localeCompare(b));
+        
+        // Sort by name
+        names.sort((a, b) => a.name.localeCompare(b.name));
+        
         if (!alive) return;
         setAdviserOptions(names);
+        
+        console.log("Final panelists dropdown list:", names);
       } catch (e) {
-        console.error("Failed to load advisers from users:", e);
+        console.error("Failed to load advisers and capstone instructors:", e);
         showAlert(
           "Error",
-          "Failed to load advisers. Please try again.",
+          "Failed to load panelists. Please try again.",
           "error"
         );
       } finally {
@@ -425,8 +485,13 @@ export default function TitleDefense() {
           return teamDataMap[row.teamId] !== "Team Deleted"; // Remove if team doesn't exist
         });
  
-      // Sort by date and time
+      // Sort by date and time, but put re-presentations first
       finalRows.sort((a, b) => {
+        // Put re-presentations first
+        if (a.isRePresentation && !b.isRePresentation) return -1;
+        if (!a.isRePresentation && b.isRePresentation) return 1;
+        
+        // Then sort by date and time
         if (a.date && b.date) {
           const dateCompare = a.date.localeCompare(b.date);
           if (dateCompare !== 0) return dateCompare;
@@ -566,7 +631,7 @@ export default function TitleDefense() {
     }
   };
  
-  // Handle schedule re-presentation - FIXED: Preserve teamDisplay
+  // Handle schedule re-presentation - FIXED: Preserve teamDisplay and put at top
   const handleScheduleRePresentation = async (originalSchedule) => {
     try {
       const newSchedule = {
@@ -581,10 +646,21 @@ export default function TitleDefense() {
         originalScheduleId: originalSchedule.id,
       };
  
-      await addDoc(collection(db, "titleDefenseSchedules"), newSchedule);
+      const docRef = await addDoc(collection(db, "titleDefenseSchedules"), newSchedule);
+ 
+      // Update local state immediately to put the new re-presentation at the top
+      setSchedules((prev) => {
+        const newScheduleWithId = {
+          ...newSchedule,
+          id: docRef.id,
+          teamDisplay: originalSchedule.teamDisplay // Preserve team display name
+        };
+        
+        // Put the new re-presentation at the beginning of the array
+        return [newScheduleWithId, ...prev];
+      });
  
       setMenuOpenId(null);
-      await loadSchedules();
  
       showAlert(
         "Success",
@@ -639,6 +715,11 @@ export default function TitleDefense() {
   // Check if schedule details can be edited (verdict must not be "Approved")
   const canEditSchedule = (schedule) => {
     return schedule.verdict !== "Approved";
+  };
+ 
+  // Check if re-presentation can be scheduled (verdict must be "Re-Present")
+  const canScheduleRePresentation = (schedule) => {
+    return schedule.verdict === "Re-Present";
   };
  
   // search filter (client-side) - search both team name and team display name
@@ -972,9 +1053,13 @@ export default function TitleDefense() {
       panelists: [...(schedule.panelists || [])],
     });
     const [panelistPick, setPanelistPick] = useState("");
- 
+
     const addPanelist = (name) => {
       if (!name) return;
+      if (editedData.panelists.length >= 3) {
+        showAlert("Maximum Panelists", "Maximum of 3 panelists allowed.", "warning");
+        return;
+      }
       if (!editedData.panelists.includes(name)) {
         setEditedData((prev) => ({
           ...prev,
@@ -1059,17 +1144,17 @@ export default function TitleDefense() {
               <select
                 value={panelistPick}
                 onChange={(e) => addPanelist(e.target.value)}
-                disabled={!canEdit}
+                disabled={!canEdit || editedData.panelists.length >= 3}
                 className={`w-full appearance-none pr-6 pl-2 py-1 rounded border text-sm ${
-                  canEdit
+                  canEdit && editedData.panelists.length < 3
                     ? "border-neutral-300 bg-white"
                     : "border-neutral-200 bg-neutral-100 cursor-not-allowed"
                 }`}
               >
                 <option value="">Select Panelist</option>
-                {adviserOptions.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
+                {adviserOptions.map((person) => (
+                  <option key={person.displayName} value={person.displayName}>
+                    {person.displayName}
                   </option>
                 ))}
               </select>
@@ -1102,6 +1187,11 @@ export default function TitleDefense() {
                 </span>
               ))}
             </div>
+            {editedData.panelists.length >= 3 && (
+              <div className="text-xs text-orange-600">
+                Maximum of 3 panelists reached
+              </div>
+            )}
           </div>
         </td>
  
@@ -1172,19 +1262,8 @@ export default function TitleDefense() {
  
       {/* actions */}
       <div className="mt-6 space-y-4">
-        {/* Row 1: Back + Export (aligned) */}
+        {/* Row 1: Export only (Back button removed) */}
         <div className="flex items-center gap-3">
-          <Btn
-            icon={ChevronLeft}
-            variant="outline"
-            onClick={() =>
-              window.history.length
-                ? window.history.back()
-                : navigate("/instructor/schedule")
-            }
-          >
-            Back to Schedule
-          </Btn>
           <Btn icon={Download} variant="outline" onClick={handleExportPDF}>
             Export PDF
           </Btn>
@@ -1395,6 +1474,7 @@ export default function TitleDefense() {
                 const rowColor = getRowBackgroundColor(s.verdict);
                 const canEditVerdictNow = canEditVerdict(s);
                 const canEditScheduleNow = canEditSchedule(s);
+                const canScheduleRePresentationNow = canScheduleRePresentation(s);
  
                 return (
                   <tr key={s.id} className={`${rowColor}`}>
@@ -1473,7 +1553,7 @@ export default function TitleDefense() {
                       </div>
                     </td>
  
-                    {/* Row actions - Kebab menu with Update, Schedule Re-Presentation, and Remove */}
+                    {/* Row actions - Kebab menu with Update, Schedule Re-Presentation, and Remove (only for re-presentations) */}
                     <td className="px-2 py-3 relative">
                       <button
                         disabled={bulkMode}
@@ -1510,31 +1590,34 @@ export default function TitleDefense() {
                           </button>
                           <button
                             className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
-                              canEditScheduleNow
+                              canScheduleRePresentationNow
                                 ? "hover:bg-neutral-50"
                                 : "opacity-50 cursor-not-allowed text-neutral-400"
                             }`}
                             onClick={() => {
-                              if (canEditScheduleNow) {
+                              if (canScheduleRePresentationNow) {
                                 handleScheduleRePresentation(s);
                                 setMenuOpenId(null);
                               }
                             }}
-                            disabled={!canEditScheduleNow}
+                            disabled={!canScheduleRePresentationNow}
                           >
                             <RotateCcw size={14} />
                             Schedule Re-Presentation
                           </button>
-                          <button
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2 text-red-600"
-                            onClick={() => {
-                              handleDeleteSchedule(s);
-                              setMenuOpenId(null);
-                            }}
-                          >
-                            <Trash2 size={14} />
-                            Remove
-                          </button>
+                          {/* Remove button only shows for re-presentation schedules */}
+                          {s.isRePresentation && (
+                            <button
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-neutral-50 flex items-center gap-2 text-red-600"
+                              onClick={() => {
+                                handleDeleteSchedule(s);
+                                setMenuOpenId(null);
+                              }}
+                            >
+                              <Trash2 size={14} />
+                              Remove
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>

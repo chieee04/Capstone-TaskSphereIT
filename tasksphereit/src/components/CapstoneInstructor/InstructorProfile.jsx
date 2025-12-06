@@ -1,3 +1,4 @@
+//instructorprofile.txt
 // src/components/CapstoneInstructor/InstructorProfile.jsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { db } from "../../config/firebase";
@@ -60,7 +61,7 @@ export default function InstructorProfile() {
   const [editMode, setEditMode] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
-  const [removePending, setRemovePending] = useState(false); // NEW
+  const [removePending, setRemovePending] = useState(false);
   const fileInputRef = useRef(null);
 
   // form
@@ -101,12 +102,12 @@ export default function InstructorProfile() {
         }
 
         if (!alive) return;
-        if (!data) setError("Instructor not found in users collection.");
+        if (!data) setError("Capstone Instructor not found in users collection.");
         setUserDoc(data);
       } catch (e) {
         if (!alive) return;
         console.error(e);
-        setError(e.message || "Failed to load instructor.");
+        setError(e.message || "Failed to load capstone instructor.");
       } finally {
         if (alive) setLoading(false);
       }
@@ -138,7 +139,7 @@ export default function InstructorProfile() {
   // avatar src: preview > imageUrl > none
   const avatarSrc = useMemo(() => {
     if (avatarPreview) return avatarPreview;
-    if (removePending) return ""; // show initials if marked for removal
+    if (removePending) return "";
     if (userDoc && !isNone(userDoc.imageUrl)) return userDoc.imageUrl;
     return "";
   }, [avatarPreview, userDoc, removePending]);
@@ -168,7 +169,7 @@ export default function InstructorProfile() {
       e.target.value = "";
       return;
     }
-    setRemovePending(false); // choosing a new file cancels removal
+    setRemovePending(false);
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
   };
@@ -195,7 +196,6 @@ export default function InstructorProfile() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // NEW: mark photo for removal (defer delete until Save)
   const markRemove = () => {
     setRemovePending(true);
     setAvatarFile(null);
@@ -210,7 +210,7 @@ export default function InstructorProfile() {
     const middleName = form.middleName.trim();
     const lastName = form.lastName.trim();
     const email = form.email.trim();
-    const academicYear = form.academicYear.trim(); // NEW
+    const academicYear = form.academicYear.trim();
 
     // Validation
     if (!firstName || !lastName || !email) {
@@ -358,7 +358,7 @@ export default function InstructorProfile() {
               <div
                 className="h-14 w-14 rounded-full flex items-center justify-center text-white text-lg font-semibold shadow overflow-hidden"
                 style={{ backgroundColor: MAROON }}
-                title="Instructor avatar"
+                title="Capstone Instructor avatar"
               >
                 {loading ? (
                   <Loader2 className="animate-spin w-5 h-5 text-white" />
@@ -402,7 +402,7 @@ export default function InstructorProfile() {
                   {fullName}
                 </h1>
               )}
-              <div className="text-sm text-neutral-500">Instructor</div>
+              <div className="text-sm text-neutral-500">Capstone Instructor</div>
             </div>
           </div>
 
@@ -417,10 +417,6 @@ export default function InstructorProfile() {
             </div>
           ) : !error && userDoc ? (
             <div className="space-y-3">
-              <Field label="Full Name">
-                <span className="font-medium">{fullName}</span>
-              </Field>
-
               <Field label="First Name">
                 {!editMode ? (
                   userDoc.firstName || "-"
@@ -438,9 +434,7 @@ export default function InstructorProfile() {
               <Field label="Middle Initial">
                 {!editMode ? (
                   userDoc.middleName ? (
-                    `${userDoc.middleName} (${(
-                      userDoc.middleName[0] || ""
-                    ).toUpperCase()}.)`
+                    `${(userDoc.middleName[0] || "").toUpperCase()}.`
                   ) : (
                     "-"
                   )
@@ -485,7 +479,6 @@ export default function InstructorProfile() {
                 )}
               </Field>
 
-              {userDoc.role && <Field label="Role">{userDoc.role}</Field>}
               <Field label="Academic Year">
                 {!editMode ? (
                   userDoc.academicYear || "-"
@@ -540,7 +533,6 @@ export default function InstructorProfile() {
               </>
             ) : (
               <>
-                {/* NEW: Remove Photo (marks for removal; actual delete on Save) */}
                 <button
                   type="button"
                   onClick={markRemove}

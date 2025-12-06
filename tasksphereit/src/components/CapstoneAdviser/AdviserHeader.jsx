@@ -4,13 +4,11 @@ import { Menu, User, NotebookText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import NotiBell from "../common/NotiBell";
 
-
-const AdviserHeader = ({ onProfileClick, onMenuClick }) => {
+export default function AdviserHeader({ onOpenProfile, onMenuClick }) {
   const navigate = useNavigate();
 
-
   return (
-    <header className="bg-white border-b border-neutral-200 shadow-sm">
+    <header className="bg-white border-b border-neutral-200 shadow-sm relative z-10">
       <div className="flex items-center justify-between px-3 py-3 sm:px-4 md:px-6 lg:px-8">
         {/* Left: menu toggle - visible on tablet and mobile (lg and below) */}
         <div className="flex items-center gap-3">
@@ -23,16 +21,16 @@ const AdviserHeader = ({ onProfileClick, onMenuClick }) => {
           </button>
           {/* Logo for mobile/tablet when sidebar is hidden */}
           <div className="lg:hidden flex items-center flex-shrink-0">
-            <span className="text-base font-semibold text-[#6A0F14] whitespace-nowrap">TaskSphere</span>
+            <span className="text-base font-semibold text-[#6A0F14] whitespace-nowrap">TaskSphere IT</span>
           </div>
         </div>
-
 
         {/* Right: actions - Ensure icons are always visible */}
         <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
           <button
             className="p-1.5 sm:p-2 rounded-full hover:bg-neutral-100 cursor-pointer transition-colors flex-shrink-0"
             onClick={() => navigate("/adviser/notes")}
+            title="Notes"
             aria-label="Notes"
           >
             <NotebookText className="w-4 h-4 sm:w-5 sm:h-5 text-[#6A0F14]" />
@@ -42,7 +40,8 @@ const AdviserHeader = ({ onProfileClick, onMenuClick }) => {
           </div>
           <button
             className="p-1.5 sm:p-2 rounded-full hover:bg-neutral-100 cursor-pointer transition-colors flex-shrink-0"
-            onClick={onProfileClick}
+            onClick={onOpenProfile}
+            title="Open Profile"
             aria-label="Open profile"
           >
             <User className="w-4 h-4 sm:w-5 sm:h-5 text-[#6A0F14]" />
@@ -51,9 +50,4 @@ const AdviserHeader = ({ onProfileClick, onMenuClick }) => {
       </div>
     </header>
   );
-};
-
-
-export default AdviserHeader;
-
-
+}
