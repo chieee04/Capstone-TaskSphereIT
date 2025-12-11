@@ -1,15 +1,13 @@
+// src/components/Member/MemberDashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays, Clock, Users } from "lucide-react";
 
-
 // Firestore
 import { db } from "../../config/firebase";
-import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { getUserTeams } from "../../services/events";
 
-
 const MAROON = "#6A0F14";
-
 
 // brand/status colors
 const COLORS = {
@@ -17,17 +15,15 @@ const COLORS = {
   inprogress: "#7C9C3B",
   toreview: "#6FA8DC",
   completed: "#8E5BAA",
-  missed: "#3B0304",
+  missed: "#3B0304", // Maroon for missed tasks
 };
-
 
 const statusColor = (s) =>
   s === "To Review" ? COLORS.toreview :
     s === "In Progress" ? COLORS.inprogress :
       s === "To Do" ? COLORS.todo :
         s === "Completed" ? COLORS.completed :
-          COLORS.missed;
-
+          COLORS.missed; // This now returns "#3B0304" for missed tasks
 
 // ---- small UI bits -------------------------------------------------------
 const Card = ({ children, className = "" }) => (
@@ -35,7 +31,6 @@ const Card = ({ children, className = "" }) => (
     {children}
   </div>
 );
-
 
 const UpcomingCard = ({ item }) => (
   <div className="w-full min-w-[200px] max-w-[280px] flex-shrink-0">
@@ -56,12 +51,10 @@ const UpcomingCard = ({ item }) => (
   </div>
 );
 
-
 // Carousel Component for Upcoming Tasks
 const UpcomingTasksCarousel = ({ tasks }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(3);
-
 
   // Update visible count based on screen size
   useEffect(() => {
@@ -75,25 +68,20 @@ const UpcomingTasksCarousel = ({ tasks }) => {
       }
     };
 
-
     updateVisibleCount();
     window.addEventListener('resize', updateVisibleCount);
     return () => window.removeEventListener('resize', updateVisibleCount);
   }, []);
 
-
   const maxIndex = Math.max(0, tasks.length - visibleCount);
-
 
   const nextSlide = () => {
     setCurrentIndex(current => Math.min(current + 1, maxIndex));
   };
 
-
   const prevSlide = () => {
     setCurrentIndex(current => Math.max(current - 1, 0));
   };
-
 
   if (tasks.length === 0) {
     return (
@@ -102,7 +90,6 @@ const UpcomingTasksCarousel = ({ tasks }) => {
       </div>
     );
   }
-
 
   return (
     <div className="relative">
@@ -118,7 +105,6 @@ const UpcomingTasksCarousel = ({ tasks }) => {
             <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         )}
-
 
         {/* Cards Container */}
         <div className="flex-1 overflow-hidden">
@@ -136,7 +122,6 @@ const UpcomingTasksCarousel = ({ tasks }) => {
           </div>
         </div>
 
-
         {/* Next Button */}
         {tasks.length > visibleCount && currentIndex < maxIndex && (
           <button
@@ -148,7 +133,6 @@ const UpcomingTasksCarousel = ({ tasks }) => {
           </button>
         )}
       </div>
-
 
       {/* Dots Indicator */}
       {tasks.length > visibleCount && (
@@ -171,7 +155,6 @@ const UpcomingTasksCarousel = ({ tasks }) => {
   );
 };
 
-
 const Legend = ({ items }) => (
   <ul className="space-y-3 w-full">
     {items.map((it) => (
@@ -186,14 +169,12 @@ const Legend = ({ items }) => (
   </ul>
 );
 
-
 // ---- charts --------------------------------------------------------------
 const WeeklyBarChart = ({ data, maxY = 20, width = 560, height = 360 }) => {
   const padding = { top: 16, right: 16, bottom: 30, left: 40 };
   const innerW = width - padding.left - padding.right;
   const innerH = height - padding.top - padding.bottom;
   const barW = innerW / data.length - 22;
-
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[360px]">
@@ -231,59 +212,11 @@ const WeeklyBarChart = ({ data, maxY = 20, width = 560, height = 360 }) => {
   );
 };
 
-
-const Donut = ({ segments, centerText = "40%" }) => {
-  const size = 360;
-  const stroke = 48;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-
-
-  const arcs = useMemo(() => {
-    let acc = 0;
-    return segments.map((s) => {
-      const arc = (s.pct / 100) * c;
-      const offset = acc;
-      acc += arc;
-      return { ...s, arc, offset };
-    });
-  }, [segments, c]);
-
-
-  return (
-    <div className="relative grid place-items-center">
-      <svg viewBox={`0 0 ${size} ${size}`} width="100%" height="auto" className="max-w-[280px] md:max-w-[320px] lg:max-w-[360px]">
-        <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#EEE" strokeWidth={stroke} />
-          {arcs.map((a) => (
-            <circle
-              key={a.key}
-              cx={size / 2}
-              cy={size / 2}
-              r={r}
-              fill="none"
-              stroke={a.color}
-              strokeWidth={stroke}
-              strokeDasharray={`${a.arc} ${c - a.arc}`}
-              strokeDashoffset={-a.offset}
-            />
-          ))}
-        </g>
-        <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" style={{ fontSize: 44, fontWeight: 800, fill: MAROON }}>
-          {centerText}
-        </text>
-      </svg>
-    </div>
-  );
-};
-
-
 /* ============================
    Enhanced Calendar with functional navigation and consistent height
    ============================ */
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 
 function ymd(d) {
   const y = d.getFullYear();
@@ -292,12 +225,10 @@ function ymd(d) {
   return `${y}-${m}-${dd}`;
 }
 
-
 function buildMonthMatrix(year, monthIndex) {
   const first = new Date(year, monthIndex, 1);
   const startDay = first.getDay();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
 
   const cells = [];
   for (let i = 0; i < startDay; i++) cells.push(null);
@@ -305,12 +236,10 @@ function buildMonthMatrix(year, monthIndex) {
   while (cells.length % 7 !== 0) cells.push(null);
   while (cells.length < 42) cells.push(null);
 
-
   const matrix = [];
   for (let i = 0; i < cells.length; i += 7) matrix.push(cells.slice(i, i + 7));
   return matrix;
 }
-
 
 function buildWeekMatrix(startDate) {
   const matrix = [];
@@ -325,17 +254,101 @@ function buildWeekMatrix(startDate) {
   return matrix;
 }
 
-
 function buildDayMatrix(day) {
   return [[day]];
 }
 
+// Function to fetch schedule events for teams
+const fetchScheduleEvents = async (teamIds) => {
+  const events = [];
+  
+  if (teamIds.length === 0) return events;
+  
+  // Define schedule collections
+  const scheduleCollections = [
+    { name: "titleDefenseSchedules", type: "Title Defense" },
+    { name: "manuscriptSubmissions", type: "Manuscript Submission" },
+    { name: "oralDefenseSchedules", type: "Oral Defense" },
+    { name: "finalDefenseSchedules", type: "Final Defense" },
+    { name: "finalRedefenseSchedules", type: "Final Re-Defense" },
+  ];
+  
+  // Helper to chunk fetch by teamId
+  const fetchByTeam = async (collName, eventType) => {
+    const arr = [];
+    for (let i = 0; i < teamIds.length; i += 10) {
+      const chunk = teamIds.slice(i, i + 10);
+      try {
+        const q = query(collection(db, collName), where("teamId", "in", chunk));
+        const snapshot = await getDocs(q);
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          arr.push({
+            id: doc.id,
+            ...data,
+            eventType: eventType,
+            type: eventType,
+            date: data.date || "",
+            timeStart: data.timeStart || "",
+            teamName: data.teamName || (data.team && data.team.name) || "Team",
+            verdict: data.verdict || "Pending",
+          });
+        });
+      } catch (error) {
+        console.error(`Error fetching ${collName}:`, error);
+      }
+    }
+    return arr;
+  };
+  
+  // Fetch all schedule events
+  for (const schedule of scheduleCollections) {
+    const scheduleEvents = await fetchByTeam(schedule.name, schedule.type);
+    events.push(...scheduleEvents);
+  }
+  
+  return events;
+};
+
+// Function to fetch adviser tasks for teams (from MemberAdviserTasks.jsx) - EXCLUDE COMPLETED TASKS
+const fetchAdviserTasksForTeams = async (teamIds) => {
+  const allTasks = [];
+  
+  // Define task collections (same as MemberAdviserTasks.jsx)
+  const taskCollections = ["oralDefenseTasks", "finalDefenseTasks", "finalRedefenseTasks"];
+  
+  for (const teamId of teamIds) {
+    for (const collectionName of taskCollections) {
+      try {
+        // Query: team.id matches AND taskManager is "Adviser" AND status is not "Completed"
+        const q = query(
+          collection(db, collectionName),
+          where("team.id", "==", teamId),
+          where("taskManager", "==", "Adviser"),
+          where("status", "!=", "Completed") // EXCLUDE COMPLETED TASKS
+        );
+        
+        const snapshot = await getDocs(q);
+        snapshot.forEach((snap) => {
+          const data = { id: snap.id, ...snap.data() };
+          allTasks.push(data);
+        });
+      } catch (error) {
+        console.error(`Error fetching tasks from ${collectionName} for team ${teamId}:`, error);
+      }
+    }
+  }
+  
+  return allTasks;
+};
 
 const CalendarCard = ({ uid }) => {
   const [view, setView] = useState("month");
   const [cursor, setCursor] = useState(new Date());
   const [events, setEvents] = useState([]);
-
+  const [allTasks, setAllTasks] = useState([]);
+  const [allScheduleEvents, setAllScheduleEvents] = useState([]);
+  const [allAdviserTasks, setAllAdviserTasks] = useState([]);
 
   // Get the appropriate title based on current view
   const getTitle = () => {
@@ -358,7 +371,6 @@ const CalendarCard = ({ uid }) => {
     }
   };
 
-
   // Build the appropriate matrix based on current view
   const matrix = useMemo(() => {
     if (view === "month") {
@@ -372,7 +384,6 @@ const CalendarCard = ({ uid }) => {
       return buildDayMatrix(cursor);
     }
   }, [cursor, view]);
-
 
   // Navigation functions
   const goPrev = () => {
@@ -388,7 +399,6 @@ const CalendarCard = ({ uid }) => {
     setCursor(newDate);
   };
 
-
   const goNext = () => {
     const newDate = new Date(cursor);
     if (view === "month") {
@@ -402,11 +412,9 @@ const CalendarCard = ({ uid }) => {
     setCursor(newDate);
   };
 
-
   const goToday = () => {
     setCursor(new Date());
   };
-
 
   // Get date range for event filtering based on current view
   const getDateRange = () => {
@@ -426,7 +434,24 @@ const CalendarCard = ({ uid }) => {
     }
   };
 
+  // Format time for display
+  const formatTimeForEvent = (timeString) => {
+    if (!timeString) return "";
+    try {
+      if (typeof timeString === "string") {
+        const [hours, minutes] = timeString.split(':');
+        const hour = parseInt(hours, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+      }
+      return timeString;
+    } catch (e) {
+      return timeString;
+    }
+  };
 
+  // Load all data once
   useEffect(() => {
     let alive = true;
     if (!uid) return;
@@ -437,77 +462,103 @@ const CalendarCard = ({ uid }) => {
         const teams = await getUserTeams(uid);
         const teamIds = teams.map((t) => t.id);
 
-
-        // Helper to chunk fetch schedules by teamId
-        const fetchByTeam = async (collName) => {
-          if (teamIds.length === 0) return [];
-          const arr = [];
-          for (let i = 0; i < teamIds.length; i += 10) {
-            const chunk = teamIds.slice(i, i + 10);
-            const s = await getDocs(query(collection(db, collName), where("teamId", "in", chunk)));
-            s.forEach((dx) => arr.push({ id: dx.id, ...dx.data() }));
-          }
-          return arr;
-        };
-
-
-        // Load tasks assigned to member
+        // Load tasks assigned to member (EXCLUDE COMPLETED TASKS)
         const taskDefs = ["titleDefenseTasks", "oralDefenseTasks", "finalDefenseTasks", "finalRedefenseTasks"];
-        const tasks = [];
+        const memberTasks = [];
        
         for (const collName of taskDefs) {
           const s = await getDocs(collection(db, collName));
           s.forEach((dx) => {
             const data = dx.data() || {};
-            if (Array.isArray(data.assignees) && data.assignees.some(a => a?.uid === uid)) {
-              tasks.push({ id: dx.id, ...data });
+            // Filter: assigned to member AND status is not "Completed"
+            if (Array.isArray(data.assignees) && 
+                data.assignees.some(a => a?.uid === uid) && 
+                data.status !== "Completed") { // EXCLUDE COMPLETED TASKS
+              memberTasks.push({ id: dx.id, ...data });
             }
           });
         }
 
+        // Load schedule events for member teams
+        const scheduleEvents = await fetchScheduleEvents(teamIds);
+        
+        // Load adviser tasks for member teams (EXCLUDE COMPLETED TASKS)
+        const adviserTasks = await fetchAdviserTasksForTeams(teamIds);
 
-        // Load schedules relevant to member teams
-        const [titleSched, manusSched, oralSched, finalSched, redefSched] = await Promise.all([
-          fetchByTeam("titleDefenseSchedules"),
-          fetchByTeam("manuscriptSubmissions"),
-          fetchByTeam("oralDefenseSchedules"),
-          fetchByTeam("finalDefenseSchedules"),
-          fetchByTeam("finalRedefenseSchedules").catch(() => []),
-        ]);
-
-
-        // Get current view's date range
-        const { start, end } = getDateRange();
-        const between = (d) => d >= start && d <= end;
-
-
-        const taskEvents = tasks
-          .filter((t) => typeof t.dueDate === "string" && t.dueDate.length >= 10 && between(t.dueDate))
-          .map((t) => ({
-            date: t.dueDate,
-            title: `${t.task || t.type || "Task"} (${t.status || "To Do"})`,
-          }));
-
-
-        const schedEvents = [
-          ...titleSched.map((s) => ({ date: s.date || "", title: "Title Defense" })),
-          ...manusSched.map((s) => ({ date: s.date || "", title: "Manuscript Submission" })),
-          ...oralSched.map((s) => ({ date: s.date || "", title: "Oral Defense" })),
-          ...finalSched.map((s) => ({ date: s.date || "", title: "Final Defense" })),
-          ...redefSched.map((s) => ({ date: s.date || "", title: "Final Re-Defense" })),
-        ].filter((e) => e.date && between(e.date));
-
-
-        const merged = [...taskEvents, ...schedEvents];
-        if (alive) setEvents(merged);
+        if (alive) {
+          setAllTasks(memberTasks);
+          setAllScheduleEvents(scheduleEvents);
+          setAllAdviserTasks(adviserTasks);
+        }
       } catch (e) {
-        console.error("Calendar load failed:", e);
-        if (alive) setEvents([]);
+        console.error("Calendar data load failed:", e);
       }
     })();
     return () => { alive = false; };
-  }, [uid, cursor, view]);
+  }, [uid]);
 
+  // Update events when cursor or view changes
+  useEffect(() => {
+    // Get current view's date range
+    const { start, end } = getDateRange();
+    const between = (d) => d >= start && d <= end;
+
+    // Member task events with color coding (all tasks are already filtered to exclude completed)
+    const taskEvents = allTasks
+      .filter((t) => typeof t.dueDate === "string" && t.dueDate.length >= 10 && between(t.dueDate))
+      .map((t) => {
+        // Check if task is missed (from MemberTasks.jsx logic)
+        const isMissed = typeof t.dueAtMs === "number" && 
+                       t.dueAtMs < Date.now() && 
+                       (t.status || "") !== "Completed";
+        const displayStatus = isMissed ? "Missed" : (t.status || "To Do");
+        
+        return {
+          date: t.dueDate,
+          title: `${t.task || t.type || "Task"} (${displayStatus})`,
+          color: statusColor(displayStatus), // This will use "#3B0304" for missed
+          time: t.dueTime || "",
+          teamName: t.team?.name || "Team",
+          eventType: "Task",
+        };
+      });
+
+    // Schedule events (they don't have completion status, so show all)
+    const schedEvents = allScheduleEvents
+      .filter((e) => e.date && between(e.date))
+      .map((e) => ({
+        date: e.date,
+        title: e.eventType || e.type,
+        color: MAROON,
+        time: e.timeStart || "",
+        teamName: e.teamName,
+        eventType: "Schedule",
+      }));
+
+    // Adviser task events (already filtered to exclude completed)
+    const adviserTaskEvents = allAdviserTasks
+      .filter((t) => typeof t.dueDate === "string" && t.dueDate.length >= 10 && between(t.dueDate))
+      .map((t) => {
+        // Check if adviser task is missed
+        const isMissed = typeof t.dueAtMs === "number" && 
+                       t.dueAtMs < Date.now() && 
+                       (t.status || "") !== "Completed";
+        const displayStatus = isMissed ? "Missed" : (t.status || "To Do");
+        
+        return {
+          date: t.dueDate,
+          title: `${t.task || t.type || "Adviser Task"} (${displayStatus})`,
+          color: isMissed ? "#3B0304" : "#4A5568", // Dark maroon for missed adviser tasks, dark gray for others
+          time: t.dueTime || "",
+          teamName: t.team?.name || "Team",
+          eventType: "Adviser Task",
+        };
+      });
+
+    // Combine all events
+    const merged = [...taskEvents, ...schedEvents, ...adviserTaskEvents];
+    setEvents(merged);
+  }, [cursor, view, allTasks, allScheduleEvents, allAdviserTasks]);
 
   // Calculate cell height based on view to maintain consistent calendar height
   const getCellHeight = () => {
@@ -520,7 +571,6 @@ const CalendarCard = ({ uid }) => {
     }
   };
 
-
   // Render appropriate grid based on view
   const renderGrid = () => {
     const { start } = getDateRange();
@@ -531,7 +581,6 @@ const CalendarCard = ({ uid }) => {
       return true; // For week and day views, all dates are "current"
     };
 
-
     return (
       <div className={`grid ${view === "day" ? "grid-cols-1" : view === "week" ? "grid-cols-7" : "grid-cols-7"} gap-px bg-neutral-200 rounded-lg overflow-hidden`}>
         {matrix.flat().map((cell, i) => {
@@ -539,7 +588,6 @@ const CalendarCard = ({ uid }) => {
           const cellYmd = cell ? ymd(cell) : "";
           const dayEvents = events.filter((e) => e.date === cellYmd);
           const isToday = cellYmd === ymd(new Date());
-
 
           return (
             <div
@@ -557,21 +605,31 @@ const CalendarCard = ({ uid }) => {
                 </div>
               )}
 
-
               {/* events - with adjusted positioning for week and day views */}
               <div className={`absolute left-1 right-1 ${
                 view === "month" ? "top-6 md:top-8 lg:top-10 max-h-8 md:max-h-10 lg:max-h-12" : "top-8 md:top-10 lg:top-12 max-h-[280px] md:max-h-[380px] lg:max-h-[500px]"
               } space-y-1 overflow-y-auto`}>
-                {dayEvents.map((e, idx) => (
-                  <div
-                    key={idx}
-                    className="text-[10px] md:text-[11px] text-white px-1 md:px-2 py-0.5 rounded truncate"
-                    style={{ background: MAROON }}
-                    title={e.title}
-                  >
-                    {e.title}
-                  </div>
-                ))}
+                {dayEvents.map((e, idx) => {
+                  // Create display text with time if available
+                  let displayText = e.title;
+                  if (e.time) {
+                    const formattedTime = formatTimeForEvent(e.time);
+                    if (formattedTime) {
+                      displayText = `${e.title} (${formattedTime})`;
+                    }
+                  }
+                  
+                  return (
+                    <div
+                      key={idx}
+                      className="text-[10px] md:text-[11px] text-white px-1 md:px-2 py-0.5 rounded truncate"
+                      style={{ background: e.color || MAROON }}
+                      title={`${e.title}${e.teamName ? ` - ${e.teamName}` : ''}${e.time ? ` at ${formatTimeForEvent(e.time)}` : ''}`}
+                    >
+                      {displayText}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -579,7 +637,6 @@ const CalendarCard = ({ uid }) => {
       </div>
     );
   };
-
 
   return (
     <Card className="w-full">
@@ -603,7 +660,6 @@ const CalendarCard = ({ uid }) => {
             <ChevronRight className="w-4 h-4" />
           </button>
 
-
           <button
             className="ml-2 h-8 px-3 rounded-md text-sm font-medium text-white"
             style={{ background: MAROON }}
@@ -613,11 +669,9 @@ const CalendarCard = ({ uid }) => {
           </button>
         </div>
 
-
         <div className="text-sm font-semibold order-1 sm:order-2" style={{ color: MAROON }}>
           {getTitle()}
         </div>
-
 
         <div className="flex items-center gap-1 sm:gap-2 order-3">
           {["Month", "Week", "Day"].map((label) => {
@@ -642,9 +696,7 @@ const CalendarCard = ({ uid }) => {
         </div>
       </div>
 
-
       <div className="px-3 md:px-5 mt-2 md:mt-3 h-[2px] w-full" style={{ background: MAROON }} />
-
 
       {/* Grid */}
       <div className="p-3 md:p-5">
@@ -657,13 +709,11 @@ const CalendarCard = ({ uid }) => {
           </div>
         )}
 
-
         {renderGrid()}
       </div>
     </Card>
   );
 };
-
 
 // ---- main ---------------------------------------------------------------
 function MemberDashboard() {
@@ -678,14 +728,6 @@ function MemberDashboard() {
     { key: "completed", label: "Completed", value: 0, color: COLORS.completed },
     { key: "missed", label: "Missed", value: 0, color: COLORS.missed }
   ]);
-  const [donut, setDonut] = useState([
-    { key: "todo", label: "To Do", pct: 0, color: COLORS.todo },
-    { key: "inprogress", label: "In Progress", pct: 0, color: COLORS.inprogress },
-    { key: "toreview", label: "To Review", pct: 0, color: COLORS.toreview },
-    { key: "completed", label: "Completed", pct: 0, color: COLORS.completed },
-    { key: "missed", label: "Missed", pct: 0, color: COLORS.missed }
-  ]);
-
 
   // helpers
   const to12h = (t) => {
@@ -697,13 +739,22 @@ function MemberDashboard() {
   };
  
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const fmtDate = (yyyy_mm_dd) => {
-    if (!yyyy_mm_dd) return "--";
-    const [y, m, d] = yyyy_mm_dd.split("-").map(Number);
-    if (!y || !m || !d) return "--";
-    return `${MONTHS[m - 1]} ${Number(d)}, ${y}`;
+  
+  // Format date for display
+  const formatDateMonthDayYear = (dateStr) => {
+    if (!dateStr || dateStr === "null") return "--";
+   
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return "--";
+     
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      return date.toLocaleDateString('en-US', options);
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "--";
+    }
   };
-
 
   // Load member tasks and compute dashboard data
   useEffect(() => {
@@ -711,6 +762,11 @@ function MemberDashboard() {
    
     (async () => {
       try {
+        // Get member's teams
+        const teams = await getUserTeams(uid);
+        const teamIds = teams.map(t => t.id);
+
+        // Fetch member tasks (EXCLUDE COMPLETED TASKS) - from MemberTasks.jsx
         const cols = [
           { tag: "Title Defense", coll: "titleDefenseTasks" },
           { tag: "Oral Defense", coll: "oralDefenseTasks" },
@@ -718,45 +774,46 @@ function MemberDashboard() {
           { tag: "Final Re-Defense", coll: "finalRedefenseTasks" },
         ];
 
-
         const snaps = await Promise.all(
           cols.map((c) => getDocs(collection(db, c.coll)))
         );
        
-        const all = [];
+        const allTasks = [];
         snaps.forEach((s, i) => {
           const tag = cols[i].tag;
           s.forEach((dx) => {
             const d = dx.data() || {};
-            all.push({ id: dx.id, tag, ...d });
+            allTasks.push({ id: dx.id, tag, ...d });
           });
         });
 
-
-        // Filter tasks assigned to this member
-        const mine = all.filter(
+        // Filter tasks assigned to this member (EXCLUDE COMPLETED TASKS)
+        const mine = allTasks.filter(
           (t) =>
             Array.isArray(t.assignees) &&
-            t.assignees.some((a) => a?.uid === uid)
+            t.assignees.some((a) => a?.uid === uid) &&
+            String(t.status || "").toLowerCase() !== "completed"
         );
 
+        // Fetch schedule events for member's teams
+        const scheduleEvents = await fetchScheduleEvents(teamIds);
+        
+        // Fetch adviser tasks for member's teams (EXCLUDE COMPLETED TASKS)
+        const adviserTasks = await fetchAdviserTasksForTeams(teamIds);
 
-        // Upcoming: nearest future dueAtMs (excluding completed tasks)
+        // Upcoming: Combine tasks, schedule events, and adviser tasks (future dates only, exclude completed)
         const now = Date.now();
-        const upcomingRaw = mine
+        
+        // Format member tasks for upcoming (only future tasks)
+        const upcomingTasks = mine
           .filter((t) => typeof t.dueAtMs === "number" && t.dueAtMs >= now)
-          .filter((t) => String(t.status || "").toLowerCase() !== "completed")
-          .sort((a, b) => (a.dueAtMs || 0) - (b.dueAtMs || 0))
-          .slice(0, 5)
           .map((t) => {
             const assignee = Array.isArray(t.assignees)
               ? t.assignees.find((a) => a?.uid === uid) || t.assignees[0]
               : null;
 
-
             const fullName = assignee?.name || "";
             let last = "", first = "", middle = "";
-
 
             // Parse "Last, First Middle" or "First Middle Last"
             if (fullName.includes(",")) {
@@ -772,9 +829,7 @@ function MemberDashboard() {
               middle = parts.slice(1, -1).join(" ") || "";
             }
 
-
             const member = `${last}, ${first} ${middle}`.trim();
-
 
             const status = String(t.status || "To Do").toLowerCase();
             let color = COLORS.todo;
@@ -783,28 +838,78 @@ function MemberDashboard() {
             else if (status.includes("complete")) color = COLORS.completed;
             else if (status.includes("miss")) color = COLORS.missed;
 
-
             return {
+              type: "task",
               name: member,
               chapter: t.task || "Task",
-              date: fmtDate(t.dueDate || ""),
+              date: formatDateMonthDayYear(t.dueDate || ""),
               time: to12h(t.dueTime || ""),
               color,
+              sortKey: t.dueAtMs,
             };
           });
 
+        // Format schedule events for upcoming (only future events)
+        const upcomingScheduleEvents = scheduleEvents
+          .filter(event => {
+            if (!event.date) return false;
+            
+            // Parse event date and time
+            const eventDateStr = event.date;
+            const eventTimeStr = event.timeStart || "00:00";
+            
+            try {
+              const eventDateTime = new Date(`${eventDateStr}T${eventTimeStr}`);
+              if (isNaN(eventDateTime.getTime())) return false;
+              
+              // Only include future events
+              return eventDateTime.getTime() >= now;
+            } catch {
+              return false;
+            }
+          })
+          .map(event => {
+            const eventDateStr = event.date;
+            const eventTimeStr = event.timeStart || "00:00";
+            
+            return {
+              type: "schedule",
+              name: event.teamName,
+              chapter: event.eventType || event.type,
+              date: formatDateMonthDayYear(eventDateStr),
+              time: to12h(eventTimeStr),
+              color: MAROON,
+              sortKey: new Date(`${eventDateStr}T${eventTimeStr}`).getTime(),
+            };
+          });
 
-        if (upcomingRaw.length > 0) setUpcoming(upcomingRaw);
+        // Format adviser tasks for upcoming (only future tasks)
+        const upcomingAdviserTasks = adviserTasks
+          .filter(t => typeof t.dueAtMs === "number" && t.dueAtMs >= now)
+          .map(t => ({
+            type: "adviser",
+            name: "Adviser Task",
+            chapter: t.task || "Adviser Task",
+            date: formatDateMonthDayYear(t.dueDate || ""),
+            time: to12h(t.dueTime || ""),
+            color: "#4A5568", // Dark gray for adviser tasks
+            sortKey: t.dueAtMs,
+          }));
 
+        // Combine all upcoming items and sort by date
+        const combinedUpcoming = [...upcomingTasks, ...upcomingScheduleEvents, ...upcomingAdviserTasks]
+          .sort((a, b) => a.sortKey - b.sortKey)
+          .slice(0, 5);
+        
+        setUpcoming(combinedUpcoming);
 
-        // Weekly summary: counts by status (with missed logic)
+        // Weekly summary: counts by status (with missed logic) - Only from member's tasks
         const counts = { todo: 0, inprogress: 0, toreview: 0, completed: 0, missed: 0 };
         const nowMs = Date.now();
        
         mine.forEach((t) => {
           const s = String(t.status || "To Do").toLowerCase();
           const isOverdue = typeof t.dueAtMs === "number" && t.dueAtMs < nowMs && (t.status || "") !== "Completed";
-
 
           if (isOverdue) {
             counts.missed++;
@@ -827,29 +932,15 @@ function MemberDashboard() {
           { key: "missed", label: "Missed", value: counts.missed, color: COLORS.missed },
         ]);
 
-
-        // Donut: percentage from counts
-        const total = counts.todo + counts.inprogress + counts.toreview + counts.completed + counts.missed;
-        const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
-        setDonut([
-          { key: "todo", label: "To Do", pct: pct(counts.todo), color: COLORS.todo },
-          { key: "inprogress", label: "In Progress", pct: pct(counts.inprogress), color: COLORS.inprogress },
-          { key: "toreview", label: "To Review", pct: pct(counts.toreview), color: COLORS.toreview },
-          { key: "completed", label: "Completed", pct: pct(counts.completed), color: COLORS.completed },
-          { key: "missed", label: "Missed", pct: pct(counts.missed), color: COLORS.missed },
-        ]);
-
-
       } catch (e) {
         console.error("MemberDashboard load failed:", e);
       }
     })();
   }, [uid]);
 
-
   return (
     <div className="space-y-6 md:space-y-8 w-full p-6">
-      {/* UPCOMING */}
+      {/* UPCOMING TASKS */}
       <section className="space-y-3 w-full">
         <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
           UPCOMING TASKS
@@ -857,10 +948,9 @@ function MemberDashboard() {
         <UpcomingTasksCarousel tasks={upcoming} />
       </section>
 
-
       {/* WEEKLY SUMMARY */}
       <section className="space-y-3 w-full">
-        <Card className="w-full max-w-4xl mr-auto"> {/* Reduced width and aligned to left */}
+        <Card className="w-full max-w-4xl mr-auto">
           <div className="px-4 md:px-6 pt-4 md:pt-5">
             <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
               WEEKLY SUMMARY
@@ -881,7 +971,6 @@ function MemberDashboard() {
         </Card>
       </section>
 
-
       {/* CALENDAR */}
       <section className="space-y-3 w-full">
         <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
@@ -893,7 +982,4 @@ function MemberDashboard() {
   );
 }
 
-
 export default MemberDashboard;
-
-

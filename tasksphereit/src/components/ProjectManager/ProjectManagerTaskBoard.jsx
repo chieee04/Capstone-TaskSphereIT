@@ -11,6 +11,7 @@ import {
   Loader2,
   MoreVertical,
 } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 /* ===== Firebase ===== */
 import { auth, db } from "../../config/firebase";
@@ -133,7 +134,6 @@ const getInitials = (name) => {
   const parts = name.split(' ');
   if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
   
-  // Get first letter of first name and first letter of last name
   const firstName = parts[0];
   const lastName = parts[parts.length - 1];
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
@@ -269,7 +269,6 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
   const isEditing = editingId === message.id && isMine;
   const isReplying = replyingTo === message.id;
 
-  // Disable edit if message has already been edited
   const canEdit = isMine && !message.__optimistic && !message.editedAt;
 
   const handleEditConfirm = () => {
@@ -298,12 +297,10 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
     setReplyingTo(null);
   };
 
-  // Calculate indentation based on depth
   const indentClass = depth > 0 ? `ml-12` : "";
 
   return (
     <>
-      {/* Confirmation Dialogs */}
       <ConfirmationDialog
         open={showEditConfirm}
         onClose={() => setShowEditConfirm(false)}
@@ -325,7 +322,6 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
       />
 
       <div className={`flex gap-3 mb-6 last:mb-0 ${indentClass}`}>
-        {/* Profile Icon */}
         <div className="flex-shrink-0">
           <div 
             className="w-10 h-10 rounded-full bg-[#3B0304] flex items-center justify-center text-white font-semibold text-sm"
@@ -335,9 +331,7 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
           </div>
         </div>
 
-        {/* Comment Content */}
         <div className="flex-1 min-w-0">
-          {/* Header with name and timestamp inline */}
           <div className="flex items-baseline gap-2 mb-1 flex-wrap">
             <span className="font-semibold text-[15px] text-gray-900">
               {message.sender?.name || "Unknown User"}
@@ -354,7 +348,6 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
             )}
           </div>
 
-          {/* Comment Body */}
           <div className="mb-2">
             {isEditing ? (
               <div className="space-y-2">
@@ -385,14 +378,12 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
               </div>
             ) : (
               <>
-                {/* FIX: Ensure proper line break preservation with multiple CSS classes */}
                 <div className="text-sm text-gray-800 leading-relaxed mt-1 whitespace-pre-wrap break-words w-full overflow-hidden">
                   {message.text || (
                     <span className="italic text-gray-500">[no text]</span>
                   )}
                 </div>
                 
-                {/* Display attached files in the comment - REMOVED BORDER BOX */}
                 {message.sender?.fileUrl?.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {message.sender.fileUrl.map((file, index) => (
@@ -419,7 +410,6 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
             )}
           </div>
 
-          {/* Action Buttons */}
           {!isEditing && (
             <div className="flex items-center gap-4 mt-2">
               {canEdit && (
@@ -455,7 +445,6 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
             </div>
           )}
 
-          {/* Reply Input */}
           {(showReplyInput || isReplying) && (
             <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <div className="flex items-start gap-3">
@@ -501,7 +490,6 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
             </div>
           )}
 
-          {/* ONE-LEVEL-only Replies */}
           {message.replies && message.replies.length > 0 && (
             <div className="mt-4 space-y-4">
               {message.replies.map((reply) => (
@@ -516,7 +504,7 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
                   setEditingId={setEditingId}
                   replyingTo={replyingTo}
                   setReplyingTo={setReplyingTo}
-                  depth={1} // always one-level indent
+                  depth={1}
                 />
               ))}
             </div>
@@ -540,13 +528,10 @@ function DetailView({ me, card, onBack }) {
   const [hydrating, setHydrating] = useState(false);
   const listRef = useRef(null);
 
-  // Helper: flatten messages so replies are only 1-level deep and no duplicates
   const flattenMessages = (rows) => {
-    // Build map of id -> message (shallow clone) with replies array
     const map = new Map();
     rows.forEach((m) => map.set(m.id, { ...m, replies: [] }));
 
-    // Attach direct replies to their parent (only direct)
     rows.forEach((m) => {
       if (m.parentId && map.has(m.parentId)) {
         const parent = map.get(m.parentId);
@@ -554,17 +539,13 @@ function DetailView({ me, card, onBack }) {
       }
     });
 
-    // Function to recursively collect all descendants of a message
     const collectDescendants = (msg, visited = new Set()) => {
       let acc = [];
-      // copy of current direct replies (from map)
       const direct = msg.replies ? [...msg.replies] : [];
       for (const r of direct) {
         if (!visited.has(r.id)) {
           visited.add(r.id);
           acc.push(r);
-          // If that reply itself has children in the original dataset, collect them
-          // The children of r are available via map.get(r.id).replies only if they were attached earlier
           const deeper = collectDescendants(map.get(r.id) || r, visited);
           if (deeper.length) acc = acc.concat(deeper);
         }
@@ -572,14 +553,11 @@ function DetailView({ me, card, onBack }) {
       return acc;
     };
 
-    // Build top-level array (messages without parentId)
     const topLevel = [];
     rows.forEach((m) => {
       if (!m.parentId) {
         const base = map.get(m.id);
-        // collect all nested replies and flatten to single-level
         const flatReplies = collectDescendants(base);
-        // ensure uniqueness and sort by createdAt
         const unique = Array.from(
           new Map(flatReplies.map((r) => [r.id, r])).values()
         );
@@ -588,13 +566,11 @@ function DetailView({ me, card, onBack }) {
           const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
           return aTime - bTime;
         });
-        // assign flattened replies and clear any nested replies on children
         base.replies = unique.map((r) => ({ ...r, replies: [] }));
         topLevel.push(base);
       }
     });
 
-    // Sort top-level messages by createdAt ascending (keep original ordering)
     topLevel.sort((a, b) => {
       const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
       const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
@@ -625,11 +601,9 @@ function DetailView({ me, card, onBack }) {
         editedAt: d.data().editedAt
       }));
 
-      // flatten and de-duplicate replies so UI shows one-level replies only
       const organized = flattenMessages(rows);
       setMessages(organized);
 
-      // scroll to bottom
       requestAnimationFrame(() => {
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
       });
@@ -706,7 +680,6 @@ function DetailView({ me, card, onBack }) {
 
   useEffect(() => {
     if (tab === "attachment") hydrateAttachments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
   const openPicker = () => {
@@ -735,7 +708,6 @@ function DetailView({ me, card, onBack }) {
       const folder = buildTaskFolder(card);
 
       for (const f of pendingFiles) {
-        // Use original file name without timestamp prefix
         const originalName = f.name;
         const filename = safeFileName(originalName);
         const storagePath = `${folder}/${filename}`;
@@ -753,7 +725,7 @@ function DetailView({ me, card, onBack }) {
           .getPublicUrl(storagePath);
         uploads.push({
           fileName: filename,
-          originalName: originalName, // Store original file name
+          originalName: originalName,
           url: pub?.publicUrl || null,
           storagePath,
           uploadedAt: new Date().toISOString(),
@@ -780,7 +752,6 @@ function DetailView({ me, card, onBack }) {
         type: "message",
       };
       
-      // Optimistic update: if top-level, push to messages; if reply, attach to parent (local)
       setMessages(prev => {
         if (!parentId) {
           return [...prev, optimistic];
@@ -789,13 +760,11 @@ function DetailView({ me, card, onBack }) {
         const addReply = (messages) => {
           return messages.map(msg => {
             if (msg.id === parentId) {
-              // ensure replies array exists
               return {
                 ...msg,
                 replies: [...(msg.replies || []), optimistic]
               };
             }
-            // Recursively check if the parent is a reply
             if (msg.replies && msg.replies.length > 0) {
               return { ...msg, replies: addReply(msg.replies) };
             }
@@ -861,14 +830,12 @@ function DetailView({ me, card, onBack }) {
         type: "message",
       };
 
-      // Optimistic update: attach reply to parent (local)
       setMessages(prev => {
         const addReply = (messages) => {
           return messages.map(msg => {
             if (msg.id === parentId) {
               return { ...msg, replies: [...(msg.replies || []), optimistic] };
             }
-            // Recursively check if the parent is a reply
             if (msg.replies && msg.replies.length > 0) {
               return { ...msg, replies: addReply(msg.replies) };
             }
@@ -913,49 +880,28 @@ function DetailView({ me, card, onBack }) {
     });
   };
 
-  /**
-   * FIX: Deletes the specified message and promotes its direct replies 
-   * to become top-level messages by setting their parentId to null in Firestore.
-   * This relies on the onSnapshot listener to update the local state correctly.
-   */
   const deleteMessage = async (id) => {
     try {
-      // 1. Find and promote all direct replies to be top-level messages in Firestore
       const repliesQuery = query(
         collection(db, "chats"),
         where("parentId", "==", id)
       );
-      // Use getDocs to fetch the replies so we can update them
       const repliesSnap = await getDocs(repliesQuery); 
 
       if (!repliesSnap.empty) {
         const promotePromises = repliesSnap.docs.map((docSnapshot) => {
-          // Update the reply's parentId to null to promote it
           return updateDoc(doc(db, "chats", docSnapshot.id), { 
             parentId: null, 
           });
         });
-        // Wait for all replies to be promoted
         await Promise.all(promotePromises);
       }
 
-      // 2. Delete the original message in Firestore
       await deleteDoc(doc(db, "chats", id));
-
-      // The onSnapshot listener will automatically handle the local state update 
-      // with the deleted comment removed and the replies promoted.
 
     } catch (err) {
       console.error("Failed to delete comment:", err);
-      // Removed alert to avoid showing an error message that might happen 
-      // due to optimistic updates not being strictly necessary if onSnapshot is fast,
-      // but keeping the core fix. The user's original error was due to the 
-      // complex local state manipulation failing.
       alert("Failed to delete comment."); 
-      
-      // No need to restore state manually since onSnapshot will overwrite it soon,
-      // but if we were to restore, we'd need to re-fetch/re-subscribe.
-      // For now, let's trust onSnapshot.
     } finally {
       setSending(false); 
     }
@@ -981,7 +927,6 @@ function DetailView({ me, card, onBack }) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
           <LayoutList className="w-5 h-5" />
@@ -991,7 +936,6 @@ function DetailView({ me, card, onBack }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Task Details Panel */}
         <div className="bg-white border border-neutral-200 rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="text-xl font-semibold text-gray-900">
@@ -1016,7 +960,6 @@ function DetailView({ me, card, onBack }) {
             </span>
           </div>
 
-          {/* Task Fields */}
           <div className="space-y-4">
             <Field label="Tasks" value={card.task} />
             <Field label="Subtasks" value={card.subtask || "—"} />
@@ -1031,9 +974,7 @@ function DetailView({ me, card, onBack }) {
           </div>
         </div>
 
-        {/* Comments & Attachments Panel */}
         <div className="bg-white border border-neutral-200 rounded-xl shadow overflow-hidden flex flex-col h-[700px]">
-          {/* Tabs */}
           <div className="px-6 pt-4">
             <div className="flex gap-8 text-sm border-b border-neutral-200">
               <button
@@ -1065,14 +1006,11 @@ function DetailView({ me, card, onBack }) {
             </div>
           </div>
 
-          {/* Content Area */}
           <div className="flex-1 overflow-hidden flex flex-col">
             {tab === "comments" && (
               <>
-                {/* Comment Input - AT THE TOP */}
                 <div className="border-b border-neutral-200 p-6">
                   <div className="space-y-4">
-                    {/* User Profile and Name */}
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0">
                         <div 
@@ -1087,7 +1025,6 @@ function DetailView({ me, card, onBack }) {
                       </span>
                     </div>
                     
-                    {/* Textarea */}
                     <div className="space-y-3">
                       <textarea
                         rows={3}
@@ -1103,7 +1040,6 @@ function DetailView({ me, card, onBack }) {
                         }}
                       />
 
-                      {/* Pending Files - REMOVED BORDER BOX */}
                       {pendingFiles.length > 0 && (
                         <div className="space-y-2">
                           {pendingFiles.map((f, i) => (
@@ -1126,7 +1062,6 @@ function DetailView({ me, card, onBack }) {
                         </div>
                       )}
 
-                      {/* Action Buttons - Attach icon before Send */}
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={openPicker}
@@ -1157,7 +1092,6 @@ function DetailView({ me, card, onBack }) {
                   </div>
                 </div>
 
-                {/* Comments List - BELOW THE INPUT */}
                 <div 
                   ref={listRef}
                   className="flex-1 overflow-y-auto p-6 space-y-6"
@@ -1187,7 +1121,7 @@ function DetailView({ me, card, onBack }) {
                         <th className="text-left px-4 py-3 font-semibold">
                           Attachment
                         </th>
-                        <th className="text-left px-3 py-3 font-semibold"> {/* Reduced padding-left from px-4 to px-3 */}
+                        <th className="text-left px-3 py-3 font-semibold">
                           Date
                         </th>
                       </tr>
@@ -1237,7 +1171,7 @@ function DetailView({ me, card, onBack }) {
                                 </span>
                               </div>
                             </td>
-                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap"> {/* Reduced padding-left from px-4 to px-3 */}
+                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
                               {f.date ? formatDate(f.date) : "—"}
                             </td>
                           </tr>
@@ -1257,11 +1191,25 @@ function DetailView({ me, card, onBack }) {
 
 /* ============================ Main ============================ */
 export default function ProjectManagerTaskBoard() {
+  const location = useLocation();
   const [me, setMe] = useState(null);
   const [teams, setTeams] = useState([]);
   const [cards, setCards] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [activeTab, setActiveTab] = useState("team"); // "team" | "adviser"
+  const [activeTab, setActiveTab] = useState("team");
+
+  useEffect(() => {
+    if (location.state && location.state.selectedTask) {
+      console.log("Received task from navigation state:", location.state.selectedTask);
+      setSelected(location.state.selectedTask);
+      
+      if (location.state.activeTab) {
+        setActiveTab(location.state.activeTab);
+      }
+      
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const stop = onAuthStateChanged(auth, async (u) => {
@@ -1339,7 +1287,6 @@ export default function ProjectManagerTaskBoard() {
     const normalize = (collectionName, d) => {
       const x = d.data();
       
-      // Filter out completed tasks
       if (x.status === "Completed") {
         return null;
       }
@@ -1367,41 +1314,28 @@ export default function ProjectManagerTaskBoard() {
         !!dueAtMs && dueAtMs < now && (x.status || "To Do") !== "Completed";
       if (isOverdue) colId = "missed";
 
-      // UPDATED: Improved assignment logic to match what the task actually has
       let assignedTo = "";
 
       if (x.taskManager === "Adviser") {
-        // For adviser tasks, show team name (e.g., "Lenon, Et Al")
         assignedTo = teamName;
       } else {
-        // For team tasks - use the actual assignment data from the task
-        // Priority: assignedTo field > assignees array > fallback to team name
         if (x.assignedTo) {
-          // If task has assignedTo field, use it directly
           assignedTo = x.assignedTo;
         } else if (x.assignees && x.assignees.length > 0) {
-          // If task has assignees array, use the first assignee's name
           assignedTo = x.assignees[0].name || "Unassigned";
         } else if (x.assignedMember && (x.assignedMember.name || x.assignedMember.firstName)) {
-          // If assigned to a member (e.g., "Isabella G Torres")
           assignedTo = safeName(x.assignedMember);
         } else if (x.assignedProjectManager && (x.assignedProjectManager.name || x.assignedProjectManager.firstName)) {
-          // If assigned to project manager (e.g., "Robbie G. Lenon")
           assignedTo = safeName(x.assignedProjectManager);
         } else if (x.projectManager && (x.projectManager.name || x.projectManager.firstName)) {
-          // If task has project manager field
           assignedTo = safeName(x.projectManager);
         } else if (x.manager && (x.manager.name || x.manager.firstName)) {
-          // If task has manager field
           assignedTo = safeName(x.manager);
         } else {
-          // For unassigned team tasks, show team name
           assignedTo = teamName;
         }
       }
 
-      // COMPLETELY REWRITTEN: Extract ALL fields directly from the source data
-      // This ensures we get all fields exactly as they are in Firestore
       const cardData = {
         id: d.id,
         _collection: collectionName,
@@ -1424,8 +1358,6 @@ export default function ProjectManagerTaskBoard() {
         taskManager: x.taskManager || "Project Manager",
       };
 
-      // FIXED: Extract subtask and elements with comprehensive field checking
-      // Check multiple possible field names and formats
       const subtask = 
         x.subtask || 
         x.subtasks || 
@@ -1439,7 +1371,6 @@ export default function ProjectManagerTaskBoard() {
         x.scope || 
         null;
 
-      // Handle different data types for subtask and elements
       if (subtask) {
         if (Array.isArray(subtask)) {
           cardData.subtask = subtask.join(", ");
@@ -1460,7 +1391,6 @@ export default function ProjectManagerTaskBoard() {
         }
       }
 
-      // Debug logging to see what data we're actually getting
       console.log('Task Data:', {
         id: d.id,
         collection: collectionName,
@@ -1483,14 +1413,13 @@ export default function ProjectManagerTaskBoard() {
       ]) {
         for (const subset of ["A", "B"]) {
           store[coll][subset].forEach((val, key) => {
-            if (val) { // Skip null values (completed tasks)
+            if (val) {
               unionMap.set(`${coll}:${key}`, val);
             }
           });
         }
       }
       
-      // Filter cards based on selected tab
       const filteredCards = Array.from(unionMap.values()).filter(card => {
         if (activeTab === "adviser") {
           return card.taskManager === "Adviser";
@@ -1537,15 +1466,26 @@ export default function ProjectManagerTaskBoard() {
     return map;
   }, [cards]);
 
+  const DetailViewWithTabs = ({ me, card, onBack }) => {
+    const isAdviserTask = card.taskManager === "Adviser";
+    
+    useEffect(() => {
+      if (isAdviserTask && activeTab !== "adviser") {
+        setActiveTab("adviser");
+      }
+    }, [isAdviserTask]);
+
+    return <DetailView me={me} card={card} onBack={onBack} />;
+  };
+
   if (selected) {
     return (
-      <DetailView me={me} card={selected} onBack={() => setSelected(null)} />
+      <DetailViewWithTabs me={me} card={selected} onBack={() => setSelected(null)} />
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
           <LayoutList className="w-5 h-5" />
@@ -1554,7 +1494,6 @@ export default function ProjectManagerTaskBoard() {
         <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
 
-      {/* Modern Tab Design */}
       <div className="flex border-b border-neutral-200">
         <button
           onClick={() => setActiveTab("team")}
@@ -1584,7 +1523,6 @@ export default function ProjectManagerTaskBoard() {
         </button>
       </div>
 
-      {/* Responsive Kanban Board */}
       <div className="min-h-[520px]">
         <div className="h-full grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
           {COLUMNS.map((col) => (

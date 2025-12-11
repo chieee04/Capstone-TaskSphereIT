@@ -1,4 +1,3 @@
-
 // src/components/ProjectManager/tasks/OralDefense.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -17,7 +16,9 @@ import {
   Users,
   ChevronDown,
   AlertCircle,
+  Eye,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 /* ===== Firebase ===== */
 import { auth, db } from "../../../config/firebase";
@@ -48,17 +49,15 @@ const TASKS_COLLECTION = "oralDefenseTasks";
 
 /* ---------- Status Colors ---------- */
 const STATUS_COLORS = {
-  "To Do": "#FABC3F", // Yellow
-  "In Progress": "#809D3C", // Green
-  "To Review": "#578FCA", // Blue
-  "Completed": "#AA60C8", // Purple
-  "Missed": "#3B0304", // Maroon
+  "To Do": "#FABC3F",
+  "In Progress": "#809D3C",
+  "To Review": "#578FCA",
+  "Completed": "#AA60C8",
+  "Missed": "#3B0304",
 };
 
-// Updated: Team tasks can go up to "Completed", Adviser tasks only up to "To Review"
 const STATUS_OPTIONS_TEAM = ["To Do", "In Progress", "To Review", "Completed"];
 const STATUS_OPTIONS_ADVISER = ["To Do", "In Progress", "To Review"];
-// Updated: Filter options without "Completed"
 const FILTER_OPTIONS_TEAM = ["All Status", "To Do", "In Progress", "To Review", "Missed"];
 const FILTER_OPTIONS_ADVISER = ["All Status", "To Do", "In Progress", "To Review", "Missed"];
 
@@ -108,14 +107,14 @@ const parseRevCount = (rev) => {
 const nextRevision = (prev = "No Revision") => {
   const count = parseRevCount(prev);
   if (count >= 10) {
-    return null; // Maximum revisions reached
+    return null;
   }
   return `${ordinal(count + 1)} Revision`;
 };
 
 /* ===== Status component ===== */
 const StatusBadgeOralDefense = ({ value, isEditable, onChange, disabled = false, statusOptions = STATUS_OPTIONS_TEAM }) => {
-  const backgroundColor = STATUS_COLORS[value] || "#6B7280"; // Default gray
+  const backgroundColor = STATUS_COLORS[value] || "#6B7280";
   
   if (!value || value === "--") return <span>--</span>;
   
@@ -168,7 +167,6 @@ const RevisionPill = ({ value }) =>
     <span>--</span>
   );
 
-// Helper function to display due date and time properly
 const displayDueDate = (dueDate, isAdviserTask = false) => {
   if (isAdviserTask && (!dueDate || dueDate === "--")) {
     return "--";
@@ -183,7 +181,6 @@ const displayDueTime = (dueTime, isAdviserTask = false) => {
   return dueTime ? formatTime12Hour(dueTime) : "--";
 };
 
-// Helper function to check if adviser task has due date and time
 const hasDueDateAndTime = (task) => {
   return task && task.dueDate && task.dueTime && task.dueDate !== "--" && task.dueTime !== "--";
 };
@@ -215,7 +212,6 @@ function buildIndexesFromJSON(json) {
       const phaseName = String(p?.phase || "").trim();
       if (phaseName) PHASE_OPTIONS[mName].push(phaseName);
 
-      // Initialize TASK_SEEDS for this methodology and phase
       if (!TASK_SEEDS[mName][phaseName]) {
         TASK_SEEDS[mName][phaseName] = {};
       }
@@ -384,8 +380,8 @@ function EditDueDateTimeDialog({
   onClose,
   onSaved,
   existingTask,
-  rowData, // Add rowData prop to get the correct member info
-  isOralDefenseAllowed, // Add this prop to check if oral defense is allowed
+  rowData,
+  isOralDefenseAllowed,
 }) {
   const [saving, setSaving] = useState(false);
   const [due, setDue] = useState("");
@@ -418,7 +414,6 @@ function EditDueDateTimeDialog({
       const currentStatus = existingTask?.status || "To Do";
       const currentRevision = existingTask?.revision || "No Revision";
       
-      // Check if date/time actually changed
       const dueChanged = existingTask && due !== (existingTask.dueDate || "");
       const timeChanged = existingTask && time !== (existingTask.dueTime || "");
       const dateTimeChanged = dueChanged || timeChanged;
@@ -426,22 +421,18 @@ function EditDueDateTimeDialog({
       let newStatus = currentStatus;
       let newRevision = currentRevision;
 
-      // Apply revision and status rules based on current status
       if (dateTimeChanged) {
         if (currentStatus === "To Review" || currentStatus === "Missed") {
-          // Bump revision and reset to "To Do" for "To Review" and "Missed" tasks
           const nextRev = nextRevision(currentRevision);
           if (nextRev) {
             newRevision = nextRev;
             newStatus = "To Do";
           } else {
-            // Maximum revisions reached - don't change revision but show message
             alert("Maximum revisions (10) reached. Please create a new task instead of editing this one.");
             setSaving(false);
             return;
           }
         }
-        // For "To Do" and "In Progress", keep current status and revision
       }
 
       const payload = {
@@ -494,19 +485,16 @@ function EditDueDateTimeDialog({
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overscroll-contain">
-        {/* backdrop */}
         <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
 
-        {/* panel - centered */}
         <div className="relative z-10 w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-2xl border border-neutral-200 flex flex-col max-h-[85vh]">
-            {/* header - UPDATED with Edit icon and horizontal line moved down */}
             <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-neutral-200">
               <div
                 className="flex items-center gap-2 text-[16px] font-semibold"
                 style={{ color: MAROON }}
               >
-                <Edit className="w-5 h-5" /> {/* Changed to Edit icon */}
+                <Edit className="w-5 h-5" />
                 <span>Edit</span>
               </div>
               <button
@@ -518,9 +506,7 @@ function EditDueDateTimeDialog({
               </button>
             </div>
 
-            {/* CONTENT */}
             <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-5 space-y-5">
-              {/* Oral Defense Allowed Check */}
               {!isOralDefenseAllowed && (
                 <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                   <div className="flex items-start gap-3">
@@ -535,7 +521,6 @@ function EditDueDateTimeDialog({
                 </div>
               )}
 
-              {/* Task Info - REMOVED border box styling */}
               <div className="space-y-3">
                 <h3 className="font-medium text-neutral-700">Task Information</h3>
                 <div className="space-y-2 text-sm">
@@ -598,7 +583,7 @@ function EditDueDateTimeDialog({
                       </label>
                       <input
                         type="time"
-                        step={60} // 1 minute
+                        step={60}
                         className="w-full rounded-lg border border-neutral-300 px-3 py-2"
                         value={time}
                         onChange={(e) => {
@@ -621,7 +606,6 @@ function EditDueDateTimeDialog({
               )}
             </div>
 
-            {/* footer - REMOVED Cancel button */}
             <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-neutral-200">
               <button
                 type="button"
@@ -638,7 +622,6 @@ function EditDueDateTimeDialog({
         </div>
       </div>
 
-      {/* Exit Confirmation */}
       <ConfirmationDialog
         open={showExitConfirm}
         onClose={() => setShowExitConfirm(false)}
@@ -662,14 +645,14 @@ function EditTaskDialog({
   members = [],
   seedMember,
   existingTask,
-  mode, // "team" | "adviser"
+  mode,
   lockedMethodology,
-  rowData, // Add rowData prop to get the correct member info
-  isOralDefenseAllowed, // Add this prop to check if oral defense is allowed
+  rowData,
+  isOralDefenseAllowed,
 }) {
   const isTeamMode = mode === "team";
   const isAdviserMode = mode === "adviser";
-  const timeStepSec = 60; // 1 minute for both
+  const timeStepSec = 60;
 
   const [saving, setSaving] = useState(false);
   const [teamId, setTeamId] = useState("");
@@ -696,7 +679,7 @@ function EditTaskDialog({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  const stepMin = 1; // 1 minute step
+  const stepMin = 1;
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const roundUpNow = (sMin = 1) => {
     const d = new Date();
@@ -716,7 +699,6 @@ function EditTaskDialog({
     [methodology]
   );
   
-  // FIXED: Get available types based on selected methodology AND phase
   const availableTypes = useMemo(
     () => {
       if (!methodology || !phase) return [];
@@ -725,7 +707,6 @@ function EditTaskDialog({
     [methodology, phase]
   );
   
-  // FIXED: Get task options based on methodology, phase, and type
   const taskOptions = useMemo(() => {
     const mKey = lockedMethodology || methodology;
     if (!mKey || !phase || !type) return [];
@@ -750,7 +731,7 @@ function EditTaskDialog({
       const minT = minTimeForDate(due);
       if (time < minT) setTime(minT);
     }
-  }, [due]); // eslint-disable-line
+  }, [due]);
 
   useEffect(() => {
     if (!open) return;
@@ -769,7 +750,6 @@ function EditTaskDialog({
       setSubtasks(existingTask.subtasks || "");
       setElements(existingTask.elements || "");
       
-      // For adviser tasks, always show empty due date/time (will be set by adviser)
       if (isAdviserMode) {
         setDue("");
         setTime("");
@@ -778,13 +758,10 @@ function EditTaskDialog({
         setTime(existingTask.dueTime || "");
       }
       
-      // Use the rowData member info instead of the task's assignees
       if (rowData?.isTeamTask) {
-        // For team tasks, assign all members
         const allMembers = [...members, pm].filter(Boolean);
         setAssignees(allMembers);
       } else {
-        // For individual tasks, use the specific member from rowData
         const specificMember = members.find(m => m.uid === rowData?.memberUid) || pm;
         setAssignees(specificMember ? [specificMember] : []);
       }
@@ -798,10 +775,8 @@ function EditTaskDialog({
       setTask("");
       setSubtasks("");
       setElements("");
-      // For new adviser tasks, don't set due date/time
       setDue("");
       setTime("");
-      // UPDATED: For new team tasks, start with empty assignees instead of pre-populating
       setAssignees([]);
       setComment("");
       setAttachedFiles([]);
@@ -821,7 +796,6 @@ function EditTaskDialog({
     setHasChanges(true);
   };
   
-  // FIXED: When phase changes, reset type, task, subtasks, elements
   const onChangePhase = (v) => {
     setPhase(v);
     setType("");
@@ -850,20 +824,17 @@ function EditTaskDialog({
     setHasChanges(true);
   };
 
-  // UPDATED: Team tasks require date and time, adviser tasks don't
   const canSave =
-    isOralDefenseAllowed && // Add this condition
+    isOralDefenseAllowed &&
     (mode === "team" ? true : !!teamId) &&
     (lockedMethodology ? true : !!methodology) &&
     (lockedMethodology ? true : !!phase || availablePhases.length <= 1) &&
     type &&
     task &&
     (mode === "team" ? assignees.length > 0 : true) &&
-    // Team tasks require date and time, adviser tasks don't
     (mode === "team" ? (due && time) : true);
 
   const assignTeam = () => {
-    // For team assignment, just add a single "Team" assignee
     setAssignees([{ uid: 'team', name: 'Team' }]);
     setHasChanges(true);
   };
@@ -928,14 +899,12 @@ function EditTaskDialog({
       }
       const finalFileUrl = [...attachedFiles, ...uploaded];
 
-      // For adviser tasks, don't set due date/time - set them to null
       const timeString = isTeamMode && time ? time : "";
       const dueAtMs =
         isTeamMode && due && timeString
           ? new Date(`${due}T${timeString}:00`).getTime()
           : null;
       
-      // Only validate due date/time for team tasks
       if (dueAtMs && dueAtMs < Date.now() && isTeamMode) {
         alert("Due date/time must be in the future.");
         setSaving(false);
@@ -954,10 +923,8 @@ function EditTaskDialog({
       const finalMethodology = lockedMethodology || methodology || "";
       const finalPhase = FIXED_PHASE[finalMethodology] ?? phase ?? "";
 
-      // FIXED: Check if this is a team task based on assignees
       const isTeamTask = assignees.some(a => a.uid === 'team');
 
-      // FIXED: For team tasks, we don't store all individual names, just mark it as team task
       const finalAssignees = isTeamTask 
         ? [{ uid: 'team', name: 'Team' }]
         : assignees;
@@ -970,7 +937,6 @@ function EditTaskDialog({
         subtasks: subtasks || null,
         elements: elementsValue,
         fileUrl: finalFileUrl,
-        // For adviser tasks, explicitly set due date/time to null
         dueDate: isTeamMode ? (due || null) : null,
         dueTime: isTeamMode ? (timeString || null) : null,
         dueAtMs: isTeamMode ? dueAtMs : null,
@@ -984,7 +950,6 @@ function EditTaskDialog({
           : null,
         taskManager,
         updatedAt: serverTimestamp(),
-        // FIXED: Add isTeamTask field to properly identify team tasks
         isTeamTask: isTeamTask,
       };
 
@@ -1024,11 +989,7 @@ function EditTaskDialog({
   if (!open) return null;
 
   const methodologyLocked = !!lockedMethodology;
-
-  // Check if "Team" is in assignees
   const hasTeamAssignee = assignees.some(a => a.uid === 'team');
-  
-  // Check if any individual members are assigned
   const hasIndividualAssignees = assignees.length > 0 && !hasTeamAssignee;
 
   return (
@@ -1037,7 +998,6 @@ function EditTaskDialog({
         <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
         <div className="relative z-10 w-full max-w-[700px]">
           <div className="bg-white rounded-2xl shadow-2xl border border-neutral-200 flex flex-col max-h-[85vh]">
-            {/* Header */}
             <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-neutral-200">
               <div
                 className="flex items-center gap-2 text-[16px] font-semibold"
@@ -1055,9 +1015,7 @@ function EditTaskDialog({
               </button>
             </div>
 
-            {/* Content */}
             <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-5 space-y-4">
-              {/* Oral Defense Allowed Check */}
               {!isOralDefenseAllowed && (
                 <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                   <div className="flex items-start gap-3">
@@ -1072,7 +1030,6 @@ function EditTaskDialog({
                 </div>
               )}
 
-              {/* Methodology & Phase */}
               <div className="grid grid-cols-12 gap-3">
                 <div className="col-span-6">
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -1145,7 +1102,6 @@ function EditTaskDialog({
                 </div>
               </div>
 
-              {/* Type / Task / Subtasks */}
               <div className="grid grid-cols-12 gap-3">
                 <div className="col-span-4">
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -1238,7 +1194,6 @@ function EditTaskDialog({
                 </div>
               </div>
 
-              {/* Elements / Due Date / Time */}
               <div className="grid grid-cols-12 gap-3">
                 <div className="col-span-4">
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -1352,7 +1307,6 @@ function EditTaskDialog({
                 </div>
               </div>
 
-              {/* Assign Members (team mode) - Updated to match TitleDefense exactly */}
               {mode === "team" && (
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
@@ -1375,7 +1329,6 @@ function EditTaskDialog({
                 </div>
               )}
 
-              {/* Comment + attachments */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
                   Leave Comment:
@@ -1481,7 +1434,6 @@ function EditTaskDialog({
               )}
             </div>
 
-            {/* Footer */}
             <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-neutral-200">
               <button
                 type="button"
@@ -1498,7 +1450,6 @@ function EditTaskDialog({
         </div>
       </div>
 
-      {/* Exit Confirmation */}
       <ConfirmationDialog
         open={showExitConfirm}
         onClose={() => setShowExitConfirm(false)}
@@ -1512,7 +1463,6 @@ function EditTaskDialog({
   );
 }
 
-/* Small subcomponent to keep the dialog tidy - EXACT COPY from TitleDefense */
 function AssigneesPicker({
   members,
   pickedUid,
@@ -1522,7 +1472,7 @@ function AssigneesPicker({
   onAssignTeam,
   hasTeamAssignee,
   hasIndividualAssignees,
-  isOralDefenseAllowed, // Add this prop
+  isOralDefenseAllowed,
 }) {
   return (
     <>
@@ -1606,8 +1556,8 @@ function AssigneesPicker({
 
 /* ============================ Main Component ============================ */
 const OralDefense = ({ onBack }) => {
-  const [activeTab, setActiveTab] = useState("team"); // "team" or "adviser"
-  const mode = activeTab; // Use activeTab as mode
+  const [activeTab, setActiveTab] = useState("team");
+  const mode = activeTab;
 
   const [q, setQ] = useState("");
   const [filterStatus, setFilterStatus] = useState("All Status");
@@ -1627,18 +1577,16 @@ const OralDefense = ({ onBack }) => {
   const [members, setMembers] = useState([]);
   const [tasks, setTasks] = useState([]);
 
-  // NEW: State for title defense verdict
   const [titleDefenseVerdict, setTitleDefenseVerdict] = useState(null);
   const [loadingVerdict, setLoadingVerdict] = useState(true);
 
-  // NEW: State for team system title
   const [teamSystemTitle, setTeamSystemTitle] = useState(null);
   const [loadingSystemTitle, setLoadingSystemTitle] = useState(true);
 
-  // NEW: State for title modal
   const [showTitleModal, setShowTitleModal] = useState(false);
 
-  // PM profile
+  const navigate = useNavigate();
+
   useEffect(() => {
     if (!pmUid) return;
     const unsub = onSnapshot(
@@ -1657,7 +1605,6 @@ const OralDefense = ({ onBack }) => {
     return () => unsub && unsub();
   }, [pmUid]);
 
-  // Teams + Members
   useEffect(() => {
     if (!pmUid) return;
     const unsubTeams = onSnapshot(
@@ -1703,7 +1650,6 @@ const OralDefense = ({ onBack }) => {
     return () => unsubTeams && unsubTeams();
   }, [pmUid]);
 
-  // NEW: Check Title Defense verdict for PM's teams
   useEffect(() => {
     if (!pmUid || teams.length === 0) {
       setLoadingVerdict(false);
@@ -1712,7 +1658,6 @@ const OralDefense = ({ onBack }) => {
 
     setLoadingVerdict(true);
     
-    // Get team IDs for the PM
     const teamIds = teams.map(team => team.id);
     
     const unsubscribe = onSnapshot(
@@ -1743,7 +1688,6 @@ const OralDefense = ({ onBack }) => {
     return () => unsubscribe();
   }, [pmUid, teams]);
 
-  // NEW: Check if team has set their system title
   useEffect(() => {
     if (!pmUid || teams.length === 0) {
       setLoadingSystemTitle(false);
@@ -1752,7 +1696,6 @@ const OralDefense = ({ onBack }) => {
 
     setLoadingSystemTitle(true);
     
-    // Get the first team (assuming PM has one team)
     const currentTeam = teams[0];
     if (!currentTeam) {
       setLoadingSystemTitle(false);
@@ -1780,20 +1723,17 @@ const OralDefense = ({ onBack }) => {
     return () => unsubscribe();
   }, [pmUid, teams]);
 
-  // NEW: Show title modal when conditions are met
   useEffect(() => {
     if (!loadingVerdict && !loadingSystemTitle) {
       const isTitleDefenseApproved = titleDefenseVerdict === "Approved";
       const hasSystemTitle = teamSystemTitle !== null;
       
-      // Show modal if title defense is approved but no system title is set
       if (isTitleDefenseApproved && !hasSystemTitle) {
         setShowTitleModal(true);
       }
     }
   }, [titleDefenseVerdict, teamSystemTitle, loadingVerdict, loadingSystemTitle]);
 
-  // Tasks - Only fetch active tasks (not completed) - UPDATED TO MATCH TITLE DEFENSE
   useEffect(() => {
     if (!pmUid) return;
     const unsub = onSnapshot(
@@ -1805,7 +1745,6 @@ const OralDefense = ({ onBack }) => {
         const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setTasks(docs);
 
-        // Auto-update overdue tasks - MATCHES TITLE DEFENSE BEHAVIOR
         const now = Date.now();
         const updates = docs
           .filter(
@@ -1824,7 +1763,6 @@ const OralDefense = ({ onBack }) => {
           await Promise.allSettled(updates);
         }
 
-        // clear optimistic overlays - MATCHES TITLE DEFENSE BEHAVIOR
         setOptimistic((prev) => {
           const next = { ...prev };
           const memberWithTask = new Set();
@@ -1850,34 +1788,108 @@ const OralDefense = ({ onBack }) => {
     return m || null;
   }, [tasks]);
 
-  // Get filter options based on active tab
   const filterOptions = useMemo(() => {
     return activeTab === "team" ? FILTER_OPTIONS_TEAM : FILTER_OPTIONS_ADVISER;
   }, [activeTab]);
 
-  // NEW: Check if oral defense is allowed (both conditions must be met)
   const isOralDefenseAllowed = titleDefenseVerdict === "Approved" && teamSystemTitle !== null;
 
-  // Helper function to get team name for adviser tasks
   const getTeamNameForAdviser = useMemo(() => {
     if (teams.length === 0 || !pmProfile) return "Team";
     
-    // Get the PM's last name
     const pmNameParts = pmProfile.name.split(' ');
     const pmLastName = pmNameParts[pmNameParts.length - 1];
     
     return `${pmLastName}, Et Al`;
   }, [teams, pmProfile]);
 
-  // FIXED: Rows - Properly handle team vs individual tasks (only active tasks)
+  const handleViewTask = (task) => {
+    if (!task) return;
+    
+    const formatDateForDisplay = (dateValue) => {
+      if (!dateValue) return "—";
+      try {
+        const date = typeof dateValue.toDate === 'function' ? 
+          dateValue.toDate() : 
+          new Date(dateValue);
+        
+        if (Number.isNaN(date.getTime())) return "—";
+        
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch {
+        return "—";
+      }
+    };
+    
+    let assigneeName = "Team";
+    if (task.assignees && task.assignees.length > 0) {
+      if (task.assignees[0].uid === 'team') {
+        assigneeName = "Team";
+      } else {
+        assigneeName = task.assignees[0].name || "—";
+      }
+    } else if (task.taskManager === "Adviser") {
+      assigneeName = getTeamNameForAdviser;
+    }
+    
+    const isAdviserTask = task.taskManager === "Adviser";
+    
+    const taskData = {
+      id: task.id,
+      _collection: TASKS_COLLECTION,
+      teamId: task.team?.id || task.teamId || "",
+      teamName: task.team?.name || "No Team",
+      assignedTo: assigneeName,
+      task: task.task || "Task",
+      subtask: task.subtasks || "—",
+      elements: task.elements || "—",
+      createdDisplay: formatDateForDisplay(task.createdAt),
+      dueDisplay: isAdviserTask && (!task.dueDate || task.dueDate === "--") ? 
+                  "—" : formatDateForDisplay(task.dueDate),
+      timeDisplay: isAdviserTask && (!task.dueTime || task.dueTime === "--") ? 
+                   "—" : formatTime12Hour(task.dueTime),
+      revision: task.revision || "No Revision",
+      status: task.status || "To Do",
+      methodology: task.methodology || "—",
+      phase: task.phase || "Planning",
+      _colId: (() => {
+        const status = task.status;
+        if (status === "To Do") return "todo";
+        if (status === "In Progress") return "inprogress";
+        if (status === "To Review") return "review";
+        if (status === "Completed") return "done";
+        if (status === "Missed") return "missed";
+        return "todo";
+      })(),
+      type: task.type || null,
+      dueAtMs: task.dueAtMs || null,
+      taskManager: task.taskManager || "Project Manager",
+      originalTask: task,
+      assignees: task.assignees || [],
+      comment: task.comment || "",
+      fileUrl: task.fileUrl || []
+    };
+    
+    console.log("Passing task data to Project Manager Task Board:", taskData);
+    
+    navigate('/projectmanager/tasks-board', {
+      state: { 
+        selectedTask: taskData,
+        activeTab: isAdviserTask ? "adviser" : "team"
+      } 
+    });
+  };
+
   const rowsTeam = useMemo(() => {
     const rowsWithTasks = [];
 
-    // Handle team tasks - show as single row with "Team" as assignee
-    // FIXED: Check for isTeamTask field instead of taskManager
     const teamTasks = tasks.filter(t => 
       t.taskManager === "Project Manager" && 
-      t.isTeamTask === true && // FIXED: Use the isTeamTask field
+      t.isTeamTask === true &&
       (t.status || "To Do") !== "Completed"
     );
     
@@ -1900,7 +1912,7 @@ const OralDefense = ({ onBack }) => {
         methodology: t.methodology || "--",
         existingTask: t,
         isTeamTask: true,
-        canManage: isOralDefenseAllowed, // PM can manage team tasks only if oral defense is allowed
+        canManage: isOralDefenseAllowed,
       };
 
       const opt = optimistic['team'];
@@ -1915,18 +1927,16 @@ const OralDefense = ({ onBack }) => {
       rowsWithTasks.push(base);
     });
 
-    // Handle individual tasks - show per assignee
     const allMembers = [...members];
     if (pmProfile && !members.some(m => m.uid === pmProfile.uid)) {
       allMembers.push(pmProfile);
     }
 
     allMembers.forEach((m) => {
-      // FIXED: Filter for individual tasks (not team tasks)
       const relatedTasks = tasks.filter(
         (t) =>
           t.taskManager === "Project Manager" &&
-          t.isTeamTask !== true && // FIXED: Exclude team tasks
+          t.isTeamTask !== true &&
           (t.assignees || []).some((a) => a.uid === m.uid) &&
           (t.status || "To Do") !== "Completed"
       );
@@ -1950,7 +1960,7 @@ const OralDefense = ({ onBack }) => {
           methodology: t.methodology || "--",
           existingTask: t,
           isTeamTask: false,
-          canManage: isOralDefenseAllowed, // PM can manage individual tasks only if oral defense is allowed
+          canManage: isOralDefenseAllowed,
         };
 
         const opt = optimistic[m.uid];
@@ -1976,14 +1986,14 @@ const OralDefense = ({ onBack }) => {
         key: t.id,
         taskId: t.id,
         memberUid: "",
-        memberName: getTeamNameForAdviser, // Use the formatted team name instead of "Team"
+        memberName: getTeamNameForAdviser,
         type: t?.type || "--",
         task: t?.task || "--",
         subtasks: t?.subtasks || "--",
         elements: t?.elements || "--",
         created: formatDateMonthDayYear(t?.createdAt?.toDate?.()?.toISOString()?.split("T")[0]) || "--",
-        due: displayDueDate(t?.dueDate, true), // Always show "--" for adviser tasks
-        time: displayDueTime(t?.dueTime, true), // Always show "--" for adviser tasks
+        due: displayDueDate(t?.dueDate, true),
+        time: displayDueTime(t?.dueTime, true),
         revision: t?.revision || "No Revision",
         status: t?.status || "To Do",
         phase: t?.phase || "--",
@@ -1992,8 +2002,7 @@ const OralDefense = ({ onBack }) => {
         teamId: t?.team?.id || `no-team-${idx}`,
         teamName: t?.team?.name || "No Team",
         isTeamTask: true,
-        // FIXED: Set canManage based on oral defense allowance
-        canManage: isOralDefenseAllowed // PM can manage adviser tasks status only if oral defense is allowed
+        canManage: isOralDefenseAllowed
       };
 
       const opt = optimistic['adviser'];
@@ -2011,7 +2020,6 @@ const OralDefense = ({ onBack }) => {
   const filtered = useMemo(() => {
     let result = baseRows;
     
-    // Apply search filter
     if (qLocal) {
       result = result.filter(
         (r) =>
@@ -2034,7 +2042,6 @@ const OralDefense = ({ onBack }) => {
       );
     }
 
-    // Apply status filter
     if (filterStatus !== "All Status") {
       result = result.filter(r => r.status === filterStatus);
     }
@@ -2042,7 +2049,6 @@ const OralDefense = ({ onBack }) => {
     return result;
   }, [qLocal, baseRows, filterStatus]);
 
-  // Firestore update helpers for inline cells - UPDATED TO MATCH TITLE DEFENSE
   const updateTaskRow = async (row, patch) => {
     if (!isOralDefenseAllowed) {
       alert("Oral defense is not available yet. Please ensure title defense is approved and capstone title is set.");
@@ -2077,7 +2083,6 @@ const OralDefense = ({ onBack }) => {
     await addDoc(collection(db, TASKS_COLLECTION), { ...base, ...patch });
   };
 
-  // Inline edit actions - UPDATED TO MATCH TITLE DEFENSE REAL-TIME BEHAVIOR
   const saveStatus = async (row, newStatus) => {
     if (!isOralDefenseAllowed) {
       alert("Oral defense is not available yet. Please ensure title defense is approved and capstone title is set.");
@@ -2086,13 +2091,11 @@ const OralDefense = ({ onBack }) => {
 
     const memberUid = row.isTeamTask ? 'team' : row.memberUid;
     
-    // Set optimistic update immediately
     setOptimistic((prev) => ({
       ...prev,
       [memberUid]: { ...(prev[memberUid] || {}), status: newStatus || "To Do" },
     }));
 
-    // If marking as completed, set completedAt timestamp
     const updates = { status: newStatus || "To Do" };
     if (newStatus === "Completed") {
       updates.completedAt = serverTimestamp();
@@ -2101,7 +2104,6 @@ const OralDefense = ({ onBack }) => {
     try {
       await updateTaskRow(row, updates);
     } catch (error) {
-      // Revert optimistic update on error
       setOptimistic((prev) => {
         const next = { ...prev };
         delete next[memberUid]?.status;
@@ -2122,7 +2124,7 @@ const OralDefense = ({ onBack }) => {
     setEditingModal({ 
       seedMember: null, 
       existingTask: row.existingTask,
-      rowData: row, // Pass the row data to the dialog
+      rowData: row,
       mode: activeTab
     });
   };
@@ -2148,7 +2150,6 @@ const OralDefense = ({ onBack }) => {
     }
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuOpenId && !event.target.closest('.dropdown-container')) {
@@ -2162,7 +2163,6 @@ const OralDefense = ({ onBack }) => {
     };
   }, [menuOpenId]);
 
-  // Handle title modal save
   const handleTitleSave = (title) => {
     setTeamSystemTitle(title);
     setShowTitleModal(false);
@@ -2170,7 +2170,6 @@ const OralDefense = ({ onBack }) => {
 
   return (
     <div className="p-4 md:p-6">
-      {/* Title Defense Approval & Capstone Title Banner */}
       {!loadingVerdict && !loadingSystemTitle && (
         <>
           {titleDefenseVerdict !== "Approved" && (
@@ -2216,7 +2215,6 @@ const OralDefense = ({ onBack }) => {
         </>
       )}
 
-      {/* Toolbar — Create Task and Search on left */}
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <button
@@ -2243,7 +2241,6 @@ const OralDefense = ({ onBack }) => {
             <span className="text-sm">Create Task</span>
           </button>
 
-          {/* Reduced width search */}
           <div className="w-[180px]">
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-neutral-300 bg-white transition-colors focus-within:border-[#6A0F14] focus-within:ring-1 focus-within:ring-[#6A0F14]">
               <Search className="w-4 h-4 text-neutral-500" />
@@ -2257,7 +2254,6 @@ const OralDefense = ({ onBack }) => {
           </div>
         </div>
 
-        {/* Filter - Keep original UI */}
         <div className="relative">
           <button
             onClick={() => setIsFilterOpen(!isFilterOpen)}
@@ -2288,7 +2284,6 @@ const OralDefense = ({ onBack }) => {
         </div>
       </div>
 
-      {/* Modern Tab Design */}
       <div className="flex mb-6 border-b border-neutral-200">
         <button
           onClick={() => setActiveTab("team")}
@@ -2318,7 +2313,6 @@ const OralDefense = ({ onBack }) => {
         </button>
       </div>
 
-      {/* Table - FIXED: Restore proper responsive table container */}
       <div className="w-full overflow-auto rounded-xl border border-neutral-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50 text-neutral-700">
@@ -2347,7 +2341,6 @@ const OralDefense = ({ onBack }) => {
               const isMissed = row.status === "Missed";
               const isAdviserTask = activeTab === "adviser";
               
-              // Check if adviser task has due date and time set
               const hasDueDateTime = isAdviserTask ? hasDueDateAndTime(row.existingTask) : true;
               
               return (
@@ -2362,17 +2355,14 @@ const OralDefense = ({ onBack }) => {
                   <td className="p-3 align-top whitespace-nowrap">{row.elements}</td>
                   <td className="p-3 align-top whitespace-nowrap">{row.created}</td>
 
-                  {/* Due date - static display */}
                   <td className="p-3 align-top whitespace-nowrap">
                     <span>{row.due}</span>
                   </td>
 
-                  {/* Time - static display with 12-hour format */}
                   <td className="p-3 align-top whitespace-nowrap">
                     <span>{row.time}</span>
                   </td>
 
-                  {/* Revision - display only (not editable) */}
                   <td className="p-3 align-top whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <RevisionPill value={row.revision} />
@@ -2384,8 +2374,6 @@ const OralDefense = ({ onBack }) => {
                     </div>
                   </td>
 
-                  {/* Status - Team tasks can go up to "Completed", adviser tasks only up to "To Review" */}
-                  {/* UPDATED: REAL-TIME STATUS UPDATES LIKE TITLE DEFENSE */}
                   <td className="p-3 align-top whitespace-nowrap">
                     {isMissed ? (
                       <StatusBadgeOralDefense
@@ -2413,13 +2401,11 @@ const OralDefense = ({ onBack }) => {
                     )}
                   </td>
 
-                  {/* Methodology column */}
                   <td className="p-3 align-top whitespace-nowrap">{row.methodology}</td>
 
                   <td className="p-3 align-top whitespace-nowrap">{row.phase}</td>
 
                   <td className="p-3 align-top text-right whitespace-nowrap">
-                    {/* Different menu options for team vs adviser tasks */}
                     <div className="relative inline-block dropdown-container">
                       <button
                         className={`p-1.5 rounded-md transition-colors ${
@@ -2444,7 +2430,6 @@ const OralDefense = ({ onBack }) => {
                       {menuOpenId === row.key && (
                         <div className="absolute right-0 z-50 mt-1 w-40 rounded-md border border-neutral-200 bg-white shadow-lg animate-in fade-in-0 zoom-in-95">
                           <div className="flex flex-col">
-                            {/* For team tasks: Show Edit option, for adviser tasks: Hide Edit option */}
                             {!isAdviserTask && (
                               <button
                                 className={`w-full text-left px-3 py-2 ${
@@ -2464,12 +2449,13 @@ const OralDefense = ({ onBack }) => {
                                   setMenuOpenId(null);
                                   setEditDueDateTime({
                                     existingTask: row.existingTask,
-                                    rowData: row // Pass row data to the dialog
+                                    rowData: row
                                   });
                                 }}
                                 disabled={hasMaxRevisions || !isOralDefenseAllowed}
                                 title={hasMaxRevisions ? "Maximum revisions reached - create new task" : !isOralDefenseAllowed ? "Oral defense not available yet" : ""}
                               >
+                                <Edit className="w-4 h-4 inline-block mr-2" />
                                 Edit
                               </button>
                             )}
@@ -2477,17 +2463,18 @@ const OralDefense = ({ onBack }) => {
                               className="w-full text-left px-3 py-2 hover:bg-neutral-50"
                               onClick={() => {
                                 setMenuOpenId(null);
-                                openEditTask(row);
+                                handleViewTask(row.existingTask);
                               }}
                             >
+                              <Eye className="w-4 h-4 inline-block mr-2" />
                               View
                             </button>
-                            {/* UPDATED: Show Delete for both team and adviser tasks */}
                             <button
                               className="w-full text-left px-3 py-2 hover:bg-neutral-50 text-red-600"
                               onClick={() => handleDeleteClick(row.taskId)}
                               disabled={!isOralDefenseAllowed}
                             >
+                              <Trash2 className="w-4 h-4 inline-block mr-2" />
                               Delete
                             </button>
                           </div>
@@ -2510,7 +2497,6 @@ const OralDefense = ({ onBack }) => {
         </table>
       </div>
 
-      {/* Create/Edit Task Modal */}
       {editingModal && (
         <EditTaskDialog
           open={!!editingModal}
@@ -2523,24 +2509,22 @@ const OralDefense = ({ onBack }) => {
           existingTask={editingModal?.existingTask || null}
           mode={editingModal?.mode || activeTab}
           lockedMethodology={lockedMethodology}
-          rowData={editingModal?.rowData} // Pass row data to the dialog
-          isOralDefenseAllowed={isOralDefenseAllowed} // Pass oral defense allowance status
+          rowData={editingModal?.rowData}
+          isOralDefenseAllowed={isOralDefenseAllowed}
         />
       )}
 
-      {/* Edit Due Date & Time Modal */}
       {editDueDateTime && (
         <EditDueDateTimeDialog
           open={!!editDueDateTime}
           onClose={() => setEditDueDateTime(null)}
           onSaved={() => setEditDueDateTime(null)}
           existingTask={editDueDateTime.existingTask}
-          rowData={editDueDateTime.rowData} // Pass row data to the dialog
-          isOralDefenseAllowed={isOralDefenseAllowed} // Pass oral defense allowance status
+          rowData={editDueDateTime.rowData}
+          isOralDefenseAllowed={isOralDefenseAllowed}
         />
       )}
 
-      {/* Delete Confirmation Modal */}
       <ConfirmationDialog
         open={showDeleteConfirm}
         onClose={() => {
@@ -2554,7 +2538,6 @@ const OralDefense = ({ onBack }) => {
         cancelText="No, Cancel"
       />
 
-      {/* Capstone Title Modal */}
       {teams.length > 0 && (
         <ProjectManagerTitleModal
           open={showTitleModal}

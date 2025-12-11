@@ -1,18 +1,16 @@
-// src/components/CapstoneMember/MemberTasksBoard.jsx
+// src/components/Member/MemberTaskBoard.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
 import {
   LayoutList,
   StickyNote,
-  ChevronRight,
-  ChevronLeft,
   Paperclip,
   Send,
   MessageSquareText,
   Loader2,
-  MoreVertical,
+  Users,
+  UserCircle2,
 } from "lucide-react";
-
+import { useLocation } from "react-router-dom";
 
 /* ===== Firebase ===== */
 import { auth, db } from "../../config/firebase";
@@ -33,22 +31,18 @@ import {
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
-
 /* ===== Supabase (for uploads & public URLs) ===== */
 import { supabase } from "../../config/supabase";
 
-
-const MAROON = "#6A0F14";
-
+const MAROON = "#3B0304";
 
 /* ========================== Helpers ========================== */
 const COLUMNS = [
   { id: "todo", title: "To Do", color: "#F5B700" },
   { id: "inprogress", title: "In Progress", color: "#7C9C3B" },
   { id: "review", title: "To Review", color: "#6FA8DC" },
-  { id: "missed", title: "Missed", color: "#6A0F14" },
+  { id: "missed", title: "Missed", color: "#3B0304" },
 ];
-
 
 const STATUS_TO_COLUMN = {
   "To Do": "todo",
@@ -56,26 +50,20 @@ const STATUS_TO_COLUMN = {
   "To Review": "review",
 };
 
-
 const cardShell =
   "bg-white border border-neutral-200 rounded-lg shadow-sm hover:shadow transition-shadow";
-
 
 const safeName = (u) =>
   [u?.firstName, u?.middleName ? `${u.middleName[0]}.` : null, u?.lastName]
     .filter(Boolean)
     .join(" ") || "Unknown";
 
-
 const BUCKET = "user-tasks-files";
-
 
 const safeFileName = (name = "") =>
   name.replace(/[^\w.\- ]+/g, "_").replace(/\s+/g, "_");
 
-
 const buildTaskFolder = (card) => `${card._collection}/${card.id}`;
-
 
 const toDate = (v) => {
   if (!v) return null;
@@ -84,27 +72,25 @@ const toDate = (v) => {
   return Number.isNaN(+d) ? null : d;
 };
 
-
 const formatDate = (date) => {
   if (!date) return "—";
   if (typeof date.toDate === "function") {
     date = date.toDate();
   }
   if (date instanceof Date) {
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
     });
   }
   const d = new Date(date);
-  return Number.isNaN(+d) ? date : d.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+  return Number.isNaN(+d) ? date : d.toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
   });
 };
-
 
 const formatTime = (timeString) => {
   if (!timeString) return "—";
@@ -119,14 +105,13 @@ const formatTime = (timeString) => {
   }
 };
 
-
 const formatDateTime = (timestamp) => {
   if (!timestamp) return "";
   try {
     const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
+    return date.toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric', 
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
@@ -137,25 +122,21 @@ const formatDateTime = (timestamp) => {
   }
 };
 
-
 const uniqBy = (arr, keyFn) => {
   const m = new Map();
   arr.forEach((x) => m.set(keyFn(x), x));
   return Array.from(m.values());
 };
 
-
 const getInitials = (name) => {
   if (!name) return "U";
   const parts = name.split(' ');
   if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
- 
-  // Get first letter of first name and first letter of last name
+  
   const firstName = parts[0];
   const lastName = parts[parts.length - 1];
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 };
-
 
 /* ======================= Confirmation Dialog ======================= */
 function ConfirmationDialog({
@@ -168,7 +149,6 @@ function ConfirmationDialog({
   cancelText = "No",
 }) {
   if (!open) return null;
-
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overscroll-contain">
@@ -195,7 +175,7 @@ function ConfirmationDialog({
                 onConfirm();
                 onClose();
               }}
-              className="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow hover:bg-[#5A0D12]"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow hover:bg-[#4A0405]"
               style={{ backgroundColor: MAROON }}
             >
               {confirmText}
@@ -206,7 +186,6 @@ function ConfirmationDialog({
     </div>
   );
 }
-
 
 /* ======================= Reusable UI ========================= */
 function Column({ title, color, children }) {
@@ -227,14 +206,22 @@ function Column({ title, color, children }) {
   );
 }
 
-
 function KanbanCard({ data, onOpen }) {
+  // Helper function to render assignee icon
+  const renderAssigneeIcon = () => {
+    if (data.isTeamTask) {
+      return <Users className="w-3.5 h-3.5 inline text-gray-500 mr-1" />;
+    }
+    return <UserCircle2 className="w-3.5 h-3.5 inline text-gray-500 mr-1" />;
+  };
+
   return (
     <div className={cardShell}>
       <div className="p-3">
         <div className="flex items-start justify-between">
-          <div className="font-semibold text-sm">
-            {data.teamName || "No Team"}
+          <div className="font-semibold text-sm flex items-center">
+            {renderAssigneeIcon()}
+            <span>{data.assignedTo || "Unassigned"}</span>
           </div>
           <button
             onClick={() => onOpen(data)}
@@ -246,7 +233,6 @@ function KanbanCard({ data, onOpen }) {
           </button>
         </div>
 
-
         <div className="mt-2 text-sm">
           <div className="text-neutral-800">
             {data.task || data.chapter || "Task"}
@@ -256,11 +242,10 @@ function KanbanCard({ data, onOpen }) {
           </div>
         </div>
 
-
         <div className="mt-3 text-xs flex items-center gap-2">
           <span
             className={`w-2 h-2 rounded-full ${
-              data._colId === "missed" ? "bg-[#6A0F14]" : "bg-neutral-400"
+              data._colId === "missed" ? "bg-[#3B0304]" : "bg-neutral-400"
             } inline-block`}
           />
           <span className="font-bold" style={{ color: MAROON }}>
@@ -272,7 +257,6 @@ function KanbanCard({ data, onOpen }) {
   );
 }
 
-
 /* ====================== Detail + Chat ======================== */
 function Field({ label, value }) {
   return (
@@ -282,7 +266,6 @@ function Field({ label, value }) {
     </div>
   );
 }
-
 
 function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEditingId, replyingTo, setReplyingTo, depth = 0 }) {
   const isMine = message.sender?.uid === meUid;
@@ -294,10 +277,7 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
   const isEditing = editingId === message.id && isMine;
   const isReplying = replyingTo === message.id;
 
-
-  // Disable edit if message has already been edited
   const canEdit = isMine && !message.__optimistic && !message.editedAt;
-
 
   const handleEditConfirm = () => {
     onEdit(message.id, editText);
@@ -305,12 +285,10 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
     setShowEditConfirm(false);
   };
 
-
   const handleDeleteConfirm = () => {
     onDelete(message.id);
     setShowDeleteConfirm(false);
   };
-
 
   const handleReply = () => {
     if (replyText.trim()) {
@@ -321,21 +299,16 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
     }
   };
 
-
   const handleCancelReply = () => {
     setReplyText("");
     setShowReplyInput(false);
     setReplyingTo(null);
   };
 
-
-  // Calculate indentation based on depth
   const indentClass = depth > 0 ? `ml-12` : "";
-
 
   return (
     <>
-      {/* Confirmation Dialogs */}
       <ConfirmationDialog
         open={showEditConfirm}
         onClose={() => setShowEditConfirm(false)}
@@ -345,7 +318,6 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
         confirmText="Yes, Edit"
         cancelText="No, Cancel"
       />
-
 
       <ConfirmationDialog
         open={showDeleteConfirm}
@@ -357,22 +329,17 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
         cancelText="No, Cancel"
       />
 
-
       <div className={`flex gap-3 mb-6 last:mb-0 ${indentClass}`}>
-        {/* Profile Icon */}
         <div className="flex-shrink-0">
-          <div
-            className="w-10 h-10 rounded-full bg-[#6A0F14] flex items-center justify-center text-white font-semibold text-sm"
+          <div 
+            className="w-10 h-10 rounded-full bg-[#3B0304] flex items-center justify-center text-white font-semibold text-sm"
             title={message.sender?.name || "Unknown User"}
           >
             {getInitials(message.sender?.name)}
           </div>
         </div>
 
-
-        {/* Comment Content */}
         <div className="flex-1 min-w-0">
-          {/* Header with name and timestamp inline */}
           <div className="flex items-baseline gap-2 mb-1 flex-wrap">
             <span className="font-semibold text-[15px] text-gray-900">
               {message.sender?.name || "Unknown User"}
@@ -389,13 +356,11 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
             )}
           </div>
 
-
-          {/* Comment Body */}
           <div className="mb-2">
             {isEditing ? (
               <div className="space-y-2">
                 <textarea
-                  className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#6A0F14] focus:border-transparent text-sm"
+                  className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3B0304] focus:border-transparent text-sm"
                   rows={3}
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
@@ -404,7 +369,7 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowEditConfirm(true)}
-                    className="px-4 py-2 text-sm font-medium text-white bg-[#6A0F14] rounded-lg hover:bg-[#5A0D12] transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-white bg-[#3B0304] rounded-lg hover:bg-[#2a0203] transition-colors"
                   >
                     Save
                   </button>
@@ -421,14 +386,12 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
               </div>
             ) : (
               <>
-                {/* FIX: Ensure proper line break preservation with multiple CSS classes */}
                 <div className="text-sm text-gray-800 leading-relaxed mt-1 whitespace-pre-wrap break-words w-full overflow-hidden">
                   {message.text || (
                     <span className="italic text-gray-500">[no text]</span>
                   )}
                 </div>
-               
-                {/* Display attached files in the comment - REMOVED BORDER BOX */}
+                
                 {message.sender?.fileUrl?.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {message.sender.fileUrl.map((file, index) => (
@@ -455,8 +418,6 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
             )}
           </div>
 
-
-          {/* Action Buttons */}
           {!isEditing && (
             <div className="flex items-center gap-4 mt-2">
               {canEdit && (
@@ -465,7 +426,7 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
                     setEditingId(message.id);
                     setEditText(message.text);
                   }}
-                  className="text-xs text-[#6A0F14] font-medium hover:text-[#5A0D12] transition-colors"
+                  className="text-xs text-[#3B0304] font-medium hover:text-[#2a0203] transition-colors"
                 >
                   Edit
                 </button>
@@ -479,12 +440,12 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
                 </button>
               )}
               {!isMine && (
-                <button
+                <button 
                   onClick={() => {
                     setShowReplyInput(true);
                     setReplyingTo(message.id);
                   }}
-                  className="text-xs text-[#6A0F14] font-medium hover:text-[#5A0D12] transition-colors"
+                  className="text-xs text-[#3B0304] font-medium hover:text-[#2a0203] transition-colors"
                 >
                   Reply
                 </button>
@@ -492,14 +453,12 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
             </div>
           )}
 
-
-          {/* Reply Input */}
           {(showReplyInput || isReplying) && (
             <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0">
-                  <div
-                    className="w-8 h-8 rounded-full bg-[#6A0F14] flex items-center justify-center text-white font-semibold text-xs"
+                  <div 
+                    className="w-8 h-8 rounded-full bg-[#3B0304] flex items-center justify-center text-white font-semibold text-xs"
                     title="You"
                   >
                     {getInitials("You")}
@@ -511,7 +470,7 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     placeholder="Write a reply…"
-                    className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#6A0F14] focus:border-transparent text-sm"
+                    className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3B0304] focus:border-transparent text-sm"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
@@ -529,7 +488,7 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
                     <button
                       onClick={handleReply}
                       disabled={!replyText.trim()}
-                      className="px-3 py-1.5 text-xs font-medium text-white bg-[#6A0F14] rounded-lg hover:bg-[#5A0D12] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="px-3 py-1.5 text-xs font-medium text-white bg-[#3B0304] rounded-lg hover:bg-[#2a0203] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Reply
                     </button>
@@ -539,8 +498,6 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
             </div>
           )}
 
-
-          {/* ONE-LEVEL-only Replies */}
           {message.replies && message.replies.length > 0 && (
             <div className="mt-4 space-y-4">
               {message.replies.map((reply) => (
@@ -555,7 +512,7 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
                   setEditingId={setEditingId}
                   replyingTo={replyingTo}
                   setReplyingTo={setReplyingTo}
-                  depth={1} // always one-level indent
+                  depth={1}
                 />
               ))}
             </div>
@@ -565,7 +522,6 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
     </>
   );
 }
-
 
 function DetailView({ me, card, onBack }) {
   const meUid = me?.uid;
@@ -580,15 +536,10 @@ function DetailView({ me, card, onBack }) {
   const [hydrating, setHydrating] = useState(false);
   const listRef = useRef(null);
 
-
-  // Helper: flatten messages so replies are only 1-level deep and no duplicates
   const flattenMessages = (rows) => {
-    // Build map of id -> message (shallow clone) with replies array
     const map = new Map();
     rows.forEach((m) => map.set(m.id, { ...m, replies: [] }));
 
-
-    // Attach direct replies to their parent (only direct)
     rows.forEach((m) => {
       if (m.parentId && map.has(m.parentId)) {
         const parent = map.get(m.parentId);
@@ -596,18 +547,13 @@ function DetailView({ me, card, onBack }) {
       }
     });
 
-
-    // Function to recursively collect all descendants of a message
     const collectDescendants = (msg, visited = new Set()) => {
       let acc = [];
-      // copy of current direct replies (from map)
       const direct = msg.replies ? [...msg.replies] : [];
       for (const r of direct) {
         if (!visited.has(r.id)) {
           visited.add(r.id);
           acc.push(r);
-          // If that reply itself has children in the original dataset, collect them
-          // The children of r are available via map.get(r.id).replies only if they were attached earlier
           const deeper = collectDescendants(map.get(r.id) || r, visited);
           if (deeper.length) acc = acc.concat(deeper);
         }
@@ -615,15 +561,11 @@ function DetailView({ me, card, onBack }) {
       return acc;
     };
 
-
-    // Build top-level array (messages without parentId)
     const topLevel = [];
     rows.forEach((m) => {
       if (!m.parentId) {
         const base = map.get(m.id);
-        // collect all nested replies and flatten to single-level
         const flatReplies = collectDescendants(base);
-        // ensure uniqueness and sort by createdAt
         const unique = Array.from(
           new Map(flatReplies.map((r) => [r.id, r])).values()
         );
@@ -632,24 +574,19 @@ function DetailView({ me, card, onBack }) {
           const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
           return aTime - bTime;
         });
-        // assign flattened replies and clear any nested replies on children
         base.replies = unique.map((r) => ({ ...r, replies: [] }));
         topLevel.push(base);
       }
     });
 
-
-    // Sort top-level messages by createdAt ascending (keep original ordering)
     topLevel.sort((a, b) => {
       const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
       const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
       return aTime - bTime;
     });
 
-
     return topLevel;
   };
-
 
   useEffect(() => {
     if (!card?.id) return;
@@ -664,38 +601,30 @@ function DetailView({ me, card, onBack }) {
       orderBy("createdAt", "asc")
     );
 
-
     const stop = onSnapshot(qy, (snap) => {
-      const rows = snap.docs.map((d) => ({
-        id: d.id,
+      const rows = snap.docs.map((d) => ({ 
+        id: d.id, 
         ...d.data(),
         createdAt: d.data().createdAt,
         editedAt: d.data().editedAt
       }));
 
-
-      // flatten and de-duplicate replies so UI shows one-level replies only
       const organized = flattenMessages(rows);
       setMessages(organized);
 
-
-      // scroll to bottom
       requestAnimationFrame(() => {
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
       });
     });
 
-
     return () => typeof stop === "function" && stop();
   }, [card]);
-
 
   const hydrateAttachments = async () => {
     setHydrating(true);
     try {
       const merged = [];
       const folder = buildTaskFolder(card);
-
 
       const taskSnap = await getDoc(doc(db, card._collection, card.id));
       if (taskSnap.exists()) {
@@ -721,7 +650,6 @@ function DetailView({ me, card, onBack }) {
         }
       }
 
-
       const filters = [
         where("taskCollection", "==", card._collection),
         where("taskId", "==", card.id),
@@ -745,7 +673,6 @@ function DetailView({ me, card, onBack }) {
         });
       });
 
-
       const unique = uniqBy(
         merged,
         (x) => `${x.source}:${x.name}:${x.url || ""}`
@@ -759,12 +686,10 @@ function DetailView({ me, card, onBack }) {
     }
   };
 
-
   useEffect(() => {
     if (tab === "attachment") hydrateAttachments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
-
 
   const openPicker = () => {
     const input = document.createElement("input");
@@ -777,31 +702,25 @@ function DetailView({ me, card, onBack }) {
     input.click();
   };
 
-
   const removePending = (idx) => {
     setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
   };
-
 
   const send = async (parentId = null) => {
     const text = (draft || "").trim();
     if (!text && pendingFiles.length === 0) return;
 
-
     setSending(true);
     const uploads = [];
-
 
     try {
       const folder = buildTaskFolder(card);
 
-
       for (const f of pendingFiles) {
-        // Use original file name without timestamp prefix
         const originalName = f.name;
         const filename = safeFileName(originalName);
         const storagePath = `${folder}/${filename}`;
-       
+        
         const { error: upErr } = await supabase.storage
           .from(BUCKET)
           .upload(storagePath, f, {
@@ -810,29 +729,27 @@ function DetailView({ me, card, onBack }) {
           });
         if (upErr) throw upErr;
 
-
         const { data: pub } = supabase.storage
           .from(BUCKET)
           .getPublicUrl(storagePath);
         uploads.push({
           fileName: filename,
-          originalName: originalName, // Store original file name
+          originalName: originalName,
           url: pub?.publicUrl || null,
           storagePath,
           uploadedAt: new Date().toISOString(),
         });
       }
 
-
       const optimistic = {
         id: `tmp-${Date.now()}`,
         text,
         parentId: parentId || null,
         role: me?.role || "Member",
-        sender: {
-          uid: meUid,
-          name: me?.name || "Unknown",
-          fileUrl: uploads
+        sender: { 
+          uid: meUid, 
+          name: me?.name || "Unknown", 
+          fileUrl: uploads 
         },
         teamId: card.teamId || null,
         teamName: card.teamName || null,
@@ -843,36 +760,32 @@ function DetailView({ me, card, onBack }) {
         __optimistic: true,
         type: "message",
       };
-     
-      // Optimistic update: if top-level, push to messages; if reply, attach to parent (local)
+      
       setMessages(prev => {
         if (!parentId) {
           return [...prev, optimistic];
         }
-       
+        
         const addReply = (messages) => {
           return messages.map(msg => {
             if (msg.id === parentId) {
-              // ensure replies array exists
               return {
                 ...msg,
                 replies: [...(msg.replies || []), optimistic]
               };
             }
-            // Recursively check if the parent is a reply
             if (msg.replies && msg.replies.length > 0) {
               return { ...msg, replies: addReply(msg.replies) };
             }
             return msg;
           });
         };
-       
+        
         return addReply(prev);
       });
-     
+      
       setDraft("");
       setPendingFiles([]);
-
 
       await addDoc(collection(db, "chats"), {
         text,
@@ -892,7 +805,6 @@ function DetailView({ me, card, onBack }) {
         type: "message",
       });
 
-
       if (tab === "attachment") hydrateAttachments();
     } catch (e) {
       console.error("[chat] send failed:", e);
@@ -902,10 +814,8 @@ function DetailView({ me, card, onBack }) {
     }
   };
 
-
   const sendReply = async (parentId, replyText) => {
     if (!replyText.trim()) return;
-
 
     setSending(true);
     try {
@@ -914,10 +824,10 @@ function DetailView({ me, card, onBack }) {
         text: replyText,
         parentId: parentId,
         role: me?.role || "Member",
-        sender: {
-          uid: meUid,
-          name: me?.name || "Unknown",
-          fileUrl: []
+        sender: { 
+          uid: meUid, 
+          name: me?.name || "Unknown", 
+          fileUrl: [] 
         },
         teamId: card.teamId || null,
         teamName: card.teamName || null,
@@ -929,15 +839,12 @@ function DetailView({ me, card, onBack }) {
         type: "message",
       };
 
-
-      // Optimistic update: attach reply to parent (local)
       setMessages(prev => {
         const addReply = (messages) => {
           return messages.map(msg => {
             if (msg.id === parentId) {
               return { ...msg, replies: [...(msg.replies || []), optimistic] };
             }
-            // Recursively check if the parent is a reply
             if (msg.replies && msg.replies.length > 0) {
               return { ...msg, replies: addReply(msg.replies) };
             }
@@ -946,7 +853,6 @@ function DetailView({ me, card, onBack }) {
         };
         return addReply(prev);
       });
-
 
       await addDoc(collection(db, "chats"), {
         text: replyText,
@@ -966,7 +872,6 @@ function DetailView({ me, card, onBack }) {
         type: "message",
       });
 
-
     } catch (e) {
       console.error("[chat] reply failed:", e);
       alert("Failed to send reply. Check console for details.");
@@ -974,7 +879,6 @@ function DetailView({ me, card, onBack }) {
       setSending(false);
     }
   };
-
 
   const editMessage = async (id, newText) => {
     const text = (newText || "").trim();
@@ -985,51 +889,31 @@ function DetailView({ me, card, onBack }) {
     });
   };
 
-
-  /**
-   * FIX: Deletes the specified message and promotes its direct replies
-   * to become top-level messages by setting their parentId to null in Firestore.
-   * This relies on the onSnapshot listener to update the local state correctly.
-   */
   const deleteMessage = async (id) => {
     try {
-      // 1. Find and promote all direct replies to be top-level messages in Firestore
       const repliesQuery = query(
         collection(db, "chats"),
         where("parentId", "==", id)
       );
-      // Use getDocs to fetch the replies so we can update them
-      const repliesSnap = await getDocs(repliesQuery);
-
+      const repliesSnap = await getDocs(repliesQuery); 
 
       if (!repliesSnap.empty) {
         const promotePromises = repliesSnap.docs.map((docSnapshot) => {
-          // Update the reply's parentId to null to promote it
-          return updateDoc(doc(db, "chats", docSnapshot.id), {
-            parentId: null,
+          return updateDoc(doc(db, "chats", docSnapshot.id), { 
+            parentId: null, 
           });
         });
-        // Wait for all replies to be promoted
         await Promise.all(promotePromises);
       }
 
-
-      // 2. Delete the original message in Firestore
       await deleteDoc(doc(db, "chats", id));
-
-
-      // The onSnapshot listener will automatically handle the local state update
-      // with the deleted comment removed and the replies promoted.
-
-
     } catch (err) {
       console.error("Failed to delete comment:", err);
-      alert("Failed to delete comment.");
+      alert("Failed to delete comment."); 
     } finally {
-      setSending(false);
+      setSending(false); 
     }
   };
-
 
   const renderComments = (messages, depth = 0) => {
     return messages.map((message) => (
@@ -1049,10 +933,8 @@ function DetailView({ me, card, onBack }) {
     ));
   };
 
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
           <LayoutList className="w-5 h-5" />
@@ -1061,20 +943,18 @@ function DetailView({ me, card, onBack }) {
         <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
 
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Task Details Panel */}
         <div className="bg-white border border-neutral-200 rounded-xl shadow p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="text-xl font-semibold text-gray-900">
-              {card.teamName || "No Team"}
+              {card.assignedTo || "Unassigned"}
             </div>
             <span
               className="text-sm font-semibold px-4 py-2 rounded-full text-white"
               style={{
                 backgroundColor:
                   card._colId === "missed"
-                    ? "#6A0F14"
+                    ? "#3B0304"
                     : card.status === "To Review"
                     ? "#6FA8DC"
                     : card.status === "In Progress"
@@ -1088,8 +968,6 @@ function DetailView({ me, card, onBack }) {
             </span>
           </div>
 
-
-          {/* Task Fields */}
           <div className="space-y-4">
             <Field label="Tasks" value={card.task} />
             <Field label="Subtasks" value={card.subtask || "—"} />
@@ -1104,54 +982,47 @@ function DetailView({ me, card, onBack }) {
           </div>
         </div>
 
-
-        {/* Comments & Attachments Panel */}
         <div className="bg-white border border-neutral-200 rounded-xl shadow overflow-hidden flex flex-col h-[700px]">
-          {/* Tabs */}
           <div className="px-6 pt-4">
             <div className="flex gap-8 text-sm border-b border-neutral-200">
               <button
                 onClick={() => setTab("comments")}
                 className={`pb-3 font-medium transition-colors relative ${
                   tab === "comments"
-                    ? "text-[#6A0F14] font-semibold"
+                    ? "text-[#3B0304] font-semibold"
                     : "text-neutral-600 hover:text-neutral-800"
                 }`}
               >
                 Comments
                 {tab === "comments" && (
-                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#6A0F14] rounded-t-full" />
+                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#3B0304] rounded-t-full" />
                 )}
               </button>
               <button
                 onClick={() => setTab("attachment")}
                 className={`pb-3 font-medium transition-colors relative ${
                   tab === "attachment"
-                    ? "text-[#6A0F14] font-semibold"
+                    ? "text-[#3B0304] font-semibold"
                     : "text-neutral-600 hover:text-neutral-800"
                 }`}
               >
                 Attachment
                 {tab === "attachment" && (
-                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#6A0F14] rounded-t-full" />
+                  <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#3B0304] rounded-t-full" />
                 )}
               </button>
             </div>
           </div>
 
-
-          {/* Content Area */}
           <div className="flex-1 overflow-hidden flex flex-col">
             {tab === "comments" && (
               <>
-                {/* Comment Input - AT THE TOP */}
                 <div className="border-b border-neutral-200 p-6">
                   <div className="space-y-4">
-                    {/* User Profile and Name */}
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0">
-                        <div
-                          className="w-10 h-10 rounded-full bg-[#6A0F14] flex items-center justify-center text-white font-semibold text-sm"
+                        <div 
+                          className="w-10 h-10 rounded-full bg-[#3B0304] flex items-center justify-center text-white font-semibold text-sm"
                           title={me?.name || "You"}
                         >
                           {getInitials(me?.name)}
@@ -1161,15 +1032,14 @@ function DetailView({ me, card, onBack }) {
                         {me?.name || "You"}
                       </span>
                     </div>
-                   
-                    {/* Textarea */}
+                    
                     <div className="space-y-3">
                       <textarea
                         rows={3}
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         placeholder="Write a comment…"
-                        className="w-full p-4 border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#6A0F14] focus:border-transparent text-sm"
+                        className="w-full p-4 border border-neutral-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#3B0304] focus:border-transparent text-sm"
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();
@@ -1178,8 +1048,6 @@ function DetailView({ me, card, onBack }) {
                         }}
                       />
 
-
-                      {/* Pending Files - REMOVED BORDER BOX */}
                       {pendingFiles.length > 0 && (
                         <div className="space-y-2">
                           {pendingFiles.map((f, i) => (
@@ -1202,8 +1070,6 @@ function DetailView({ me, card, onBack }) {
                         </div>
                       )}
 
-
-                      {/* Action Buttons - Attach icon before Send */}
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={openPicker}
@@ -1215,7 +1081,7 @@ function DetailView({ me, card, onBack }) {
                         <button
                           onClick={() => send()}
                           disabled={sending || (!draft.trim() && pendingFiles.length === 0)}
-                          className="inline-flex items-center gap-2 px-6 py-2 bg-[#6A0F14] text-white rounded-lg hover:bg-[#5A0D12] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="inline-flex items-center gap-2 px-6 py-2 bg-[#3B0304] text-white rounded-lg hover:bg-[#2a0203] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           {sending ? (
                             <>
@@ -1234,9 +1100,7 @@ function DetailView({ me, card, onBack }) {
                   </div>
                 </div>
 
-
-                {/* Comments List - BELOW THE INPUT */}
-                <div
+                <div 
                   ref={listRef}
                   className="flex-1 overflow-y-auto p-6 space-y-6"
                 >
@@ -1252,7 +1116,6 @@ function DetailView({ me, card, onBack }) {
               </>
             )}
 
-
             {tab === "attachment" && (
               <div className="flex-1 overflow-y-auto p-6">
                 <div className="bg-gray-50 rounded-lg border border-neutral-200 overflow-hidden">
@@ -1266,7 +1129,7 @@ function DetailView({ me, card, onBack }) {
                         <th className="text-left px-4 py-3 font-semibold">
                           Attachment
                         </th>
-                        <th className="text-left px-3 py-3 font-semibold"> {/* Reduced padding-left from px-4 to px-3 */}
+                        <th className="text-left px-3 py-3 font-semibold">
                           Date
                         </th>
                       </tr>
@@ -1316,7 +1179,7 @@ function DetailView({ me, card, onBack }) {
                                 </span>
                               </div>
                             </td>
-                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap"> {/* Reduced padding-left from px-4 to px-3 */}
+                            <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
                               {f.date ? formatDate(f.date) : "—"}
                             </td>
                           </tr>
@@ -1334,39 +1197,30 @@ function DetailView({ me, card, onBack }) {
   );
 }
 
-
 /* ============================ Main ============================ */
-export default function MemberTasksBoard() {
+export default function MemberTaskBoard() {
+  const location = useLocation();
   const [me, setMe] = useState(null);
   const [teams, setTeams] = useState([]);
   const [cards, setCards] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [activeTab, setActiveTab] = useState("team"); // "team" | "adviser"
+  const [activeTab, setActiveTab] = useState("team");
+  const [loadingTasks, setLoadingTasks] = useState(true);
 
-
-  const location = useLocation();
-
-
-  // auto-open when navigated with state
   useEffect(() => {
-    if (location.state?.selectedTask) {
-      setSelected({
-        ...location.state.selectedTask,
-        _collection: location.state.selectedTask.sourceColl,
-      });
-      // clear history state to avoid re-opening on back/refresh
-      try {
-        window.history.replaceState({}, document.title);
-      } catch (e) {}
+    if (location.state && location.state.selectedTask) {
+      setSelected(location.state.selectedTask);
+      window.history.replaceState({}, document.title);
     }
   }, [location.state]);
-
 
   useEffect(() => {
     const stop = onAuthStateChanged(auth, async (u) => {
       const uid = u?.uid || localStorage.getItem("uid") || "";
-      if (!uid) return setMe(null);
-
+      if (!uid) {
+        setMe(null);
+        return;
+      }
 
       let profile = null;
       try {
@@ -1376,13 +1230,19 @@ export default function MemberTasksBoard() {
           limit(1)
         );
         const snap = await getDocs(qUser);
-        if (!snap.empty) profile = snap.docs[0].data();
-      } catch (_) {}
-
+        if (!snap.empty) {
+          profile = snap.docs[0].data();
+        }
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+      }
 
       setMe({
         uid,
         name: safeName(profile),
+        firstName: profile?.firstName,
+        lastName: profile?.lastName,
+        middleName: profile?.middleName,
         role: profile?.role || "Member",
         photoURL: profile?.photoURL || null,
       });
@@ -1390,131 +1250,271 @@ export default function MemberTasksBoard() {
     return () => stop();
   }, []);
 
-
-  // Get teams that the member belongs to
+  // Get teams where the member belongs
   useEffect(() => {
-    if (!me?.uid) return;
-
-
-    const stop = onSnapshot(
-      query(collection(db, "teams"), where("members", "array-contains", me.uid)),
-      (snap) => {
-        const teamData = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setTeams(teamData);
-      }
-    );
-
-
-    return () => typeof stop === "function" && stop();
-  }, [me?.uid]);
-
-
-  const unsubsRef = useRef([]);
-  useEffect(() => {
-    unsubsRef.current.forEach((u) => typeof u === "function" && u());
-    unsubsRef.current = [];
-
-
-    if (teams.length === 0) {
-      setCards([]);
+    if (!me?.uid) {
       return;
     }
 
-
-    const teamIds = teams.map((t) => t.id);
-    const chunks = (arr, n = 10) =>
-      Array.from({ length: Math.ceil(arr.length / n) }, (_, i) =>
-        arr.slice(i * n, i * n + n)
-      );
-
-
-    const store = {
-      titleDefenseTasks: { A: new Map(), B: new Map() },
-      oralDefenseTasks: { A: new Map(), B: new Map() },
-      finalDefenseTasks: { A: new Map(), B: new Map() },
-      finalRedefenseTasks: { A: new Map(), B: new Map() },
+    const loadTeams = async () => {
+      try {
+        const q = query(collection(db, "teams"));
+        const snap = await getDocs(q);
+        const allTeams = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Filter teams where user is a member
+        const userTeams = allTeams.filter(team => {
+          // Check members array
+          const isInMembers = team.members?.some(member => member.uid === me.uid);
+          // Check memberUids array
+          const isInMemberUids = team.memberUids?.includes(me.uid);
+          // Check manager
+          const isManager = team.manager?.uid === me.uid;
+          
+          return isInMembers || isInMemberUids || isManager;
+        });
+        
+        setTeams(userTeams);
+        
+      } catch (error) {
+        console.error("Error fetching teams:", error);
+      }
     };
 
+    loadTeams();
+  }, [me]);
 
+  // Fallback task loading
+  useEffect(() => {
+    const loadTasksFallback = async () => {
+      if (teams.length === 0 || !me?.uid) return;
+      
+      const collections = [
+        "titleDefenseTasks",
+        "oralDefenseTasks", 
+        "finalDefenseTasks",
+        "finalRedefenseTasks"
+      ];
+      
+      const teamIds = teams.map(t => t.id);
+      const allTasks = [];
+      
+      for (const collectionName of collections) {
+        try {
+          const q = query(collection(db, collectionName));
+          const snapshot = await getDocs(q);
+          
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            const team = data.team || {};
+            const teamId = team.id || data.teamId;
+            
+            // Check if task belongs to user's team
+            if (teamId && teamIds.includes(teamId)) {
+              // Skip completed tasks
+              if (data.status === "Completed") return;
+              
+              // Check task manager type
+              const taskManager = data.taskManager || "Project Manager";
+              const shouldShow = activeTab === "adviser" 
+                ? taskManager === "Adviser" 
+                : taskManager === "Project Manager";
+              
+              if (shouldShow) {
+                const dueDate = data.dueDate || null;
+                const time = data.dueTime || null;
+                const dueDisplay = formatDate(dueDate);
+                const timeDisplay = formatTime(time);
+                const dueAtMs = data.dueAtMs ?? (dueDate && time ? new Date(`${dueDate}T${time}:00`).getTime() : null);
+                
+                let colId = STATUS_TO_COLUMN[data.status || "To Do"] || "todo";
+                const now = Date.now();
+                const isOverdue = !!dueAtMs && dueAtMs < now && (data.status || "To Do") !== "Completed";
+                if (isOverdue) colId = "missed";
+                
+                // Get proper assignee name
+                let assignedTo = "";
+                if (data.isTeamTask) {
+                  assignedTo = "Team";
+                } else if (data.assignedTo) {
+                  assignedTo = data.assignedTo;
+                } else if (data.assignees && data.assignees.length > 0) {
+                  // Check if current user is assigned
+                  const userAssignee = data.assignees.find(a => a.uid === me?.uid);
+                  if (userAssignee) {
+                    assignedTo = userAssignee.name || me?.name || "You";
+                  } else {
+                    // Show the first assignee's name
+                    assignedTo = data.assignees[0].name || "Unassigned";
+                  }
+                } else {
+                  assignedTo = "Unassigned";
+                }
+                
+                // Check if this task should be shown to current user
+                const shouldShowToUser = 
+                  // If it's a team task, show it
+                  data.isTeamTask ||
+                  // If current user is in assignees, show it
+                  (data.assignees && data.assignees.some(a => a.uid === me?.uid)) ||
+                  // If assignedTo matches current user's name, show it
+                  assignedTo === me?.name;
+                
+                if (!shouldShowToUser) {
+                  return; // Skip this task
+                }
+                
+                const card = {
+                  id: doc.id,
+                  _collection: collectionName,
+                  _colId: colId,
+                  task: data.task || "Task",
+                  taskManager,
+                  teamId,
+                  teamName: team.name || "Team",
+                  assignedTo, // Now shows actual member name
+                  status: data.status || "To Do",
+                  revision: data.revision || "No Revision",
+                  dueDisplay,
+                  timeDisplay,
+                  subtask: data.subtask || data.subtasks || null,
+                  elements: data.elements || data.element || null,
+                  methodology: data.methodology || null,
+                  phase: data.phase || null,
+                  isTeamTask: data.isTeamTask || false,
+                  assignees: data.assignees || [],
+                };
+                allTasks.push(card);
+              }
+            }
+          });
+        } catch (error) {
+          console.error(`Error loading tasks from ${collectionName}:`, error);
+        }
+      }
+      
+      if (allTasks.length > 0) {
+        setCards(allTasks);
+        setLoadingTasks(false);
+      }
+    };
+    
+    // Run fallback after a delay if no cards are loaded
+    const timeoutId = setTimeout(() => {
+      if (cards.length === 0 && teams.length > 0) {
+        loadTasksFallback();
+      }
+    }, 2000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [teams, me, activeTab, cards.length]);
+
+  const unsubsRef = useRef([]);
+  useEffect(() => {
+    setLoadingTasks(true);
+    unsubsRef.current.forEach((u) => typeof u === "function" && u());
+    unsubsRef.current = [];
+
+    if (teams.length === 0) {
+      setCards([]);
+      setLoadingTasks(false);
+      return;
+    }
+
+    const teamIds = teams.map((t) => t.id);
+
+    const store = {
+      titleDefenseTasks: new Map(),
+      oralDefenseTasks: new Map(),
+      finalDefenseTasks: new Map(),
+      finalRedefenseTasks: new Map(),
+    };
+
+    // Updated normalize function to show actual member names AND filter tasks
     const normalize = (collectionName, d) => {
       const x = d.data();
-     
+      
       // Filter out completed tasks
       if (x.status === "Completed") {
         return null;
       }
 
-
+      // Get team information
       const t = x.team || {};
       const teamId = t.id || x.teamId || "no-team";
-      const teamName =
-        t.name || teams.find((tt) => tt.id === teamId)?.name || "No Team";
+      const teamName = t.name || teams.find((tt) => tt.id === teamId)?.name || "No Team";
 
+      // Check if this task belongs to one of the user's teams
+      const isMyTeamTask = teamIds.includes(teamId);
+      if (!isMyTeamTask) {
+        return null;
+      }
 
-      const created =
-        typeof x.createdAt?.toDate === "function" ? x.createdAt.toDate() : null;
+      const created = typeof x.createdAt?.toDate === "function" ? x.createdAt.toDate() : null;
       const createdDisplay = formatDate(x.createdAt);
-
 
       const dueDate = x.dueDate || null;
       const time = x.dueTime || null;
       const timeDisplay = formatTime(time);
       const dueDisplay = formatDate(dueDate);
-      const dueAtMs =
-        x.dueAtMs ??
-        (dueDate && time ? new Date(`${dueDate}T${time}:00`).getTime() : null);
-
+      const dueAtMs = x.dueAtMs ?? (dueDate && time ? new Date(`${dueDate}T${time}:00`).getTime() : null);
 
       let colId = STATUS_TO_COLUMN[x.status || "To Do"] || "todo";
       const now = Date.now();
-      const isOverdue =
-        !!dueAtMs && dueAtMs < now && (x.status || "To Do") !== "Completed";
+      const isOverdue = !!dueAtMs && dueAtMs < now && (x.status || "To Do") !== "Completed";
       if (isOverdue) colId = "missed";
 
+      // Enhanced assignment logic to show actual member names
+      let assignedTo = "";
+      const isTeamTask = x.isTeamTask || false;
 
-      // Check if task should be included based on tab and assignment
-      const shouldIncludeTask = () => {
-        // For adviser tasks, include all tasks for the team regardless of assignment
-        if (x.taskManager === "Adviser") {
-          return true;
+      if (isTeamTask) {
+        // For team tasks, show "Team"
+        assignedTo = "Team";
+      } else if (x.assignedTo) {
+        // Use the assignedTo field if available
+        assignedTo = x.assignedTo;
+      } else if (x.assignees && x.assignees.length > 0) {
+        // Check if current user is assigned
+        const userAssignee = x.assignees.find(a => a.uid === me?.uid);
+        if (userAssignee) {
+          // Show the user's actual name
+          assignedTo = userAssignee.name || me?.name || "You";
+        } else {
+          // Show the first assignee's name
+          assignedTo = x.assignees[0].name || "Unassigned";
         }
-
-
-        // For team tasks, check if assigned to current member
-        // Check assignees array
-        if (Array.isArray(x.assignees)) {
-          return x.assignees.some(assignee =>
-            assignee.uid === me.uid || assignee === me.uid
-          );
-        }
-       
-        // Check assignedMember
-        if (x.assignedMember && x.assignedMember.uid === me.uid) {
-          return true;
-        }
-       
-        // Check assignedTo field (string comparison)
-        if (x.assignedTo && me.name) {
-          return x.assignedTo.includes(me.name);
-        }
-       
-        return false;
-      };
-
-
-      // Only include tasks that pass the assignment check
-      if (!shouldIncludeTask()) {
-        return null;
+      } else if (x.assignedMember && (x.assignedMember.name || x.assignedMember.firstName)) {
+        assignedTo = safeName(x.assignedMember);
+      } else {
+        assignedTo = teamName;
       }
 
+      // IMPORTANT: Filter tasks - only show tasks assigned to current user OR to "Team"
+      // For Team Tasks tab (activeTab === "team")
+      if (activeTab === "team") {
+        // Check if task should be shown to current user
+        const shouldShowTask = 
+          // If it's a team task, show it
+          isTeamTask ||
+          // If current user is in assignees, show it
+          (x.assignees && x.assignees.some(a => a.uid === me?.uid)) ||
+          // If assignedTo matches current user's name, show it
+          assignedTo === me?.name;
+        
+        if (!shouldShowTask) {
+          return null; // Skip this task - not assigned to current user
+        }
+      }
 
+      // Extract ALL fields directly from the source data
       const cardData = {
         id: d.id,
         _collection: collectionName,
         _colId: colId,
         teamId,
         teamName,
-        assignedTo: me.name, // Show member's own name
+        assignedTo,
         task: x.task || x.chapter || "Task",
         chapter: x.chapter || null,
         type: x.type || null,
@@ -1528,112 +1528,95 @@ export default function MemberTasksBoard() {
         createdDisplay,
         dueAtMs: dueAtMs || null,
         taskManager: x.taskManager || "Project Manager",
+        // Include all the necessary fields for proper display
+        elements: x.elements || x.element || x.scope || null,
+        subtask: x.subtask || x.subtasks || x.subTask || x.subTasks || null,
+        assignedMember: x.assignedMember,
+        assignees: x.assignees,
+        isTeamTask: isTeamTask,
       };
 
-
-      // Extract subtask and elements with comprehensive field checking
-      const subtask =
-        x.subtask ||
-        x.subtasks ||
-        x.subTask ||
-        x.subTasks ||
-        null;
-     
-      const elements =
-        x.elements ||
-        x.element ||
-        x.scope ||
-        null;
-
-
       // Handle different data types for subtask and elements
-      if (subtask) {
-        if (Array.isArray(subtask)) {
-          cardData.subtask = subtask.join(", ");
-        } else if (typeof subtask === 'string') {
-          cardData.subtask = subtask;
-        } else if (typeof subtask === 'object') {
-          cardData.subtask = JSON.stringify(subtask);
+      if (cardData.subtask) {
+        if (Array.isArray(cardData.subtask)) {
+          cardData.subtask = cardData.subtask.join(", ");
+        } else if (typeof cardData.subtask === 'object') {
+          cardData.subtask = JSON.stringify(cardData.subtask);
         }
       }
 
-
-      if (elements) {
-        if (Array.isArray(elements)) {
-          cardData.elements = elements.join(", ");
-        } else if (typeof elements === 'string') {
-          cardData.elements = elements;
-        } else if (typeof elements === 'object') {
-          cardData.elements = JSON.stringify(elements);
+      if (cardData.elements) {
+        if (Array.isArray(cardData.elements)) {
+          cardData.elements = cardData.elements.join(", ");
+        } else if (typeof cardData.elements === 'object') {
+          cardData.elements = JSON.stringify(cardData.elements);
         }
       }
-
 
       return cardData;
     };
 
-
     const publish = () => {
-      const unionMap = new Map();
-      for (const coll of [
-        "titleDefenseTasks",
-        "oralDefenseTasks",
-        "finalDefenseTasks",
-        "finalRedefenseTasks",
-      ]) {
-        for (const subset of ["A", "B"]) {
-          store[coll][subset].forEach((val, key) => {
-            if (val) { // Skip null values (completed tasks and tasks not assigned to member)
-              unionMap.set(`${coll}:${key}`, val);
-            }
-          });
-        }
-      }
-     
-      // Filter cards based on selected tab
-      const filteredCards = Array.from(unionMap.values()).filter(card => {
-        if (activeTab === "adviser") {
-          return card.taskManager === "Adviser";
-        } else {
-          return card.taskManager === "Project Manager";
-        }
-      });
-     
-      setCards(filteredCards);
-    };
-
-
-    const attach = (collectionName) => {
-      chunks(teamIds, 10).forEach((ids) => {
-        const q = query(collection(db, collectionName), where("team.id", "in", ids));
-        const unsub = onSnapshot(q, (snap) => {
-          const next = new Map();
-          snap.docs.forEach((d) => {
-            const normalized = normalize(collectionName, d);
-            if (normalized) {
-              next.set(d.id, normalized);
-            }
-          });
-          store[collectionName].A = next;
-          publish();
+      const allCards = [];
+      
+      // Collect all cards from all collections
+      Object.keys(store).forEach(collectionName => {
+        store[collectionName].forEach((card, key) => {
+          if (card) {
+            allCards.push(card);
+          }
         });
-        unsubsRef.current.push(unsub);
       });
+      
+      // Filter cards based on selected tab
+      const filteredCards = allCards.filter(card => {
+        // Filter by task manager type based on active tab
+        if (activeTab === "adviser") {
+          const isAdviserTask = card.taskManager === "Adviser";
+          return isAdviserTask;
+        } else {
+          // Team tasks tab - already filtered in normalize function
+          const isTeamTask = card.taskManager === "Project Manager";
+          return isTeamTask;
+        }
+      });
+      
+      setCards(filteredCards);
+      setLoadingTasks(false);
     };
 
+    // Load tasks from all collections without filtering initially
+    // We'll filter by team in the normalize function
+    const collections = [
+      "titleDefenseTasks",
+      "oralDefenseTasks", 
+      "finalDefenseTasks",
+      "finalRedefenseTasks"
+    ];
 
-    attach("titleDefenseTasks");
-    attach("oralDefenseTasks");
-    attach("finalDefenseTasks");
-    attach("finalRedefenseTasks");
-
+    collections.forEach(collectionName => {
+      const q = query(collection(db, collectionName));
+      const unsub = onSnapshot(q, (snap) => {
+        const next = new Map();
+        snap.docs.forEach((d) => {
+          const normalized = normalize(collectionName, d);
+          if (normalized) {
+            next.set(d.id, normalized);
+          }
+        });
+        
+        store[collectionName] = next;
+        publish();
+      });
+      unsubsRef.current.push(unsub);
+    });
 
     return () => {
       unsubsRef.current.forEach((u) => typeof u === "function" && u());
       unsubsRef.current = [];
+      setLoadingTasks(false);
     };
-  }, [teams, activeTab, me]);
-
+  }, [teams, me, activeTab]);
 
   const grouped = useMemo(() => {
     const map = Object.fromEntries(COLUMNS.map((c) => [c.id, []]));
@@ -1641,17 +1624,14 @@ export default function MemberTasksBoard() {
     return map;
   }, [cards]);
 
-
   if (selected) {
     return (
       <DetailView me={me} card={selected} onBack={() => setSelected(null)} />
     );
   }
 
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="p-4 md:p-6 space-y-6">
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-[18px] font-semibold text-black">
           <LayoutList className="w-5 h-5" />
@@ -1660,64 +1640,82 @@ export default function MemberTasksBoard() {
         <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
 
-
-      {/* Modern Tab Design */}
+      {/* Modern Tab Design - Only Team Tasks and Adviser Tasks */}
       <div className="flex border-b border-neutral-200">
         <button
           onClick={() => setActiveTab("team")}
           className={`relative px-6 py-3 text-sm font-medium transition-all duration-300 ease-in-out ${
-            activeTab === "team"
-              ? "text-[#6A0F14] font-semibold"
+            activeTab === "team" 
+              ? "text-[#3B0304] font-semibold" 
               : "text-neutral-600 hover:text-neutral-800"
           }`}
         >
           Team Tasks
           {activeTab === "team" && (
-            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#6A0F14] rounded-t-full transition-all duration-300 ease-in-out" />
+            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#3B0304] rounded-t-full transition-all duration-300 ease-in-out" />
           )}
         </button>
         <button
           onClick={() => setActiveTab("adviser")}
           className={`relative px-6 py-3 text-sm font-medium transition-all duration-300 ease-in-out ${
-            activeTab === "adviser"
-              ? "text-[#6A0F14] font-semibold"
+            activeTab === "adviser" 
+              ? "text-[#3B0304] font-semibold" 
               : "text-neutral-600 hover:text-neutral-800"
           }`}
         >
           Adviser Tasks
           {activeTab === "adviser" && (
-            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#6A0F14] rounded-t-full transition-all duration-300 ease-in-out" />
+            <div className="absolute bottom-0 left-0 w-full h-0.5 bg-[#3B0304] rounded-t-full transition-all duration-300 ease-in-out" />
           )}
         </button>
       </div>
 
-
       {/* Responsive Kanban Board */}
       <div className="min-h-[520px]">
-        <div className="h-full grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-          {COLUMNS.map((col) => (
-            <Column key={col.id} title={col.title} color={col.color}>
-              {grouped[col.id].length === 0 ? (
-                <div className="text-sm text-neutral-500 text-center py-8">
-                  {activeTab === "adviser"
-                    ? "No adviser tasks."
-                    : "No team tasks."}
-                </div>
-              ) : (
-                grouped[col.id].map((card) => (
-                  <KanbanCard
-                    key={`${card._collection}:${card.id}`}
-                    data={card}
-                    onOpen={setSelected}
-                  />
-                ))
-              )}
-            </Column>
-          ))}
-        </div>
+        {loadingTasks && cards.length === 0 ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-[#3B0304]" />
+              <p className="text-neutral-600">Loading tasks...</p>
+            </div>
+          </div>
+        ) : cards.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center p-8">
+            <StickyNote className="w-16 h-16 text-neutral-300 mb-4" />
+            <h3 className="text-lg font-semibold text-neutral-700 mb-2">No tasks found</h3>
+            <p className="text-neutral-500 mb-4">
+              {activeTab === "adviser" 
+                ? "No adviser tasks assigned to your team." 
+                : "No team tasks assigned to you or your team."}
+            </p>
+            <p className="text-sm text-neutral-400">
+              {activeTab === "team" 
+                ? "Tasks assigned to other team members are not shown here." 
+                : "Check if you're assigned to a team and if tasks exist in Firebase."}
+            </p>
+          </div>
+        ) : (
+          <div className="h-full grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+            {COLUMNS.map((col) => (
+              <Column key={col.id} title={col.title} color={col.color}>
+                {grouped[col.id].length === 0 ? (
+                  <div className="text-sm text-neutral-500 text-center py-8">
+                    No {col.title.toLowerCase()} tasks.
+                  </div>
+                ) : (
+                  grouped[col.id].map((card) => (
+                    <KanbanCard
+                      key={`${card._collection}:${card.id}`}
+                      data={card}
+                      onOpen={setSelected}
+                    />
+                  ))
+                )}
+              </Column>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-

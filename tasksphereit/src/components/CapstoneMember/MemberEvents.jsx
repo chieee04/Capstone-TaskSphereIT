@@ -15,7 +15,7 @@ import { getEventsForUser } from "../../services/events";
 
 /* ===== Firestore (for view-only files modal) ===== */
 import { db } from "../../config/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 
 
 const MAROON = "#6A0F14";
@@ -244,17 +244,89 @@ export default function MemberEvents() {
   const [filesRow, setFilesRow] = useState(null);
 
 
+  // Function to normalize team names for matching
+  const normalizeTeamName = (teamName) => {
+    if (!teamName) return "";
+    // Convert "Lenon, Et Al" to "Lenon etal" and "Lenon etal" to "Lenon etal"
+    return teamName
+      .replace(/,\s*/g, " ") // Remove commas
+      .replace(/\s+/g, " ") // Replace multiple spaces with single space
+      .replace(/\bEt Al\b/gi, "etal") // Convert "Et Al" to "etal"
+      .replace(/\s*etal\s*/gi, " etal") // Ensure space before etal
+      .trim()
+      .toLowerCase();
+  };
+
+
+  // Function to fetch and match titles
+  const fetchEventsWithTitles = async () => {
+    try {
+      const uid = localStorage.getItem("uid");
+      const res = await getEventsForUser(uid);
+      
+      // Debug: Log the data to see what we have
+      console.log("Member - Oral Defense data:", res.oralDefense);
+      console.log("Member - Manuscript data:", res.manuscript);
+      
+      // Create a map of team names to titles from oral defense
+      const titleMap = {};
+      res.oralDefense?.forEach(item => {
+        if (item.teamName && item.title) {
+          const normalizedTeam = normalizeTeamName(item.teamName);
+          titleMap[normalizedTeam] = item.title;
+        }
+      });
+      
+      // Also check title defense for titles
+      res.titleDefense?.forEach(item => {
+        if (item.teamName && item.title) {
+          const normalizedTeam = normalizeTeamName(item.teamName);
+          if (!titleMap[normalizedTeam]) {
+            titleMap[normalizedTeam] = item.title;
+          }
+        }
+      });
+      
+      console.log("Member - Title map from oral/title defense:", titleMap);
+      
+      // Update manuscript events with titles from oral defense
+      const updatedManuscript = res.manuscript?.map(item => {
+        const normalizedManuscriptTeam = normalizeTeamName(item.teamName);
+        console.log(`Member - Looking up title for: ${item.teamName} -> ${normalizedManuscriptTeam}`);
+        
+        // Try to find title from oral defense map
+        let title = titleMap[normalizedManuscriptTeam] || "";
+        
+        return {
+          ...item,
+          title: title || item.title || ""
+        };
+      }) || [];
+      
+      return {
+        ...res,
+        manuscript: updatedManuscript
+      };
+    } catch (error) {
+      console.error("Member - Error fetching events with titles:", error);
+      throw error;
+    }
+  };
+
+
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         setLoading(true);
-        const uid = localStorage.getItem("uid");
-        const res = await getEventsForUser(uid);
-        if (alive) setRows(res);
+        const data = await fetchEventsWithTitles();
+        
+        if (alive) {
+          setRows(data);
+        }
       } catch (e) {
         console.error("Failed to load member events:", e);
-        if (alive)
+        if (alive) {
           setRows({
             titleDefense: [],
             manuscript: [],
@@ -262,6 +334,7 @@ export default function MemberEvents() {
             finalDefense: [],
             finalRedefense: [],
           });
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -347,35 +420,42 @@ export default function MemberEvents() {
               </tr>
             </thead>
             <tbody>
-              {(loading ? [] : rows.manuscript).map((r, idx) => (
-                <tr key={`ms-${r.id}`} className="border-t border-neutral-200">
-                  <td className="py-2 pl-6 pr-3">{idx + 1}.</td>
-                  <td className="py-2 pr-3">{r.teamName}</td>
-                  <td className="py-2 pr-3">{r.title}</td>
-                  <td className="py-2 pr-3">{r.date}</td>
-                  <td className="py-2 pr-3">{to12h(r.timeStart)}</td>
-                  <td className="py-2 pr-3">{`${r.plag ?? 0}%`}</td>
-                  <td className="py-2 pr-3">{`${r.ai ?? 0}%`}</td>
+              {(loading ? [] : rows.manuscript).map((r, idx) => {
+                // Get the normalized team name for debugging
+                const normalizedTeam = normalizeTeamName(r.teamName);
+                console.log(`Member - Row ${idx + 1}: ${r.teamName} -> ${normalizedTeam}, Title: ${r.title}`);
+                
+                return (
+                  <tr key={`ms-${r.id}`} className="border-t border-neutral-200">
+                    <td className="py-2 pl-6 pr-3">{idx + 1}.</td>
+                    <td className="py-2 pr-3">{r.teamName}</td>
+                    {/* Display title - if empty, show dash */}
+                    <td className="py-2 pr-3">{r.title || "—"}</td>
+                    <td className="py-2 pr-3">{r.date}</td>
+                    <td className="py-2 pr-3">{to12h(r.timeStart)}</td>
+                    <td className="py-2 pr-3">{`${r.plag ?? 0}%`}</td>
+                    <td className="py-2 pr-3">{`${r.ai ?? 0}%`}</td>
 
 
-                  {/* View-only files button */}
-                  <td className="py-2 pr-3">
-                    <button
-                      type="button"
-                      onClick={() => setFilesRow(r)}
-                      className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      View Files
-                    </button>
-                  </td>
+                    {/* View-only files button */}
+                    <td className="py-2 pr-3">
+                      <button
+                        type="button"
+                        onClick={() => setFilesRow(r)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        View Files
+                      </button>
+                    </td>
 
 
-                  <td className="py-2 pr-6">
-                    <Pill>{r.verdict}</Pill>
-                  </td>
-                </tr>
-              ))}
+                    <td className="py-2 pr-6">
+                      <Pill>{r.verdict}</Pill>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </CardTable>
 
@@ -587,5 +667,3 @@ export default function MemberEvents() {
     </div>
   );
 }
-
-

@@ -1,4 +1,3 @@
-
 // src/components/ProjectManager/tasks/FinalDefense.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -17,7 +16,9 @@ import {
   Users,
   ChevronDown,
   AlertCircle,
+  Eye, // Added Eye icon for View
 } from "lucide-react";
+import { useNavigate } from "react-router-dom"; // Added useNavigate
 
 /* ===== Firebase ===== */
 import { auth, db } from "../../../config/firebase";
@@ -1649,6 +1650,9 @@ const FinalDefense = ({ onBack }) => {
   const [oralDefenseMethodology, setOralDefenseMethodology] = useState(null);
   const [loadingVerdict, setLoadingVerdict] = useState(true);
 
+  // Add useNavigate hook
+  const navigate = useNavigate();
+
   // PM profile
   useEffect(() => {
     if (!pmUid) return;
@@ -1853,6 +1857,88 @@ const FinalDefense = ({ onBack }) => {
     
     return `${pmLastName}, Et Al`;
   }, [teams, pmProfile]);
+
+  // Add handleViewTask function similar to OralDefense
+  const handleViewTask = (task) => {
+    if (!task) return;
+    
+    const formatDateForDisplay = (dateValue) => {
+      if (!dateValue) return "—";
+      try {
+        const date = typeof dateValue.toDate === 'function' ? 
+          dateValue.toDate() : 
+          new Date(dateValue);
+        
+        if (Number.isNaN(date.getTime())) return "—";
+        
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch {
+        return "—";
+      }
+    };
+    
+    let assigneeName = "Team";
+    if (task.assignees && task.assignees.length > 0) {
+      if (task.assignees[0].uid === 'team') {
+        assigneeName = "Team";
+      } else {
+        assigneeName = task.assignees[0].name || "—";
+      }
+    } else if (task.taskManager === "Adviser") {
+      assigneeName = getTeamNameForAdviser;
+    }
+    
+    const isAdviserTask = task.taskManager === "Adviser";
+    
+    const taskData = {
+      id: task.id,
+      _collection: TASKS_COLLECTION,
+      teamId: task.team?.id || task.teamId || "",
+      teamName: task.team?.name || "No Team",
+      assignedTo: assigneeName,
+      task: task.task || "Task",
+      subtask: task.subtasks || "—",
+      elements: task.elements || "—",
+      createdDisplay: formatDateForDisplay(task.createdAt),
+      dueDisplay: isAdviserTask && (!task.dueDate || task.dueDate === "--") ? 
+                  "—" : formatDateForDisplay(task.dueDate),
+      timeDisplay: isAdviserTask && (!task.dueTime || task.dueTime === "--") ? 
+                   "—" : formatTime12Hour(task.dueTime),
+      revision: task.revision || "No Revision",
+      status: task.status || "To Do",
+      methodology: task.methodology || "—",
+      phase: task.phase || "Planning",
+      _colId: (() => {
+        const status = task.status;
+        if (status === "To Do") return "todo";
+        if (status === "In Progress") return "inprogress";
+        if (status === "To Review") return "review";
+        if (status === "Completed") return "done";
+        if (status === "Missed") return "missed";
+        return "todo";
+      })(),
+      type: task.type || null,
+      dueAtMs: task.dueAtMs || null,
+      taskManager: task.taskManager || "Project Manager",
+      originalTask: task,
+      assignees: task.assignees || [],
+      comment: task.comment || "",
+      fileUrl: task.fileUrl || []
+    };
+    
+    console.log("Passing task data to Project Manager Task Board:", taskData);
+    
+    navigate('/projectmanager/tasks-board', {
+      state: { 
+        selectedTask: taskData,
+        activeTab: isAdviserTask ? "adviser" : "team"
+      } 
+    });
+  };
 
   // FIXED: Rows computation - properly handle team tasks
   const rowsTeam = useMemo(() => {
@@ -2414,16 +2500,19 @@ const FinalDefense = ({ onBack }) => {
                                 disabled={hasMaxRevisions || !isFinalDefenseAllowed}
                                 title={hasMaxRevisions ? "Maximum revisions reached - create new task" : !isFinalDefenseAllowed ? "Final defense not available yet" : ""}
                               >
+                                <Edit className="w-4 h-4 inline-block mr-2" />
                                 Edit
                               </button>
                             )}
+                            {/* Add View button */}
                             <button
                               className="w-full text-left px-3 py-2 hover:bg-neutral-50"
                               onClick={() => {
                                 setMenuOpenId(null);
-                                openEditTask(row);
+                                handleViewTask(row.existingTask);
                               }}
                             >
+                              <Eye className="w-4 h-4 inline-block mr-2" />
                               View
                             </button>
                             {/* UPDATED: Show Delete for both team and adviser tasks */}
@@ -2432,6 +2521,7 @@ const FinalDefense = ({ onBack }) => {
                               onClick={() => handleDeleteClick(row.taskId)}
                               disabled={!isFinalDefenseAllowed}
                             >
+                              <Trash2 className="w-4 h-4 inline-block mr-2" />
                               Delete
                             </button>
                           </div>

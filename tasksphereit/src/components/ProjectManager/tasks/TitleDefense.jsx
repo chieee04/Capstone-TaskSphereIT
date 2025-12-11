@@ -14,7 +14,10 @@ import {
   ChevronDown,
   Edit,
   Users,
+  Eye,
+  FileText,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 /* ===== Firebase ===== */
 import { auth, db } from "../../../config/firebase";
@@ -721,23 +724,22 @@ function CreateTaskDialog({
         comment: comment || "",
         updatedAt: serverTimestamp(),
         isTeamTask: isTeamTask,
-        ...(existingTask
-          ? {}
-          : {
-              createdAt: serverTimestamp(),
-              createdBy: pm
-                ? { uid: pm.uid, name: pm.name, role: "Project Manager" }
-                : null,
-            }),
       };
 
+      // Add createdBy only for new tasks
       if (existingTask?.id) {
         await updateDoc(
           doc(db, TASKS_COLLECTION, existingTask.id),
           basePayload
         );
       } else {
-        await addDoc(collection(db, TASKS_COLLECTION), basePayload);
+        await addDoc(collection(db, TASKS_COLLECTION), {
+          ...basePayload,
+          createdAt: serverTimestamp(),
+          createdBy: pm
+            ? { uid: pm.uid, name: pm.name, role: "Project Manager" }
+            : null,
+        });
       }
 
       onSaved?.();
@@ -1266,6 +1268,9 @@ const TitleDefense = ({ onBack }) => {
 
   const today = localTodayStr();
 
+  // Navigation hook - ADDED for navigation to Project Manager Task Board
+  const navigate = useNavigate();
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -1709,6 +1714,89 @@ const TitleDefense = ({ onBack }) => {
     }
   };
 
+  // Handle View button click - Navigate to Project Manager Task Board with COMPLETE task data
+  const handleViewTask = (task) => {
+    if (!task) return;
+    
+    // Format dates for display
+    const formatDateForDisplay = (dateValue) => {
+      if (!dateValue) return "—";
+      try {
+        // Handle Firestore Timestamp
+        const date = typeof dateValue.toDate === 'function' ? 
+          dateValue.toDate() : 
+          new Date(dateValue);
+        
+        if (Number.isNaN(date.getTime())) return "—";
+        
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch {
+        return "—";
+      }
+    };
+    
+    // Get assignee name
+    let assigneeName = "Team";
+    if (task.assignees && task.assignees.length > 0) {
+      if (task.assignees[0].uid === 'team') {
+        assigneeName = "Team";
+      } else {
+        assigneeName = task.assignees[0].name || "—";
+      }
+    }
+    
+    // Create task data object for Project Manager Task Board
+    const taskData = {
+      id: task.id,
+      _collection: TASKS_COLLECTION, // This should be "titleDefenseTasks"
+      teamId: task.team?.id || task.teamId || "",
+      teamName: task.team?.name || "No Team",
+      assignedTo: assigneeName,
+      task: task.task || "Task",
+      subtask: task.subtasks || "—",
+      elements: task.elements || "—",
+      createdDisplay: formatDateForDisplay(task.createdAt),
+      dueDisplay: formatDateForDisplay(task.dueDate),
+      timeDisplay: formatTime12Hour(task.dueTime),
+      revision: task.revision || "No Revision",
+      status: task.status || "To Do",
+      methodology: "—", // Title Defense doesn't have methodology
+      phase: task.phase || "Planning",
+      // Add _colId based on status for proper column mapping
+      _colId: (() => {
+        const status = task.status;
+        if (status === "To Do") return "todo";
+        if (status === "In Progress") return "inprogress";
+        if (status === "To Review") return "review";
+        if (status === "Completed") return "done";
+        if (status === "Missed") return "missed";
+        return "todo";
+      })(),
+      // Add other fields
+      type: task.type || null,
+      dueAtMs: task.dueAtMs || null,
+      taskManager: "Project Manager",
+      // Store the complete original task data
+      originalTask: task,
+      assignees: task.assignees || [],
+      comment: task.comment || "",
+      fileUrl: task.fileUrl || []
+    };
+    
+    console.log("Passing task data to Project Manager Task Board:", taskData);
+    
+    // FIXED: Correct navigation path - changed to match route in App.jsx
+    navigate('/projectmanager/tasks-board', {
+      state: { 
+        selectedTask: taskData
+      } 
+    });
+  };
+
   return (
     <div className="p-4 md:p-6">
       {/* Toolbar — Create Task and Search on left, Filter on right */}
@@ -1972,15 +2060,18 @@ const TitleDefense = ({ onBack }) => {
                                 disabled={isMaxRevisionReached}
                                 title={isMaxRevisionReached ? "Maximum revisions reached. Create a new task." : ""}
                               >
+                                <Edit className="w-4 h-4 inline-block mr-2" />
                                 Edit
                               </button>
+                              {/* ADDED: View button inside kebab menu */}
                               <button
                                 className="w-full text-left px-3 py-2 hover:bg-neutral-50"
                                 onClick={() => {
                                   setMenuOpenId(null);
-                                  setCreateModal({ seedMember: null, existingTask: row.existingTask });
+                                  handleViewTask(row.existingTask);
                                 }}
                               >
+                                <Eye className="w-4 h-4 inline-block mr-2" />
                                 View
                               </button>
                               <button
