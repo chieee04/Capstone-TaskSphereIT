@@ -2,11 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Users, CalendarDays, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { db } from "../../config/firebase";
 import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
-
-
+ 
+ 
 const MAROON = "#6A0F14";
-
-
+ 
+ 
 // brand/status colors
 const COLORS = {
   todo: "#D9A81E",
@@ -15,24 +15,24 @@ const COLORS = {
   completed: "#8E5BAA",
   missed: "#3B0304",
 };
-
-
+ 
+ 
 const statusColor = (s) =>
   s === "To Review" ? COLORS.toreview :
     s === "In Progress" ? COLORS.inprogress :
       s === "To Do" ? COLORS.todo :
         s === "Completed" ? COLORS.completed :
           COLORS.missed;
-
-
+ 
+ 
 // ---- Carousel Components (copied from Project Manager) ----
 const Card = ({ children, className = "" }) => (
   <div className={`bg-white border border-neutral-200 rounded-2xl shadow ${className}`}>
     {children}
   </div>
 );
-
-
+ 
+ 
 const UpcomingCard = ({ item }) => (
   <div className="w-full min-w-[200px] max-w-[280px] flex-shrink-0">
     <div className="rounded-xl shadow-sm border border-neutral-200 bg-white overflow-hidden">
@@ -51,14 +51,14 @@ const UpcomingCard = ({ item }) => (
     </div>
   </div>
 );
-
-
+ 
+ 
 // Carousel Component for Upcoming Tasks
 const UpcomingTasksCarousel = ({ tasks }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(3);
-
-
+ 
+ 
   useEffect(() => {
     const updateVisibleCount = () => {
       if (window.innerWidth < 640) {
@@ -69,27 +69,27 @@ const UpcomingTasksCarousel = ({ tasks }) => {
         setVisibleCount(3);
       }
     };
-
-
+ 
+ 
     updateVisibleCount();
     window.addEventListener('resize', updateVisibleCount);
     return () => window.removeEventListener('resize', updateVisibleCount);
   }, []);
-
-
+ 
+ 
   const maxIndex = Math.max(0, tasks.length - visibleCount);
-
-
+ 
+ 
   const nextSlide = () => {
     setCurrentIndex(current => Math.min(current + 1, maxIndex));
   };
-
-
+ 
+ 
   const prevSlide = () => {
     setCurrentIndex(current => Math.max(current - 1, 0));
   };
-
-
+ 
+ 
   if (tasks.length === 0) {
     return (
       <div className="text-center py-8 text-neutral-500">
@@ -97,8 +97,8 @@ const UpcomingTasksCarousel = ({ tasks }) => {
       </div>
     );
   }
-
-
+ 
+ 
   return (
     <div className="relative">
       <div className="flex items-center gap-2 sm:gap-4">
@@ -111,8 +111,8 @@ const UpcomingTasksCarousel = ({ tasks }) => {
             <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         )}
-
-
+ 
+ 
         <div className="flex-1 overflow-hidden">
           <div
             className="flex gap-3 sm:gap-4 transition-transform duration-300 ease-in-out"
@@ -127,8 +127,8 @@ const UpcomingTasksCarousel = ({ tasks }) => {
             ))}
           </div>
         </div>
-
-
+ 
+ 
         {tasks.length > visibleCount && currentIndex < maxIndex && (
           <button
             onClick={nextSlide}
@@ -139,8 +139,8 @@ const UpcomingTasksCarousel = ({ tasks }) => {
           </button>
         )}
       </div>
-
-
+ 
+ 
       {tasks.length > visibleCount && (
         <div className="flex justify-center mt-4 gap-1">
           {Array.from({ length: maxIndex + 1 }).map((_, index) => (
@@ -160,40 +160,40 @@ const UpcomingTasksCarousel = ({ tasks }) => {
     </div>
   );
 };
-
-
+ 
+ 
 // ---- Calendar Components (copied from Project Manager) ----
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-
+ 
+ 
 function ymd(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
 }
-
-
+ 
+ 
 function buildMonthMatrix(year, monthIndex) {
   const first = new Date(year, monthIndex, 1);
   const startDay = first.getDay();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
-
+ 
+ 
   const cells = [];
   for (let i = 0; i < startDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, monthIndex, d));
   while (cells.length % 7 !== 0) cells.push(null);
   while (cells.length < 42) cells.push(null);
-
-
+ 
+ 
   const matrix = [];
   for (let i = 0; i < cells.length; i += 7) matrix.push(cells.slice(i, i + 7));
   return matrix;
 }
-
-
+ 
+ 
 function buildWeekMatrix(startDate) {
   const matrix = [];
   const weekDays = [];
@@ -206,19 +206,19 @@ function buildWeekMatrix(startDate) {
   matrix.push(weekDays);
   return matrix;
 }
-
-
+ 
+ 
 function buildDayMatrix(day) {
   return [[day]];
 }
-
-
+ 
+ 
 const CalendarCard = ({ adviserUid }) => {
   const [view, setView] = useState("month");
   const [cursor, setCursor] = useState(new Date());
   const [events, setEvents] = useState([]);
-
-
+ 
+ 
   const getTitle = () => {
     if (view === "month") {
       return `${monthNames[cursor.getMonth()]} ${cursor.getFullYear()}`;
@@ -227,7 +227,7 @@ const CalendarCard = ({ adviserUid }) => {
       startOfWeek.setDate(cursor.getDate() - cursor.getDay());
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
-     
+ 
       if (startOfWeek.getMonth() === endOfWeek.getMonth()) {
         return `${monthNames[startOfWeek.getMonth()]} ${startOfWeek.getDate()} - ${endOfWeek.getDate()}, ${startOfWeek.getFullYear()}`;
       } else {
@@ -237,8 +237,8 @@ const CalendarCard = ({ adviserUid }) => {
       return `${monthNames[cursor.getMonth()]} ${cursor.getDate()}, ${cursor.getFullYear()}`;
     }
   };
-
-
+ 
+ 
   const matrix = useMemo(() => {
     if (view === "month") {
       return buildMonthMatrix(cursor.getFullYear(), cursor.getMonth());
@@ -250,8 +250,8 @@ const CalendarCard = ({ adviserUid }) => {
       return buildDayMatrix(cursor);
     }
   }, [cursor, view]);
-
-
+ 
+ 
   const goPrev = () => {
     const newDate = new Date(cursor);
     if (view === "month") {
@@ -263,8 +263,8 @@ const CalendarCard = ({ adviserUid }) => {
     }
     setCursor(newDate);
   };
-
-
+ 
+ 
   const goNext = () => {
     const newDate = new Date(cursor);
     if (view === "month") {
@@ -276,13 +276,13 @@ const CalendarCard = ({ adviserUid }) => {
     }
     setCursor(newDate);
   };
-
-
+ 
+ 
   const goToday = () => {
     setCursor(new Date());
   };
-
-
+ 
+ 
   const getDateRange = () => {
     if (view === "month") {
       const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
@@ -298,8 +298,8 @@ const CalendarCard = ({ adviserUid }) => {
       return { start: ymd(cursor), end: ymd(cursor) };
     }
   };
-
-
+ 
+ 
   // Helper function to fetch by team with proper error handling
   const fetchByTeam = async (collName, teamIds, teamNameMap) => {
     if (teamIds.length === 0) return [];
@@ -322,29 +322,29 @@ const CalendarCard = ({ adviserUid }) => {
     }
     return arr;
   };
-
-
+ 
+ 
   useEffect(() => {
     let alive = true;
     if (!adviserUid) return;
-   
+ 
     (async () => {
       try {
         // Find teams advised by this adviser
         const teamsRef = collection(db, "teams");
         let teamsSnap = await getDocs(query(teamsRef, where("adviser.uid", "==", adviserUid)));
         let adviserTeams = teamsSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
-       
+ 
         const teamIds = adviserTeams.map((t) => t.id);
         const teamNameMap = new Map(adviserTeams.map((t) => [t.id, t.name || "Unnamed Team"]));
-
-
+ 
+ 
         if (teamIds.length === 0) {
           if (alive) setEvents([]);
           return;
         }
-
-
+ 
+ 
         // Load ALL tasks for adviser's teams - INCLUDING ADVISER TASKS
         const taskDefs = [
           "titleDefenseTasks",
@@ -352,10 +352,10 @@ const CalendarCard = ({ adviserUid }) => {
           "finalDefenseTasks",
           "finalRedefenseTasks"
         ];
-
-
+ 
+ 
         const allTasks = [];
-       
+ 
         // Load tasks from all collections
         for (const collName of taskDefs) {
           try {
@@ -381,8 +381,8 @@ const CalendarCard = ({ adviserUid }) => {
             console.error(`Error loading tasks from ${collName}:`, error);
           }
         }
-
-
+ 
+ 
         // Load schedules relevant to adviser teams
         const [titleSched, manusSched, oralSched, finalSched, redefSched] = await Promise.all([
           fetchByTeam("titleDefenseSchedules", teamIds, teamNameMap),
@@ -391,13 +391,13 @@ const CalendarCard = ({ adviserUid }) => {
           fetchByTeam("finalDefenseSchedules", teamIds, teamNameMap),
           fetchByTeam("finalRedefenseSchedules", teamIds, teamNameMap),
         ]);
-
-
+ 
+ 
         // Get current view's date range
         const { start, end } = getDateRange();
         const between = (d) => d >= start && d <= end;
-
-
+ 
+ 
         // Task events - EXCLUDE completed tasks and only show active statuses
         const taskEvents = allTasks
           .filter((t) => {
@@ -416,8 +416,8 @@ const CalendarCard = ({ adviserUid }) => {
               color: statusColor(t.status)
             };
           });
-
-
+ 
+ 
         // Schedule events - keep all schedule events
         const schedEvents = [
           ...titleSched.map((s) => ({
@@ -451,8 +451,8 @@ const CalendarCard = ({ adviserUid }) => {
             color: MAROON
           })),
         ].filter((e) => e.date && between(e.date));
-
-
+ 
+ 
         const merged = [...taskEvents, ...schedEvents];
         if (alive) setEvents(merged);
       } catch (e) {
@@ -462,8 +462,8 @@ const CalendarCard = ({ adviserUid }) => {
     })();
     return () => { alive = false; };
   }, [adviserUid, cursor, view]);
-
-
+ 
+ 
   const getCellHeight = () => {
     if (view === "month") {
       return "min-h-[60px] md:min-h-[80px] lg:min-h-[92px]";
@@ -473,8 +473,8 @@ const CalendarCard = ({ adviserUid }) => {
       return "min-h-[300px] md:min-h-[400px] lg:min-h-[552px]";
     }
   };
-
-
+ 
+ 
   const renderGrid = () => {
     const { start } = getDateRange();
     const isCurrentMonth = (date) => {
@@ -483,8 +483,8 @@ const CalendarCard = ({ adviserUid }) => {
       }
       return true;
     };
-
-
+ 
+ 
     return (
       <div className={`grid ${view === "day" ? "grid-cols-1" : view === "week" ? "grid-cols-7" : "grid-cols-7"} gap-px bg-neutral-200 rounded-lg overflow-hidden`}>
         {matrix.flat().map((cell, i) => {
@@ -492,8 +492,8 @@ const CalendarCard = ({ adviserUid }) => {
           const cellYmd = cell ? ymd(cell) : "";
           const dayEvents = events.filter((e) => e.date === cellYmd);
           const isToday = cellYmd === ymd(new Date());
-
-
+ 
+ 
           return (
             <div
               key={`cell-${i}`}
@@ -508,8 +508,8 @@ const CalendarCard = ({ adviserUid }) => {
                   {cell.getDate()}
                 </div>
               )}
-
-
+ 
+ 
               <div className={`absolute left-1 right-1 ${
                 view === "month" ? "top-6 md:top-8 lg:top-10 max-h-8 md:max-h-10 lg:max-h-12" : "top-8 md:top-10 lg:top-12 max-h-[280px] md:max-h-[380px] lg:max-h-[500px]"
               } space-y-1 overflow-y-auto`}>
@@ -530,8 +530,8 @@ const CalendarCard = ({ adviserUid }) => {
       </div>
     );
   };
-
-
+ 
+ 
   return (
     <Card className="w-full">
       <div className="px-3 md:px-5 pt-3 md:pt-4 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
@@ -552,8 +552,8 @@ const CalendarCard = ({ adviserUid }) => {
           >
             <ChevronRight className="w-4 h-4" />
           </button>
-
-
+ 
+ 
           <button
             className="ml-2 h-8 px-3 rounded-md text-sm font-medium text-white"
             style={{ background: MAROON }}
@@ -562,13 +562,13 @@ const CalendarCard = ({ adviserUid }) => {
             Today
           </button>
         </div>
-
-
+ 
+ 
         <div className="text-sm font-semibold order-1 sm:order-2" style={{ color: MAROON }}>
           {getTitle()}
         </div>
-
-
+ 
+ 
         <div className="flex items-center gap-1 sm:gap-2 order-3">
           {["Month", "Week", "Day"].map((label) => {
             const key = label.toLowerCase();
@@ -591,11 +591,11 @@ const CalendarCard = ({ adviserUid }) => {
           })}
         </div>
       </div>
-
-
+ 
+ 
       <div className="px-3 md:px-5 mt-2 md:mt-3 h-[2px] w-full" style={{ background: MAROON }} />
-
-
+ 
+ 
       <div className="p-3 md:p-5">
         {view !== "day" && (
           <div className="grid grid-cols-7 text-xs text-neutral-500 mb-1 md:mb-2">
@@ -604,15 +604,15 @@ const CalendarCard = ({ adviserUid }) => {
             ))}
           </div>
         )}
-
-
+ 
+ 
         {renderGrid()}
       </div>
     </Card>
   );
 };
-
-
+ 
+ 
 // ---- Progress Components ----
 function Donut({ percent }) {
   const size = 120;
@@ -620,8 +620,8 @@ function Donut({ percent }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const dash = (percent / 100) * c;
-
-
+ 
+ 
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#EEE" strokeWidth={stroke} />
@@ -649,8 +649,8 @@ function Donut({ percent }) {
     </svg>
   );
 }
-
-
+ 
+ 
 function ProgressCard({ team, percent }) {
   return (
     <div className="w-[260px] bg-white border border-neutral-200 rounded-xl shadow-sm">
@@ -664,8 +664,8 @@ function ProgressCard({ team, percent }) {
     </div>
   );
 }
-
-
+ 
+ 
 /* ----------------------------- HELPERS ----------------------------- */
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const fmtDate = (yyyy_mm_dd) => {
@@ -692,18 +692,18 @@ const computeDueMs = (dueDate, dueTime) => {
   }
   return new Date(y, (m || 1) - 1, d || 1, H, M).getTime();
 };
-
-
+ 
+ 
 /* --------------------------------- MAIN --------------------------------- */
 const AdviserDashboard = () => {
   const uid = typeof window !== "undefined" ? localStorage.getItem("uid") : null;
-
-
+ 
+ 
   const [upcoming, setUpcoming] = useState([]);
   const [progress, setProgress] = useState([]);
   const [recent, setRecent] = useState([]);
-
-
+ 
+ 
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -714,23 +714,23 @@ const AdviserDashboard = () => {
         tSnap.forEach((d) => teams.push({ id: d.id, name: d.data()?.name || "" }));
         const teamIds = teams.map((t) => t.id);
         const teamNameMap = new Map(teams.map((t) => [t.id, t.name]));
-
-
-        // 2) Load tasks across phases (ALL tasks for adviser's teams, including adviser tasks)
+ 
+ 
+        // 2) Load tasks across phases (ONLY ADVISER TASKS for adviser's teams)
         const cols = ["titleDefenseTasks","oralDefenseTasks","finalDefenseTasks","finalRedefenseTasks"];
         const snaps = await Promise.all(cols.map((c) => getDocs(collection(db, c))));
         const all = [];
         snaps.forEach((s) => s.forEach((dx) => all.push({ id: dx.id, ...(dx.data() || {}) })));
-
-
-        // Filter for adviser's teams - FIXED: Only include tasks for the adviser's handling teams
+ 
+ 
+        // Filter for adviser's teams - ONLY ADVISER TASKS (taskManager === "Adviser")
         const filtered = all.filter((t) => {
           const taskTeamId = t.teamId || (t.team && t.team.id);
-          return teamIds.includes(taskTeamId);
+          return teamIds.includes(taskTeamId) && t.taskManager === "Adviser";
         });
-
-
-        // 2a) Upcoming (by due date/time, not completed) - FIXED: Only show tasks for adviser's teams
+ 
+ 
+        // 2a) Upcoming (by due date/time, not completed) - ONLY ADVISER TASKS
         const upTasks = filtered
           .filter((t) => {
             const status = String(t.status || "").toLowerCase();
@@ -753,14 +753,14 @@ const AdviserDashboard = () => {
           })
           .sort((a, b) => (a._due || 0) - (b._due || 0))
           .slice(0, 12);
-
-
-        // 2b) Progress per team (completed / total of ALL tasks for the team)
+ 
+ 
+        // 2b) Progress per team (completed / total of ONLY ADVISER TASKS for the team)
         const byTeam = new Map();
         for (const t of filtered) {
           const teamId = t.teamId || (t.team && t.team.id);
           if (!teamId) continue;
-         
+ 
           const curr = byTeam.get(teamId) || { total: 0, done: 0 };
           curr.total += 1;
           if (String(t.status || "").toLowerCase() === "completed") curr.done += 1;
@@ -770,8 +770,8 @@ const AdviserDashboard = () => {
           team: teamNameMap.get(teamId) || "Team",
           percent: v.total ? Math.round((v.done / v.total) * 100) : 0,
         })).sort((a,b)=> a.team.localeCompare(b.team)).slice(0, 8);
-
-
+ 
+ 
         // 2c) Load schedules for adviser teams and merge into upcoming
         const schedCols = [
           { key: "Title Defense", coll: "titleDefenseSchedules" },
@@ -798,8 +798,8 @@ const AdviserDashboard = () => {
             });
           });
         });
-
-
+ 
+ 
         const verdictColor = (v) => {
           const s = String(v || "").toLowerCase();
           if (s === "passed") return COLORS.completed;
@@ -807,8 +807,8 @@ const AdviserDashboard = () => {
           if (s === "pending") return COLORS.todo;
           return COLORS.missed;
         };
-
-
+ 
+ 
         const upSched = scheduleRows
           .filter((r) => r.date)
           .map((r) => ({
@@ -821,9 +821,9 @@ const AdviserDashboard = () => {
           }))
           .sort((a, b) => (a._due || 0) - (b._due || 0))
           .slice(0, 12);
-
-
-        // 2d) Recent tasks created (by createdAt desc)
+ 
+ 
+        // 2d) Recent tasks created (by createdAt desc) - ONLY ADVISER TASKS
         const rec = filtered
           .map((t) => ({
             createdMs: t.createdAt?.toMillis?.() || (t.createdAt?.seconds ? t.createdAt.seconds * 1000 : 0),
@@ -838,8 +838,8 @@ const AdviserDashboard = () => {
           .sort((a,b)=> (b.createdMs||0) - (a.createdMs||0))
           .slice(0, 10)
           .map((r, i) => ({ no: i+1, ...r }));
-
-
+ 
+ 
         if (!alive) return;
         // merge tasks and schedules for upcoming, then slice top 12
         const mergedUpcoming = [...upTasks, ...upSched].sort((a,b)=> (a._due||0)-(b._due||0)).slice(0, 12);
@@ -856,8 +856,8 @@ const AdviserDashboard = () => {
     })();
     return () => { alive = false; };
   }, [uid]);
-
-
+ 
+ 
   return (
     <div className="space-y-6 md:space-y-8 w-full">
       {/* UPCOMING TASKS with Carousel */}
@@ -867,8 +867,8 @@ const AdviserDashboard = () => {
         </h3>
         <UpcomingTasksCarousel tasks={upcoming} />
       </section>
-
-
+ 
+ 
       {/* TEAMS' PROGRESS */}
       <section className="space-y-3 w-full">
         <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
@@ -884,8 +884,8 @@ const AdviserDashboard = () => {
           )}
         </div>
       </section>
-
-
+ 
+ 
       {/* CALENDAR with Enhanced UI */}
       <section className="space-y-3 w-full">
         <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
@@ -896,8 +896,6 @@ const AdviserDashboard = () => {
     </div>
   );
 };
-
-
+ 
+ 
 export default AdviserDashboard;
-
-

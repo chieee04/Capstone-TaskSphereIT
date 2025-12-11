@@ -1,4 +1,3 @@
-// src/components/CapstoneInstructor/InstructorProfile.jsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { db } from "../../config/firebase";
 import { supabase } from "../../config/supabase";
@@ -347,10 +346,6 @@ export default function ProjectManagerProfile() {
             </div>
           ) : !error && userDoc ? (
             <div className="space-y-3">
-              <Field label="Full Name">
-                <span className="font-medium">{fullName}</span>
-              </Field>
-
               {/* Names are always read-only now */}
               <Field label="First Name">{userDoc.firstName || "-"}</Field>
 
@@ -378,7 +373,6 @@ export default function ProjectManagerProfile() {
                 )}
               </Field>
 
-              {userDoc.role && <Field label="Role">{userDoc.role}</Field>}
               {userDoc.idNo && <Field label="ID No">{userDoc.idNo}</Field>}
             </div>
           ) : null}

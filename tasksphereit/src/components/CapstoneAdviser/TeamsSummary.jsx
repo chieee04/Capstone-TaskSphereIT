@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Users, ChevronRight, FileText, ClipboardList } from "lucide-react";
-
-
+import { useNavigate } from "react-router-dom";
+ 
 /* ===== Firebase ===== */
 import { auth, db } from "../../config/firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -13,15 +13,12 @@ import {
   query,
   where,
 } from "firebase/firestore";
-
-
+ 
 /* ---------------------- CONSTANTS & HELPERS ---------------------- */
 const MAROON = "#3B0304";
-
-
+ 
 const emptyProgress = { todo: 0, inprogress: 0, review: 0, done: 0, missed: 0 };
-
-
+ 
 /** Builds stroke segments for an SVG donut */
 function useDonutSegments(progress) {
   return useMemo(() => {
@@ -32,8 +29,7 @@ function useDonutSegments(progress) {
       { key: "done", label: "Completed", color: "#AA60C8" },
       { key: "missed", label: "Missed", color: MAROON },
     ];
-
-
+ 
     const total = parts.reduce((s, p) => s + (progress[p.key] || 0), 0) || 1;
     let acc = 0;
     const segments = parts.map((p) => {
@@ -49,21 +45,17 @@ function useDonutSegments(progress) {
       acc += frac;
       return seg;
     });
-
-
+ 
     // Calculate completion percentage: (Completed tasks / Total tasks) * 100
     const completion = total > 0 ? Math.round((progress.done / total) * 100) : 0;
-
-
+ 
     return { segments, completion, total, parts };
   }, [progress]);
 }
-
-
+ 
 /* ----------------------- formatting helpers ----------------------- */
 const isTs = (v) => v && typeof v === "object" && typeof v.toDate === "function";
-
-
+ 
 const fmtDate = (v) => {
   try {
     const d = isTs(v) ? v.toDate() : new Date(v);
@@ -73,8 +65,7 @@ const fmtDate = (v) => {
     return "—";
   }
 };
-
-
+ 
 const fmtTime = (v) => {
   if (!v) return "—";
   // accept "08:00", Date/Timestamp, or ISO
@@ -87,15 +78,13 @@ const fmtTime = (v) => {
     return "—";
   }
 };
-
-
+ 
 const fmtTimeRange = (start, end) => {
   if (!start && !end) return "—";
   if (start && end) return `${fmtTime(start)}–${fmtTime(end)}`;
   return fmtTime(start || end);
 };
-
-
+ 
 /* ----------------------- UPDATED CARD COMPONENTS ----------------------- */
 function TeamCard({ team, onClick }) {
   return (
@@ -105,34 +94,30 @@ function TeamCard({ team, onClick }) {
       className="cursor-pointer relative w-[160px] h-[220px] rounded-2xl bg-white border-2 border-gray-200 shadow-lg transition-all duration-300
                  hover:shadow-2xl hover:-translate-y-2 hover:border-gray-300 active:scale-[0.98] text-neutral-800 overflow-hidden group"
     >
-      {/* REMOVED: Left side accent bar */}
-     
       {/* Bottom accent - reduced height */}
       <div
         className="absolute bottom-0 left-0 right-0 h-6 rounded-b-2xl transition-all duration-300 group-hover:h-8"
         style={{ background: MAROON }}
       />
-     
+ 
       {/* Central content area */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 pb-10">
         {/* Team icon - centered in main white area with animation */}
         <div className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
           <Users className="w-16 h-16 mb-4 text-black" />
         </div>
-       
+ 
         {/* Team name text - positioned below icon */}
         <span className="text-base font-bold text-center leading-tight text-black transition-all duration-300 group-hover:scale-105">
           {team.name || "—"}
         </span>
-
-
+ 
         {/* System title - smaller text below team name */}
         <span className="text-xs text-neutral-600 text-center mt-2 transition-all duration-300 group-hover:scale-105">
           {team.systemTitle || "--"}
         </span>
       </div>
-
-
+ 
       {/* Subtle glow effect on hover */}
       <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
            style={{
@@ -142,24 +127,21 @@ function TeamCard({ team, onClick }) {
     </button>
   );
 }
-
-
+ 
 function Donut({ progress }) {
   const { segments, completion } = useDonutSegments(progress || emptyProgress);
   const size = 220;
   const stroke = 22;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-
-
+ 
   return (
     <div className="bg-white border border-neutral-200 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.08)] overflow-hidden">
       <div className="p-5">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold">Tasks Progress</p>
         </div>
-
-
+ 
         <div className="flex gap-6 items-center">
           <svg
             viewBox={`0 0 ${size} ${size}`}
@@ -196,8 +178,7 @@ function Donut({ progress }) {
               </div>
             </foreignObject>
           </svg>
-
-
+ 
           {/* UPDATED: Perfectly circular bullets for legend */}
           <div className="grid gap-3 text-sm">
             {segments.map((s) => (
@@ -218,8 +199,7 @@ function Donut({ progress }) {
     </div>
   );
 }
-
-
+ 
 function MembersTable({ members }) {
   return (
     <div className="bg-white border border-neutral-200 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.08)] overflow-hidden">
@@ -256,8 +236,7 @@ function MembersTable({ members }) {
     </div>
   );
 }
-
-
+ 
 /* ----------------------- Status Badge Component ----------------------- */
 const StatusBadge = ({ value }) => {
   const STATUS_COLORS = {
@@ -281,8 +260,7 @@ const StatusBadge = ({ value }) => {
     </span>
   );
 };
-
-
+ 
 const RevisionPill = ({ value }) =>
   value && value !== "null" && value !== "No Revision" ? (
     <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[12px] font-medium bg-neutral-100 border border-neutral-200">
@@ -291,10 +269,9 @@ const RevisionPill = ({ value }) =>
   ) : (
     <span>--</span>
   );
-
-
+ 
 /* ----------------------- UPDATED Tasks Table ----------------------- */
-function TasksTable({ tasks, loading }) {
+function TasksTable({ tasks, loading, onViewTask }) {
   return (
     <div className="bg-white border border-neutral-200 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.08)] overflow-hidden">
       <div className="p-5">
@@ -351,7 +328,10 @@ function TasksTable({ tasks, loading }) {
                     </td>
                     <td className="py-2 pr-3">{t.projectPhase || "—"}</td>
                     <td className="py-2 pr-3">
-                      <button className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded border border-neutral-300 hover:bg-neutral-100 transition-colors">
+                      <button 
+                        className="cursor-pointer inline-flex items-center gap-1 px-2 py-1 rounded border border-neutral-300 hover:bg-neutral-100 transition-colors"
+                        onClick={() => onViewTask(t)}
+                      >
                         <FileText className="w-4 h-4" /> View
                       </button>
                     </td>
@@ -365,57 +345,49 @@ function TasksTable({ tasks, loading }) {
     </div>
   );
 }
-
-
+ 
 /* ----------------------- MAIN COMPONENT ----------------------- */
 const TeamsSummary = () => {
+  const navigate = useNavigate();
   const [uid, setUid] = useState("");
   const [loading, setLoading] = useState(true);
   const [teams, setTeams] = useState([]);
   const [selected, setSelected] = useState(null);
-
-
+ 
   const [tasksLoading, setTasksLoading] = useState(false);
   const [teamTasks, setTeamTasks] = useState([]);
   const [teamProgress, setTeamProgress] = useState({});
-
-
+ 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUid(u?.uid || ""));
     return () => unsub();
   }, []);
-
-
+ 
   // load advised teams + their titles and teamName (preferred)
   useEffect(() => {
     if (!uid) return;
     let alive = true;
-
-
+ 
     (async () => {
       setLoading(true);
       try {
         const teamsRef = collection(db, "teams");
-
-
+ 
         // primary: adviser.uid
         let snap = await getDocs(query(teamsRef, where("adviser.uid", "==", uid)));
         let docs = snap.docs;
-
-
+ 
         // fallback: adviserUid
         if (docs.length === 0) {
           const alt = await getDocs(query(teamsRef, where("adviserUid", "==", uid)));
           docs = alt.docs;
         }
-
-
+ 
         const enriched = await Promise.all(
           docs.map(async (d) => {
             const data = d.data() || {};
             const teamId = d.id;
-
-
+ 
             // Prefer teamName from teamSystemTitles/{teamId}, else teams/{id}.name
             let systemTitle = "";
             let nameFromTitleDoc = "";
@@ -427,19 +399,16 @@ const TeamsSummary = () => {
                 nameFromTitleDoc = (tdata.teamName || "").trim();
               }
             } catch {/* ignore */}
-
-
+ 
             const finalName = nameFromTitleDoc || (data.name || "Unnamed Team");
-
-
+ 
             const memberNames = Array.isArray(data.memberNames) ? data.memberNames : [];
             const managerName = data?.manager?.fullName || data?.managerName || "";
             const members = [
               ...(managerName ? [{ name: managerName, role: "Project Manager" }] : []),
               ...memberNames.map((n) => ({ name: n, role: "Member" })),
             ];
-
-
+ 
             return {
               id: teamId,
               name: finalName,
@@ -449,8 +418,7 @@ const TeamsSummary = () => {
             };
           })
         );
-
-
+ 
         if (alive) setTeams(enriched);
       } catch (e) {
         console.error("Failed to load advised teams:", e);
@@ -459,33 +427,29 @@ const TeamsSummary = () => {
         if (alive) setLoading(false);
       }
     })();
-
-
+ 
     return () => {
       alive = false;
     };
   }, [uid]);
-
-
+ 
   /* ---------- UPDATED: Only fetch adviser tasks ---------- */
   useEffect(() => {
     if (!selected) {
       setTeamTasks([]);
       return;
     }
-   
+ 
     const team = teams.find((t) => t.id === selected);
     if (!team) {
       setTeamTasks([]);
       return;
     }
-
-
+ 
     let alive = true;
-
-
+ 
     const isTs = (v) => v && typeof v === "object" && typeof v.toDate === "function";
-   
+ 
     const fmtDateDetailed = (v) => {
       try {
         const d = isTs(v) ? v.toDate() : new Date(v);
@@ -494,8 +458,7 @@ const TeamsSummary = () => {
           : d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
       } catch { return "—"; }
     };
-
-
+ 
     const fmtTime12Hour = (time24) => {
       if (!time24 || time24 === "null") return "--";
       try {
@@ -511,8 +474,7 @@ const TeamsSummary = () => {
         return "--";
       }
     };
-
-
+ 
     const normalize = (d, col) => {
       // Determine task type based on collection and data
       let taskType = "—";
@@ -526,15 +488,17 @@ const TeamsSummary = () => {
         if (col === "finalDefenseTasks") taskType = "Final Defense";
         if (col === "finalRedefenseTasks") taskType = "Final Re-Defense";
       }
-
-
+ 
       // Format dates properly
       const dateCreated = d.createdAt ? fmtDateDetailed(d.createdAt) : "—";
       const dueDate = d.dueDate ? fmtDateDetailed(d.dueDate) : "—";
       const dateCompleted = d.completedAt ? fmtDateDetailed(d.completedAt) : "—";
-     
+ 
+      // IMPORTANT: Store ALL fields from the original data
       return {
         _id: d.id || d.uid,
+        taskId: d.id, // Store the Firestore document ID
+        sourceColl: col, // Store the collection name
         taskType,
         task: d.task || (col === "oralDefenseTasks" ? "Oral Defense" : "Final Defense"),
         subtask: d.subtask || d.subTask || "—",
@@ -546,13 +510,27 @@ const TeamsSummary = () => {
         revisions: d.revision || d.revisions || d.revisionCount || "No Revision",
         status: d.status || "To Do",
         projectPhase: d.phase || d.projectPhase || "—",
+        methodology: d.methodology || "—", // Store methodology
+        // Store COMPLETE original data with ALL fields for navigation
+        originalData: {
+          id: d.id,
+          ...d,
+          // Ensure all required fields exist
+          methodology: d.methodology || "—",
+          phase: d.phase || d.projectPhase || "—",
+          task: d.task || (col === "oralDefenseTasks" ? "Oral Defense" : "Final Defense"),
+          subtask: d.subtask || d.subTask || "—",
+          elements: d.elements || d.element || "—",
+          dueTime: d.dueTime || d.time || "—",
+          revision: d.revision || d.revisions || d.revisionCount || "No Revision",
+          status: d.status || "To Do",
+        },
       };
     };
-
-
+ 
     const fetchCol = async (colName) => {
       const out = [];
-     
+ 
       try {
         // ONLY QUERY ADVISER TASKS - filter by taskManager = "Adviser"
         const q = query(
@@ -560,23 +538,20 @@ const TeamsSummary = () => {
           where("team.id", "==", team.id),
           where("taskManager", "==", "Adviser")
         );
-       
+ 
         const snapshot = await getDocs(q);
         snapshot.forEach((snap) => {
           const d = { id: snap.id, ...snap.data() };
           out.push(normalize(d, colName));
         });
-
-
+ 
       } catch (e) {
         console.error(`Failed to fetch adviser tasks from ${colName}:`, e);
       }
-
-
+ 
       return out;
     };
-
-
+ 
     (async () => {
       setTasksLoading(true);
       try {
@@ -584,10 +559,10 @@ const TeamsSummary = () => {
         const oral = await fetchCol("oralDefenseTasks");
         const final = await fetchCol("finalDefenseTasks");
         const redefense = await fetchCol("finalRedefenseTasks");
-       
+ 
         // Combine all ADVISER tasks
         const allTasks = [...oral, ...final, ...redefense];
-       
+ 
         // Calculate progress based on ACTUAL ADVISER TASKS only
         const progress = {
           todo: allTasks.filter(task => task.status === "To Do").length,
@@ -596,22 +571,20 @@ const TeamsSummary = () => {
           done: allTasks.filter(task => task.status === "Completed").length,
           missed: allTasks.filter(task => task.status === "Missed").length,
         };
-
-
+ 
         // Store progress separately to avoid re-rendering teams state
         setTeamProgress(prev => ({
           ...prev,
           [team.id]: progress
         }));
-       
+ 
         // Sort by due date or creation date
         allTasks.sort((a, b) => {
           const dateA = new Date(a.dueDate || a.dateCreated || 0);
           const dateB = new Date(b.dueDate || b.dateCreated || 0);
           return dateA - dateB;
         });
-
-
+ 
         if (alive) {
           setTeamTasks(allTasks);
         }
@@ -624,20 +597,109 @@ const TeamsSummary = () => {
         }
       }
     })();
-
-
+ 
     return () => { alive = false; };
   }, [selected, teams]);
-
-
+ 
+  // Handle view task button click - UPDATED: Pass COMPLETE task data to TeamsBoard
+  const handleViewTask = (task) => {
+    const team = teams.find((t) => t.id === selected);
+ 
+    if (!team) return;
+ 
+    // Format dates for display - match TeamsBoard format
+    const formatDateForDisplay = (dateValue) => {
+      if (!dateValue) return "—";
+      try {
+        // Handle Firestore Timestamp
+        const date = typeof dateValue.toDate === 'function' ? 
+          dateValue.toDate() : 
+          new Date(dateValue);
+ 
+        if (Number.isNaN(date.getTime())) return "—";
+ 
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch {
+        return "—";
+      }
+    };
+ 
+    // Format time for display - match TeamsBoard format
+    const formatTimeForDisplay = (timeString) => {
+      if (!timeString || timeString === "—") return "—";
+      try {
+        if (typeof timeString === "string") {
+          const [hours, minutes] = timeString.split(':');
+          const hour = parseInt(hours, 10);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const hour12 = hour % 12 || 12;
+          return `${hour12}:${minutes} ${ampm}`;
+        }
+        return timeString;
+      } catch (e) {
+        return timeString;
+      }
+    };
+ 
+    // Get the COMPLETE original task data from Firestore
+    const originalTask = task.originalData || {};
+ 
+    // Create COMPLETE task data object that matches TeamsBoard's expected structure
+    const taskData = {
+      id: task.taskId, // Firestore document ID
+      _collection: task.sourceColl, // Firestore collection name
+      teamId: team.id,
+      teamName: team.name,
+      task: originalTask.task || task.task || "Task",
+      subtask: originalTask.subtask || originalTask.subTask || task.subtask || "—",
+      elements: originalTask.elements || originalTask.element || task.elements || "—",
+      createdDisplay: formatDateForDisplay(originalTask.createdAt || task.dateCreated),
+      dueDisplay: formatDateForDisplay(originalTask.dueDate || task.dueDate),
+      timeDisplay: formatTimeForDisplay(originalTask.dueTime || originalTask.time || task.time),
+      revision: originalTask.revision || originalTask.revisions || originalTask.revisionCount || task.revisions || "No Revision",
+      status: originalTask.status || task.status || "To Do",
+      methodology: originalTask.methodology || "—", // Get from original data
+      phase: originalTask.phase || originalTask.projectPhase || task.projectPhase || "—",
+      // Add _colId based on status for proper column mapping
+      _colId: (() => {
+        const status = originalTask.status || task.status;
+        if (status === "To Do") return "todo";
+        if (status === "In Progress") return "inprogress";
+        if (status === "To Review") return "review";
+        if (status === "Completed") return "done";
+        if (status === "Missed") return "missed";
+        return "todo";
+      })(),
+      // Add other fields that TeamsBoard might expect
+      chapter: originalTask.chapter || null,
+      type: originalTask.type || task.taskType || null,
+      dueAtMs: originalTask.dueAtMs || null,
+      taskManager: originalTask.taskManager || "Adviser",
+      assignedTo: team.name,
+      // Store the complete original task data
+      originalTask: originalTask
+    };
+ 
+    console.log("Passing task data to TeamsBoard:", taskData);
+ 
+    // Navigate to the TeamsBoard with the COMPLETE task data
+    navigate("/adviser/teams-board", { 
+      state: { 
+        selectedTask: taskData
+      } 
+    });
+  };
+ 
   // Get current team's progress (ADVISER TASKS ONLY)
   const currentTeamProgress = selected ? teamProgress[selected] : emptyProgress;
-
-
+ 
   if (selected) {
     const team = teams.find((t) => t.id === selected);
-
-
+ 
     return (
       <div className="space-y-4">
         {/* UPDATED HEADER - Consistent with tasks view */}
@@ -650,22 +712,19 @@ const TeamsSummary = () => {
           </div>
           <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
         </div>
-
-
+ 
         {/* Top row: members + donut */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <MembersTable members={team?.members || []} />
           <Donut progress={currentTeamProgress || emptyProgress} />
         </div>
-
-
+ 
         {/* Tasks from ALL task collections for this team - ADVISER TASKS ONLY */}
-        <TasksTable tasks={teamTasks} loading={tasksLoading} />
+        <TasksTable tasks={teamTasks} loading={tasksLoading} onViewTask={handleViewTask} />
       </div>
     );
   }
-
-
+ 
   // CARD GRID VIEW
   return (
     <div className="space-y-4">
@@ -677,8 +736,7 @@ const TeamsSummary = () => {
         </div>
         <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
-
-
+ 
       {loading ? (
         <div className="text-sm text-neutral-500 px-1 py-6">Loading teams…</div>
       ) : teams.length === 0 ? (
@@ -700,5 +758,3 @@ const TeamsSummary = () => {
   );
 };
 export default TeamsSummary;
-
-

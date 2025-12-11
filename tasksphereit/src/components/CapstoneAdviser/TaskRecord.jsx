@@ -13,8 +13,9 @@ import {
   Users,
   ChevronDown,
 } from "lucide-react";
-
-
+import { useNavigate } from "react-router-dom"; // Added import
+ 
+ 
 /* ===== Firebase ===== */
 import { auth, db } from "../../config/firebase";
 import {
@@ -28,44 +29,77 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-
-
+ 
+ 
 const MAROON = "#3B0304";
-
-
+ 
+ 
 /* --------------------------- Categories --------------------------- */
 const CATEGORIES = [
   { id: "oral", title: "Oral Defense", coll: "oralDefenseTasks" },
   { id: "final", title: "Final Defense", coll: "finalDefenseTasks" },
   { id: "finalRedefense", title: "Final Re-defense", coll: "finalRedefenseTasks" },
 ];
-
-
+ 
+ 
 /* ---------- Status Colors ---------- */
 const STATUS_COLORS = {
   "Completed": "#AA60C8", // Purple
   "Missed": "#3B0304", // Maroon
 };
-
-
+ 
+ 
 /* ---------- Helper Functions ---------- */
 const formatTime12Hour = (time24) => {
   if (!time24 || time24 === "null") return "--";
-  const [hours, minutes] = time24.split(':');
-  const hour = parseInt(hours, 10);
-  const period = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes} ${period}`;
+  try {
+    const [hours, minutes] = time24.split(':');
+    const hour = parseInt(hours, 10);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${period}`;
+  } catch {
+    return "--";
+  }
 };
-
-
+ 
+// New function for TeamsBoard time formatting
+const formatTimeForDisplay = (timeString) => {
+  if (!timeString || timeString === "null" || timeString === "--" || timeString === "—") return "—";
+ 
+  try {
+    // Check if it's already in 12-hour format (contains AM/PM)
+    if (typeof timeString === "string" && (timeString.includes('AM') || timeString.includes('PM'))) {
+      return timeString;
+    }
+ 
+    // If it's in 24-hour format, convert it
+    if (typeof timeString === "string") {
+      const [hours, minutes] = timeString.split(':');
+      if (!hours || !minutes) return "—";
+ 
+      const hour = parseInt(hours, 10);
+      if (isNaN(hour)) return "—";
+ 
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      return `${hour12}:${minutes} ${ampm}`;
+    }
+    return "—";
+  } catch (e) {
+    console.error("Error formatting time:", e);
+    return "—";
+  }
+};
+ 
+ 
 const formatDateMonthDayYear = (dateStr) => {
   if (!dateStr || dateStr === "null") return "--";
  
   try {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return "--";
-   
+ 
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
   } catch (error) {
@@ -73,15 +107,15 @@ const formatDateMonthDayYear = (dateStr) => {
     return "--";
   }
 };
-
-
+ 
+ 
 const localTodayStr = () => {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
   return local.toISOString().split("T")[0];
 };
-
-
+ 
+ 
 const ordinal = (n) => {
   if (n % 100 >= 11 && n % 100 <= 13) return `${n}th`;
   const r = n % 10;
@@ -90,14 +124,14 @@ const ordinal = (n) => {
   if (r === 3) return `${n}rd`;
   return `${n}th`;
 };
-
-
+ 
+ 
 const parseRevCount = (rev) => {
   const m = String(rev || "").match(/^(\d+)(st|nd|rd|th)\s+Revision$/i);
   return m ? parseInt(m[1], 10) : 0;
 };
-
-
+ 
+ 
 const nextRevision = (prev = "No Revision") => {
   const count = parseRevCount(prev);
   if (count >= 10) {
@@ -105,8 +139,8 @@ const nextRevision = (prev = "No Revision") => {
   }
   return `${ordinal(count + 1)} Revision`;
 };
-
-
+ 
+ 
 /* --------------------------- Confirmation Dialog --------------------------- */
 function ConfirmationDialog({
   open,
@@ -118,8 +152,8 @@ function ConfirmationDialog({
   cancelText = "No",
 }) {
   if (!open) return null;
-
-
+ 
+ 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overscroll-contain">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
@@ -153,8 +187,8 @@ function ConfirmationDialog({
     </div>
   );
 }
-
-
+ 
+ 
 /* --------------------------- Edit Due Date & Time Dialog --------------------------- */
 function EditDueDateTimeDialog({
   open,
@@ -168,12 +202,12 @@ function EditDueDateTimeDialog({
   const [time, setTime] = useState("");
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-
-
+ 
+ 
   const today = localTodayStr();
   const currentRevisionCount = parseRevCount(existingTask?.revision);
-
-
+ 
+ 
   useEffect(() => {
     if (!open) return;
     if (existingTask) {
@@ -185,27 +219,27 @@ function EditDueDateTimeDialog({
     }
     setHasChanges(false);
   }, [open, existingTask]);
-
-
+ 
+ 
   const canSave = due && time && currentRevisionCount < 10;
-
-
+ 
+ 
   const save = async () => {
     if (!canSave) return;
     setSaving(true);
     try {
       const dueAtMs = due && time ? new Date(`${due}T${time}:00`).getTime() : null;
       const currentRevision = existingTask?.revision || "No Revision";
-     
+ 
       // Check if date/time actually changed
       const dueChanged = existingTask && due !== (existingTask.dueDate || "");
       const timeChanged = existingTask && time !== (existingTask.dueTime || "");
       const dateTimeChanged = dueChanged || timeChanged;
-
-
+ 
+ 
       let newRevision = currentRevision;
-
-
+ 
+ 
       // Apply revision logic for completed tasks
       if (dateTimeChanged) {
         const nextRev = nextRevision(currentRevision);
@@ -217,8 +251,8 @@ function EditDueDateTimeDialog({
           return;
         }
       }
-
-
+ 
+ 
       // UPDATED: Reset status to "To Do" and remove completion timestamp
       // This will automatically move the task from Task Record back to main Tasks
       const payload = {
@@ -230,19 +264,19 @@ function EditDueDateTimeDialog({
         completedAt: null, // Remove completion timestamp
         updatedAt: serverTimestamp(),
       };
-
-
+ 
+ 
       if (existingTask?.id) {
         const cat = CATEGORIES.find((c) => c.id === category);
         const collectionName = cat ? cat.coll : "oralDefenseTasks";
-       
+ 
         await updateDoc(
           doc(db, collectionName, existingTask.id),
           payload
         );
       }
-
-
+ 
+ 
       // UPDATED: Call onSaved immediately after successful update
       onSaved?.(existingTask.id);
       onClose();
@@ -253,8 +287,8 @@ function EditDueDateTimeDialog({
       setSaving(false);
     }
   };
-
-
+ 
+ 
   const handleClose = () => {
     if (hasChanges) {
       setShowExitConfirm(true);
@@ -262,22 +296,22 @@ function EditDueDateTimeDialog({
       onClose();
     }
   };
-
-
+ 
+ 
   const handleConfirmExit = () => {
     setShowExitConfirm(false);
     onClose();
   };
-
-
+ 
+ 
   const handleInputChange = () => {
     setHasChanges(true);
   };
-
-
+ 
+ 
   if (!open) return null;
-
-
+ 
+ 
   return (
     <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overscroll-contain">
@@ -300,8 +334,8 @@ function EditDueDateTimeDialog({
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-
+ 
+ 
             <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-5 space-y-5">
               <div className="space-y-3">
                 <h3 className="font-medium text-neutral-700">Task Information</h3>
@@ -323,8 +357,8 @@ function EditDueDateTimeDialog({
                   </div>
                 </div>
               </div>
-
-
+ 
+ 
               {currentRevisionCount >= 10 ? (
                 <div className="bg-red-50 rounded-lg p-4 border border-red-200">
                   <div className="flex items-start gap-3">
@@ -375,8 +409,8 @@ function EditDueDateTimeDialog({
                       />
                     </div>
                   </div>
-
-
+ 
+ 
                   <div className="bg-blue-50 rounded-lg p-3">
                     <p className="text-sm text-blue-700">
                       <strong>Note:</strong> Extending the due date/time will increase the revision number and reset the status to "To Do". This task will be moved back to active tasks immediately and will disappear from this completed tasks list.
@@ -385,8 +419,8 @@ function EditDueDateTimeDialog({
                 </>
               )}
             </div>
-
-
+ 
+ 
             <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-neutral-200">
               <button
                 type="button"
@@ -402,8 +436,8 @@ function EditDueDateTimeDialog({
           </div>
         </div>
       </div>
-
-
+ 
+ 
       <ConfirmationDialog
         open={showExitConfirm}
         onClose={() => setShowExitConfirm(false)}
@@ -416,8 +450,8 @@ function EditDueDateTimeDialog({
     </>
   );
 }
-
-
+ 
+ 
 /* --------------------------- Status Badge Component --------------------------- */
 const StatusBadge = ({ value }) => {
   const backgroundColor = STATUS_COLORS[value] || "#AA60C8";
@@ -433,8 +467,8 @@ const StatusBadge = ({ value }) => {
     </span>
   );
 };
-
-
+ 
+ 
 const RevisionPill = ({ value }) =>
   value && value !== "null" && value !== "No Revision" ? (
     <span className="inline-flex items-center px-2.5 py-0.5 rounded text-[12px] font-medium bg-neutral-100 border border-neutral-200">
@@ -443,8 +477,8 @@ const RevisionPill = ({ value }) =>
   ) : (
     <span>--</span>
   );
-
-
+ 
+ 
 /* --------------------------- Updated Card Component --------------------------- */
 function TaskCard({ label, icon: Icon, onClick }) {
   return (
@@ -459,27 +493,27 @@ function TaskCard({ label, icon: Icon, onClick }) {
         className="absolute left-0 top-0 w-6 h-full rounded-l-2xl transition-all duration-300 group-hover:w-8"
         style={{ background: MAROON }}
       />
-     
+ 
       {/* Bottom accent - reduced height */}
       <div
         className="absolute bottom-0 left-0 right-0 h-6 rounded-b-2xl transition-all duration-300 group-hover:h-8"
         style={{ background: MAROON }}
       />
-     
+ 
       {/* Central content area */}
       <div className="absolute inset-0 flex flex-col items-center justify-center pl-6 pr-4 pt-2 pb-10">
         {/* Task icon - centered in main white area with animation */}
         <div className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
           <Icon className="w-16 h-16 mb-4 text-black" />
         </div>
-       
+ 
         {/* Title text - positioned below icon */}
         <span className="text-base font-bold text-center leading-tight text-black transition-all duration-300 group-hover:scale-105">
           {label}
         </span>
       </div>
-
-
+ 
+ 
       {/* Subtle glow effect on hover */}
       <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
            style={{
@@ -489,8 +523,8 @@ function TaskCard({ label, icon: Icon, onClick }) {
     </button>
   );
 }
-
-
+ 
+ 
 /* --------------------------- MAIN COMPONENT --------------------------- */
 const TaskRecord = () => {
   const [view, setView] = useState("grid");
@@ -503,8 +537,11 @@ const TaskRecord = () => {
   const [editDueDateTime, setEditDueDateTime] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null);
-
-
+ 
+  // Navigation
+  const navigate = useNavigate();
+ 
+ 
   /* -------- Firebase State -------- */
   const [adviserUid, setAdviserUid] = useState("");
   const [teams, setTeams] = useState([]);
@@ -512,20 +549,20 @@ const TaskRecord = () => {
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [err, setErr] = useState("");
-
-
+ 
+ 
   // Optimistic updates state
   const [removedTasks, setRemovedTasks] = useState(new Set());
-
-
+ 
+ 
   /* -------- derived -------- */
   const collectionName = category ?
     CATEGORIES.find(cat => cat.id === category)?.coll : null;
-
-
+ 
+ 
   /* ================== Firebase Effects ================== */
-
-
+ 
+ 
   // 0) Track signed-in user reliably
   useEffect(() => {
     const stop = onAuthStateChanged(auth, (u) => {
@@ -534,8 +571,8 @@ const TaskRecord = () => {
     });
     return () => stop();
   }, []);
-
-
+ 
+ 
   // 1) Load teams owned by this adviser
   useEffect(() => {
     if (!adviserUid) return;
@@ -559,8 +596,8 @@ const TaskRecord = () => {
     );
     return () => unsub();
   }, [adviserUid]);
-
-
+ 
+ 
   // 2) Load COMPLETED tasks for current category
   useEffect(() => {
     if (!collectionName || !category) {
@@ -568,35 +605,35 @@ const TaskRecord = () => {
       return;
     }
     if (loadingTeams) return;
-
-
+ 
+ 
     const teamIdsToFetch = teams.map((t) => t.id);
-
-
+ 
+ 
     if (teamIdsToFetch.length === 0) {
       setRecords([]);
       return;
     }
-
-
+ 
+ 
     const chunk = (arr, n = 10) =>
       Array.from({ length: Math.ceil(arr.length / n) }, (_, i) =>
         arr.slice(i * n, i * n + n)
       );
-
-
+ 
+ 
     setLoadingTasks(true);
     setErr("");
-
-
+ 
+ 
     const colRef = collection(db, collectionName);
     const idChunks = chunk(teamIdsToFetch, 10);
-
-
+ 
+ 
     const unsubs = [];
     const merged = new Map();
-
-
+ 
+ 
     const rebuildRows = () => {
       let rows = Array.from(merged.values()).map((x, idx) => {
         const createdAtMillis =
@@ -605,19 +642,19 @@ const TaskRecord = () => {
             : (typeof x.updatedAt?.toMillis === "function"
                 ? x.updatedAt.toMillis()
                 : 0);
-
-
+ 
+ 
         const completedAtMillis =
           typeof x.completedAt?.toMillis === "function"
             ? x.completedAt.toMillis()
             : null;
-
-
+ 
+ 
         const teamObj = x.team || {};
         const tId = teamObj.id || x.teamId || "no-team";
         const foundTeam = teams.find((t) => t.id === tId) || null;
-
-
+ 
+ 
         return {
           id: x.__id,
           no: idx + 1,
@@ -651,22 +688,22 @@ const TaskRecord = () => {
           completedAtMillis,
         };
       });
-
-
+ 
+ 
       // Filter out tasks that have been optimistically removed
       rows = rows.filter(row => !removedTasks.has(row.id));
-
-
+ 
+ 
       // Sort by completion date, most recent first
       rows.sort((a, b) => (b.completedAtMillis || 0) - (a.completedAtMillis || 0));
       rows = rows.map((r, i) => ({ ...r, no: i + 1 }));
-
-
+ 
+ 
       setRecords(rows);
       setLoadingTasks(false);
     };
-
-
+ 
+ 
     const handleSnap = (snap) => {
       snap.docs.forEach((d) => {
         const x = d.data();
@@ -677,8 +714,8 @@ const TaskRecord = () => {
       });
       rebuildRows();
     };
-
-
+ 
+ 
     const handleErr = (e) => {
       console.error("Tasks snapshot error:", e);
       if (e.code === "permission-denied") {
@@ -688,8 +725,8 @@ const TaskRecord = () => {
       }
       setLoadingTasks(false);
     };
-
-
+ 
+ 
     idChunks.forEach((ids) => {
       // Query for team.id field
       unsubs.push(
@@ -718,20 +755,20 @@ const TaskRecord = () => {
         )
       );
     });
-
-
+ 
+ 
     return () => {
       unsubs.forEach((u) => u && u());
     };
   }, [collectionName, teams, loadingTeams, category, removedTasks]);
-
-
+ 
+ 
   /* ================== Helpers ================== */
-
-
+ 
+ 
   const filteredRecords = useMemo(() => {
     let result = records;
-   
+ 
     const s = searchQuery.trim().toLowerCase();
     if (s) {
       result = result.filter(
@@ -752,21 +789,96 @@ const TaskRecord = () => {
           (r.completed || "").toLowerCase().includes(s)
       );
     }
-
-
+ 
+ 
     // Apply team filter
     if (filterTeam !== "All Teams") {
       result = result.filter(r => r.teamName === filterTeam);
     }
-
-
+ 
+ 
     return result;
   }, [records, searchQuery, filterTeam]);
-
-
+ 
+ 
   /* ================== Action Handlers ================== */
-
-
+ 
+ 
+  // Handle View button click - Navigate to TeamsBoard with COMPLETE task data
+  const handleViewTask = (row) => {
+    if (!row) return;
+ 
+    // Format dates for display - match TeamsBoard format
+    const formatDateForDisplay = (dateValue) => {
+      if (!dateValue) return "—";
+      try {
+        // Handle Firestore Timestamp
+        const date = typeof dateValue.toDate === 'function' ? 
+          dateValue.toDate() : 
+          new Date(dateValue);
+ 
+        if (Number.isNaN(date.getTime())) return "—";
+ 
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      } catch {
+        return "—";
+      }
+    };
+ 
+    // Get the COMPLETE original task data from Firestore
+    const originalTask = row.__raw || {};
+ 
+    // Create COMPLETE task data object that matches TeamsBoard's expected structure
+    const taskData = {
+      id: row.id, // Firestore document ID
+      _collection: row.collectionName, // Firestore collection name
+      teamId: row.teamId,
+      teamName: row.teamName,
+      task: originalTask.task || row.task || "Task",
+      subtask: originalTask.subtask || originalTask.subTask || row.subtasks || "—",
+      elements: originalTask.elements || originalTask.element || row.elements || "—",
+      createdDisplay: formatDateForDisplay(originalTask.createdAt || row.created),
+      dueDisplay: formatDateForDisplay(originalTask.dueDate || row.dueDate),
+      timeDisplay: formatTimeForDisplay(originalTask.dueTime || row.dueTime || row.time),
+      revision: originalTask.revision || originalTask.revisions || originalTask.revisionCount || row.revision || "No Revision",
+      status: originalTask.status || row.status || "Completed",
+      methodology: originalTask.methodology || row.methodology || "—",
+      phase: originalTask.phase || originalTask.projectPhase || row.phase || "—",
+      // Add _colId based on status for proper column mapping
+      _colId: (() => {
+        const status = originalTask.status || row.status;
+        if (status === "To Do") return "todo";
+        if (status === "In Progress") return "inprogress";
+        if (status === "To Review") return "review";
+        if (status === "Completed") return "done";
+        if (status === "Missed") return "missed";
+        return "done"; // Default to done for completed tasks
+      })(),
+      // Add other fields that TeamsBoard might expect
+      chapter: originalTask.chapter || null,
+      type: originalTask.type || row.type || null,
+      dueAtMs: originalTask.dueAtMs || null,
+      taskManager: originalTask.taskManager || "Adviser",
+      assignedTo: row.teamName,
+      // Store the complete original task data
+      originalTask: originalTask
+    };
+ 
+    console.log("Passing task data to TeamsBoard from TaskRecord:", taskData);
+ 
+    // Navigate to the TeamsBoard with the COMPLETE task data
+    navigate("/adviser/teams-board", { 
+      state: { 
+        selectedTask: taskData
+      } 
+    });
+  };
+ 
+ 
   const deleteRow = async (id) => {
     setDeletingId(id);
     try {
@@ -780,21 +892,21 @@ const TaskRecord = () => {
       setTaskToDelete(null);
     }
   };
-
-
+ 
+ 
   const handleDeleteClick = (taskId) => {
     setTaskToDelete(taskId);
     setShowDeleteConfirm(true);
     setMenuOpenId(null);
   };
-
-
+ 
+ 
   const confirmDelete = async () => {
     if (!taskToDelete) return;
     await deleteRow(taskToDelete);
   };
-
-
+ 
+ 
   // Optimistic removal when task is edited
   const handleEditSaved = (taskId) => {
     if (taskId) {
@@ -803,8 +915,8 @@ const TaskRecord = () => {
     }
     setEditDueDateTime(null);
   };
-
-
+ 
+ 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -815,19 +927,19 @@ const TaskRecord = () => {
         setMenuOpenId(null);
       }
     };
-
-
+ 
+ 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isTeamFilterOpen, menuOpenId]);
-
-
+ 
+ 
   /* -------- render -------- */
   if (view === "detail" && category) {
     const current = CATEGORIES.find((c) => c.id === category);
-   
+ 
     return (
       <div className="space-y-4">
         {/* HEADER - Consistent with AdviserTasks */}
@@ -840,8 +952,8 @@ const TaskRecord = () => {
           </div>
           <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
         </div>
-
-
+ 
+ 
         {/* UPDATED TOOLBAR - Search on left, Team Filter on right */}
         <div className="flex items-center justify-between">
           {/* Search on the left */}
@@ -856,8 +968,8 @@ const TaskRecord = () => {
               />
             </div>
           </div>
-
-
+ 
+ 
           {/* Team Filter on the right */}
           <div className="relative filter-container">
             <button
@@ -868,8 +980,8 @@ const TaskRecord = () => {
               <span className="text-sm">Team: {filterTeam}</span>
               <ChevronDown className="w-4 h-4" />
             </button>
-
-
+ 
+ 
             {isTeamFilterOpen && (
               <div className="absolute right-0 top-10 z-50 w-48 bg-white border border-neutral-200 rounded-lg shadow-lg py-1 max-h-60 overflow-y-auto">
                 <button
@@ -901,8 +1013,8 @@ const TaskRecord = () => {
             )}
           </div>
         </div>
-
-
+ 
+ 
         {/* TABLE */}
         <div className="w-full rounded-xl border border-neutral-200 bg-white overflow-x-auto">
           <table className="w-full text-sm min-w-[1400px]">
@@ -947,13 +1059,13 @@ const TaskRecord = () => {
                   </td>
                 </tr>
               )}
-
-
+ 
+ 
               {!loadingTeams && !loadingTasks && !err && filteredRecords.map((row, idx) => {
                 const rowNo = idx + 1;
                 const currentRevisionCount = parseRevCount(row.revision);
                 const hasMaxRevisions = currentRevisionCount >= 10;
-               
+ 
                 return (
                   <tr key={row.id} className="border-t border-neutral-200 hover:bg-neutral-50 transition-colors">
                     <td className="p-3 align-top whitespace-nowrap">{rowNo}</td>
@@ -1022,7 +1134,7 @@ const TaskRecord = () => {
                                 className="w-full text-left px-3 py-2 hover:bg-neutral-50 flex items-center gap-2"
                                 onClick={() => {
                                   setMenuOpenId(null);
-                                  alert(`View details for: ${row.task}`);
+                                  handleViewTask(row);
                                 }}
                               >
                                 <Eye className="w-4 h-4" />
@@ -1046,8 +1158,8 @@ const TaskRecord = () => {
             </tbody>
           </table>
         </div>
-
-
+ 
+ 
         {/* Edit Due Date & Time Modal */}
         <EditDueDateTimeDialog
           open={!!editDueDateTime}
@@ -1056,8 +1168,8 @@ const TaskRecord = () => {
           existingTask={editDueDateTime}
           category={category}
         />
-
-
+ 
+ 
         {/* Delete Confirmation Modal */}
         <ConfirmationDialog
           open={showDeleteConfirm}
@@ -1074,8 +1186,8 @@ const TaskRecord = () => {
       </div>
     );
   }
-
-
+ 
+ 
   // GRID VIEW
   return (
     <div className="space-y-4">
@@ -1087,8 +1199,8 @@ const TaskRecord = () => {
         </div>
         <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
-
-
+ 
+ 
       <div className="flex flex-wrap gap-6">
         {CATEGORIES.map((c) => (
           <TaskCard
@@ -1105,8 +1217,6 @@ const TaskRecord = () => {
     </div>
   );
 };
-
-
+ 
+ 
 export default TaskRecord;
-
-

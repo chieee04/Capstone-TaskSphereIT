@@ -1,8 +1,7 @@
 ﻿// src/components/ProjectManager/ProjectManagerDashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Users, CalendarDays, Clock, ChevronLeft, ChevronRight } from "lucide-react";
-
-
+ 
 /* === Firebase === */
 import { auth, db } from "../../config/firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -15,44 +14,35 @@ import {
   where,
   onSnapshot,
 } from "firebase/firestore";
-
-
+ 
 /* === Modal that saves to teamSystemTitles === */
 import ProjectManagerTitleModal from "./ProjectManagerTitleModal";
-
-
+ 
 const MAROON = "#6A0F14";
-
-
+ 
 // brand/status colors
 const COLORS = {
-  todo: "#D9A81E",
-  inprogress: "#7C9C3B",
-  toreview: "#6FA8DC",
-  completed: "#8E5BAA",
-  missed: "#3B0304", // Updated missed color
+  todo: "#FABC3F",
+  inprogress: "#809D3C",
+  toreview: "#578FCA",
+  completed: "#AA60C8",
+  missed: "#3B0304",
 };
-
-
-// No static sample datasets; everything loads from Firestore.
-
-
+ 
 const statusColor = (s) =>
   s === "To Review" ? COLORS.toreview :
     s === "In Progress" ? COLORS.inprogress :
       s === "To Do" ? COLORS.todo :
         s === "Completed" ? COLORS.completed :
           COLORS.missed;
-
-
+ 
 // ---- small UI bits -------------------------------------------------------
 const Card = ({ children, className = "" }) => (
   <div className={`bg-white border border-neutral-200 rounded-2xl shadow ${className}`}>
     {children}
   </div>
 );
-
-
+ 
 const UpcomingCard = ({ item }) => (
   <div className="w-full min-w-[200px] max-w-[280px] flex-shrink-0">
     <div className="rounded-xl shadow-sm border border-neutral-200 bg-white overflow-hidden">
@@ -71,14 +61,12 @@ const UpcomingCard = ({ item }) => (
     </div>
   </div>
 );
-
-
+ 
 // Carousel Component for Upcoming Tasks
 const UpcomingTasksCarousel = ({ tasks }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(3);
-
-
+ 
   // Update visible count based on screen size
   useEffect(() => {
     const updateVisibleCount = () => {
@@ -90,27 +78,22 @@ const UpcomingTasksCarousel = ({ tasks }) => {
         setVisibleCount(3);
       }
     };
-
-
+ 
     updateVisibleCount();
     window.addEventListener('resize', updateVisibleCount);
     return () => window.removeEventListener('resize', updateVisibleCount);
   }, []);
-
-
+ 
   const maxIndex = Math.max(0, tasks.length - visibleCount);
-
-
+ 
   const nextSlide = () => {
     setCurrentIndex(current => Math.min(current + 1, maxIndex));
   };
-
-
+ 
   const prevSlide = () => {
     setCurrentIndex(current => Math.max(current - 1, 0));
   };
-
-
+ 
   if (tasks.length === 0) {
     return (
       <div className="text-center py-8 text-neutral-500">
@@ -118,8 +101,7 @@ const UpcomingTasksCarousel = ({ tasks }) => {
       </div>
     );
   }
-
-
+ 
   return (
     <div className="relative">
       {/* Carousel Container */}
@@ -134,8 +116,7 @@ const UpcomingTasksCarousel = ({ tasks }) => {
             <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         )}
-
-
+ 
         {/* Cards Container */}
         <div className="flex-1 overflow-hidden">
           <div
@@ -151,8 +132,7 @@ const UpcomingTasksCarousel = ({ tasks }) => {
             ))}
           </div>
         </div>
-
-
+ 
         {/* Next Button */}
         {tasks.length > visibleCount && currentIndex < maxIndex && (
           <button
@@ -164,8 +144,7 @@ const UpcomingTasksCarousel = ({ tasks }) => {
           </button>
         )}
       </div>
-
-
+ 
       {/* Dots Indicator */}
       {tasks.length > visibleCount && (
         <div className="flex justify-center mt-4 gap-1">
@@ -186,8 +165,7 @@ const UpcomingTasksCarousel = ({ tasks }) => {
     </div>
   );
 };
-
-
+ 
 const Legend = ({ items }) => (
   <ul className="space-y-3 w-full">
     {items.map((it) => (
@@ -201,16 +179,14 @@ const Legend = ({ items }) => (
     ))}
   </ul>
 );
-
-
+ 
 // ---- charts --------------------------------------------------------------
 const WeeklyBarChart = ({ data, maxY = 20, width = 560, height = 360 }) => {
   const padding = { top: 16, right: 16, bottom: 30, left: 40 };
   const innerW = width - padding.left - padding.right;
   const innerH = height - padding.top - padding.bottom;
   const barW = innerW / data.length - 22;
-
-
+ 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[360px]">
       {/* axes */}
@@ -246,15 +222,13 @@ const WeeklyBarChart = ({ data, maxY = 20, width = 560, height = 360 }) => {
     </svg>
   );
 };
-
-
+ 
 const Donut = ({ segments, centerText = "40%" }) => {
   const size = 360;
   const stroke = 48;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-
-
+ 
   const arcs = useMemo(() => {
     let acc = 0;
     return segments.map((s) => {
@@ -264,8 +238,7 @@ const Donut = ({ segments, centerText = "40%" }) => {
       return { ...s, arc, offset };
     });
   }, [segments, c]);
-
-
+ 
   return (
     <div className="relative grid place-items-center">
       <svg viewBox={`0 0 ${size} ${size}`} width="100%" height="auto" className="max-w-[280px] md:max-w-[320px] lg:max-w-[360px]">
@@ -292,42 +265,36 @@ const Donut = ({ segments, centerText = "40%" }) => {
     </div>
   );
 };
-
-
+ 
 /* ============================
    Enhanced Calendar with functional navigation and consistent height
    ============================ */
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-
+ 
 function ymd(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
 }
-
-
+ 
 function buildMonthMatrix(year, monthIndex) {
   const first = new Date(year, monthIndex, 1);
   const startDay = first.getDay();
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
-
+ 
   const cells = [];
   for (let i = 0; i < startDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, monthIndex, d));
   while (cells.length % 7 !== 0) cells.push(null);
   while (cells.length < 42) cells.push(null);
-
-
+ 
   const matrix = [];
   for (let i = 0; i < cells.length; i += 7) matrix.push(cells.slice(i, i + 7));
   return matrix;
 }
-
-
+ 
 function buildWeekMatrix(startDate) {
   const matrix = [];
   const weekDays = [];
@@ -340,19 +307,16 @@ function buildWeekMatrix(startDate) {
   matrix.push(weekDays);
   return matrix;
 }
-
-
+ 
 function buildDayMatrix(day) {
   return [[day]];
 }
-
-
+ 
 const CalendarCard = ({ pmUid }) => {
   const [view, setView] = useState("month");
   const [cursor, setCursor] = useState(new Date());
   const [events, setEvents] = useState([]);
-
-
+ 
   // Get the appropriate title based on current view
   const getTitle = () => {
     if (view === "month") {
@@ -362,7 +326,7 @@ const CalendarCard = ({ pmUid }) => {
       startOfWeek.setDate(cursor.getDate() - cursor.getDay());
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 6);
-     
+ 
       if (startOfWeek.getMonth() === endOfWeek.getMonth()) {
         return `${monthNames[startOfWeek.getMonth()]} ${startOfWeek.getDate()} - ${endOfWeek.getDate()}, ${startOfWeek.getFullYear()}`;
       } else {
@@ -373,8 +337,7 @@ const CalendarCard = ({ pmUid }) => {
       return `${monthNames[cursor.getMonth()]} ${cursor.getDate()}, ${cursor.getFullYear()}`;
     }
   };
-
-
+ 
   // Build the appropriate matrix based on current view
   const matrix = useMemo(() => {
     if (view === "month") {
@@ -388,8 +351,7 @@ const CalendarCard = ({ pmUid }) => {
       return buildDayMatrix(cursor);
     }
   }, [cursor, view]);
-
-
+ 
   // Navigation functions
   const goPrev = () => {
     const newDate = new Date(cursor);
@@ -403,8 +365,7 @@ const CalendarCard = ({ pmUid }) => {
     }
     setCursor(newDate);
   };
-
-
+ 
   const goNext = () => {
     const newDate = new Date(cursor);
     if (view === "month") {
@@ -417,13 +378,11 @@ const CalendarCard = ({ pmUid }) => {
     }
     setCursor(newDate);
   };
-
-
+ 
   const goToday = () => {
     setCursor(new Date());
   };
-
-
+ 
   // Get date range for event filtering based on current view
   const getDateRange = () => {
     if (view === "month") {
@@ -441,13 +400,11 @@ const CalendarCard = ({ pmUid }) => {
       return { start: ymd(cursor), end: ymd(cursor) };
     }
   };
-
-
-  // Load calendar events
+ 
+  // Load calendar events - UPDATED to properly fetch all schedule events
   useEffect(() => {
     if (!pmUid) return;
-
-
+ 
     const loadCalendarEvents = async () => {
       try {
         // Find teams managed by this PM
@@ -459,27 +416,58 @@ const CalendarCard = ({ pmUid }) => {
           pmTeams = alt.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
         }
         const teamIds = pmTeams.map((t) => t.id);
-
-
-        // Helper to chunk fetch schedules by teamId
-        const fetchByTeam = async (collName) => {
-          if (teamIds.length === 0) return [];
-          const arr = [];
-          for (let i = 0; i < teamIds.length; i += 10) {
-            const chunk = teamIds.slice(i, i + 10);
-            const s = await getDocs(query(collection(db, collName), where("teamId", "in", chunk)));
-            s.forEach((dx) => arr.push({ id: dx.id, ...dx.data() }));
+ 
+        // Helper to fetch schedule events for teams
+        const fetchScheduleEventsForTeams = async (teamIds) => {
+          const allEvents = [];
+ 
+          if (teamIds.length === 0) return allEvents;
+ 
+          // Define schedule collections (same as in ProjectManagerEvents)
+          const scheduleCollections = [
+            { name: "titleDefenseSchedules", type: "Title Defense" },
+            { name: "manuscriptSubmissions", type: "Manuscript Submission" },
+            { name: "oralDefenseSchedules", type: "Oral Defense" },
+            { name: "finalDefenseSchedules", type: "Final Defense" },
+            { name: "finalRedefenseSchedules", type: "Final Re-Defense" },
+          ];
+ 
+          // Fetch events for each collection
+          for (const schedule of scheduleCollections) {
+            try {
+              // For each collection, we need to fetch events for each team
+              // Since Firestore doesn't support "in" queries with more than 10 items at a time, we need to chunk
+              for (let i = 0; i < teamIds.length; i += 10) {
+                const chunk = teamIds.slice(i, i + 10);
+                const q = query(collection(db, schedule.name), where("teamId", "in", chunk));
+                const snapshot = await getDocs(q);
+                snapshot.forEach((doc) => {
+                  const data = doc.data();
+                  allEvents.push({
+                    id: doc.id,
+                    ...data,
+                    type: schedule.type,
+                    date: data.date || "",
+                    timeStart: data.timeStart || "",
+                    teamName: data.teamName || (data.team && data.team.name) || "Team",
+                    eventType: schedule.type,
+                  });
+                });
+              }
+            } catch (error) {
+              console.error(`Error fetching ${schedule.name}:`, error);
+            }
           }
-          return arr;
+ 
+          return allEvents;
         };
-
-
+ 
         // Load tasks created by PM - EXCLUDE COMPLETED TASKS
         const taskDefs = ["titleDefenseTasks", "oralDefenseTasks", "finalDefenseTasks", "finalRedefenseTasks"];
         const taskSnaps = await Promise.all(
           taskDefs.map((c) => getDocs(query(collection(db, c), where("createdBy.uid", "==", pmUid))))
         );
-       
+ 
         const tasks = [];
         taskSnaps.forEach((s) => {
           s.forEach((dx) => {
@@ -490,44 +478,39 @@ const CalendarCard = ({ pmUid }) => {
             }
           });
         });
-
-
-        // Load schedules relevant to PM teams
-        const [titleSched, manusSched, oralSched, finalSched, redefSched] = await Promise.all([
-          fetchByTeam("titleDefenseSchedules"),
-          fetchByTeam("manuscriptSubmissions"),
-          fetchByTeam("oralDefenseSchedules"),
-          fetchByTeam("finalDefenseSchedules"),
-          fetchByTeam("finalRedefenseSchedules").catch(() => []),
-        ]);
-
-
+ 
+        // Load schedule events for PM teams
+        const scheduleEvents = await fetchScheduleEventsForTeams(teamIds);
+ 
         // Get current view's date range
         const { start, end } = getDateRange();
         const between = (d) => d >= start && d <= end;
-
-
+ 
         // Task events with color coding based on status
         const taskEvents = tasks
           .filter((t) => typeof t.dueDate === "string" && t.dueDate.length >= 10 && between(t.dueDate))
           .map((t) => ({
             date: t.dueDate,
             title: `${t.task || t.type || "Task"} (${t.status || "To Do"})`,
-            color: statusColor(t.status || "To Do"), // Color code based on status
+            color: statusColor(t.status || "To Do"),
+            time: t.dueTime || "",
+            teamName: t.team?.name || "Team",
+            eventType: "Task",
           }));
-
-
+ 
         // Schedule events
-        const schedEvents = [
-          ...titleSched.map((s) => ({ date: s.date || "", title: "Title Defense" })),
-          ...manusSched.map((s) => ({ date: s.date || "", title: "Manuscript Submission" })),
-          ...oralSched.map((s) => ({ date: s.date || "", title: "Oral Defense" })),
-          ...finalSched.map((s) => ({ date: s.date || "", title: "Final Defense" })),
-          ...redefSched.map((s) => ({ date: s.date || "", title: "Final Re-Defense" })),
-        ].filter((e) => e.date && between(e.date))
-         .map((e) => ({ ...e, color: MAROON })); // All schedule events in maroon
-
-
+        const schedEvents = scheduleEvents
+          .filter((e) => e.date && between(e.date))
+          .map((e) => ({
+            date: e.date,
+            title: e.eventType || e.type,
+            color: MAROON,
+            time: e.timeStart || "",
+            teamName: e.teamName,
+            eventType: "Schedule",
+          }));
+ 
+        // Combine all events
         const merged = [...taskEvents, ...schedEvents];
         setEvents(merged);
       } catch (e) {
@@ -535,12 +518,10 @@ const CalendarCard = ({ pmUid }) => {
         setEvents([]);
       }
     };
-
-
+ 
     loadCalendarEvents();
   }, [pmUid, cursor, view]);
-
-
+ 
   // Calculate cell height based on view to maintain consistent calendar height
   const getCellHeight = () => {
     if (view === "month") {
@@ -551,8 +532,24 @@ const CalendarCard = ({ pmUid }) => {
       return "min-h-[300px] md:min-h-[400px] lg:min-h-[552px]"; // Responsive heights
     }
   };
-
-
+ 
+  // Function to format time for display in calendar events
+  const formatTimeForEvent = (timeString) => {
+    if (!timeString) return "";
+    try {
+      if (typeof timeString === "string") {
+        const [hours, minutes] = timeString.split(':');
+        const hour = parseInt(hours, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+      }
+      return timeString;
+    } catch (e) {
+      return timeString;
+    }
+  };
+ 
   // Render appropriate grid based on view
   const renderGrid = () => {
     const { start } = getDateRange();
@@ -562,8 +559,7 @@ const CalendarCard = ({ pmUid }) => {
       }
       return true; // For week and day views, all dates are "current"
     };
-
-
+ 
     return (
       <div className={`grid ${view === "day" ? "grid-cols-1" : view === "week" ? "grid-cols-7" : "grid-cols-7"} gap-px bg-neutral-200 rounded-lg overflow-hidden`}>
         {matrix.flat().map((cell, i) => {
@@ -571,8 +567,7 @@ const CalendarCard = ({ pmUid }) => {
           const cellYmd = cell ? ymd(cell) : "";
           const dayEvents = events.filter((e) => e.date === cellYmd);
           const isToday = cellYmd === ymd(new Date());
-
-
+ 
           return (
             <div
               key={`cell-${i}`}
@@ -588,22 +583,32 @@ const CalendarCard = ({ pmUid }) => {
                   {cell.getDate()}
                 </div>
               )}
-
-
+ 
               {/* events - with adjusted positioning for week and day views */}
               <div className={`absolute left-1 right-1 ${
                 view === "month" ? "top-6 md:top-8 lg:top-10 max-h-8 md:max-h-10 lg:max-h-12" : "top-8 md:top-10 lg:top-12 max-h-[280px] md:max-h-[380px] lg:max-h-[500px]"
               } space-y-1 overflow-y-auto`}>
-                {dayEvents.map((e, idx) => (
-                  <div
-                    key={idx}
-                    className="text-[10px] md:text-[11px] text-white px-1 md:px-2 py-0.5 rounded truncate"
-                    style={{ background: e.color || MAROON }}
-                    title={e.title}
-                  >
-                    {e.title}
-                  </div>
-                ))}
+                {dayEvents.map((e, idx) => {
+                  // Create display text with time if available
+                  let displayText = e.title;
+                  if (e.time) {
+                    const formattedTime = formatTimeForEvent(e.time);
+                    if (formattedTime) {
+                      displayText = `${e.title} (${formattedTime})`;
+                    }
+                  }
+ 
+                  return (
+                    <div
+                      key={idx}
+                      className="text-[10px] md:text-[11px] text-white px-1 md:px-2 py-0.5 rounded truncate"
+                      style={{ background: e.color || MAROON }}
+                      title={`${e.title}${e.teamName ? ` - ${e.teamName}` : ''}${e.time ? ` at ${formatTimeForEvent(e.time)}` : ''}`}
+                    >
+                      {displayText}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -611,8 +616,7 @@ const CalendarCard = ({ pmUid }) => {
       </div>
     );
   };
-
-
+ 
   return (
     <Card className="w-full">
       {/* Header controls */}
@@ -634,8 +638,7 @@ const CalendarCard = ({ pmUid }) => {
           >
             <ChevronRight className="w-4 h-4" />
           </button>
-
-
+ 
           <button
             className="ml-2 h-8 px-3 rounded-md text-sm font-medium text-white"
             style={{ background: MAROON }}
@@ -644,13 +647,11 @@ const CalendarCard = ({ pmUid }) => {
             Today
           </button>
         </div>
-
-
+ 
         <div className="text-sm font-semibold order-1 sm:order-2" style={{ color: MAROON }}>
           {getTitle()}
         </div>
-
-
+ 
         <div className="flex items-center gap-1 sm:gap-2 order-3">
           {["Month", "Week", "Day"].map((label) => {
             const key = label.toLowerCase();
@@ -673,11 +674,9 @@ const CalendarCard = ({ pmUid }) => {
           })}
         </div>
       </div>
-
-
+ 
       <div className="px-3 md:px-5 mt-2 md:mt-3 h-[2px] w-full" style={{ background: MAROON }} />
-
-
+ 
       {/* Grid */}
       <div className="p-3 md:p-5">
         {/* Weekday headers - only show for month and week views */}
@@ -688,24 +687,45 @@ const CalendarCard = ({ pmUid }) => {
             ))}
           </div>
         )}
-
-
+ 
         {renderGrid()}
       </div>
     </Card>
   );
 };
-
-
+ 
 // ---- main ---------------------------------------------------------------
 const ProjectManagerDashboard = () => {
   // Live data that falls back to sample values until loaded
   const [upcoming, setUpcoming] = useState([]);
-  const [weekly, setWeekly] = useState([{ key: "todo", label: "To Do", value: 0, color: COLORS.todo }, { key: "inprogress", label: "In Progress", value: 0, color: COLORS.inprogress }, { key: "toreview", label: "To Review", value: 0, color: COLORS.toreview }, { key: "completed", label: "Completed", value: 0, color: COLORS.completed }, { key: "missed", label: "Missed", value: 0, color: COLORS.missed }]);
-  const [donut, setDonut] = useState([{ key: "todo", label: "To Do", pct: 0, color: COLORS.todo }, { key: "inprogress", label: "In Progress", pct: 0, color: COLORS.inprogress }, { key: "toreview", label: "To Review", pct: 0, color: COLORS.toreview }, { key: "completed", label: "Completed", pct: 0, color: COLORS.completed }, { key: "missed", label: "Missed", pct: 0, color: COLORS.missed }]);
+  const [weekly, setWeekly] = useState([
+    { key: "todo", label: "To Do", value: 0, color: COLORS.todo }, 
+    { key: "inprogress", label: "In Progress", value: 0, color: COLORS.inprogress }, 
+    { key: "toreview", label: "To Review", value: 0, color: COLORS.toreview }, 
+    { key: "completed", label: "Completed", value: 0, color: COLORS.completed }, 
+    { key: "missed", label: "Missed", value: 0, color: COLORS.missed }
+  ]);
+  const [teamProgress, setTeamProgress] = useState([
+    { key: "todo", label: "To Do", pct: 0, color: COLORS.todo }, 
+    { key: "inprogress", label: "In Progress", pct: 0, color: COLORS.inprogress }, 
+    { key: "toreview", label: "To Review", pct: 0, color: COLORS.toreview }, 
+    { key: "completed", label: "Completed", pct: 0, color: COLORS.completed }, 
+    { key: "missed", label: "Missed", pct: 0, color: COLORS.missed }
+  ]);
   const [recentTasks, setRecentTasks] = useState([]);
-
-
+ 
+  // State for aggregated team progress (to match TeamsSummary)
+  const [aggregatedTeamProgress, setAggregatedTeamProgress] = useState({
+    todo: 0,
+    inprogress: 0,
+    review: 0,
+    done: 0,
+    missed: 0
+  });
+ 
+  // State for PM profile to get last name for team naming
+  const [pmProfile, setPmProfile] = useState(null);
+ 
   // helpers
   const to12h = (t) => {
     if (!t) return "";
@@ -721,16 +741,15 @@ const ProjectManagerDashboard = () => {
     if (!y || !m || !d) return "--";
     return `${MONTHS[m - 1]} ${Number(d)}, ${y}`;
   };
-
-
+ 
   // Format date for display (like OralDefense.jsx)
   const formatDateMonthDayYear = (dateStr) => {
     if (!dateStr || dateStr === "null") return "--";
-   
+ 
     try {
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return "--";
-     
+ 
       const options = { year: 'numeric', month: 'long', day: 'numeric' };
       return date.toLocaleDateString('en-US', options);
     } catch (error) {
@@ -738,53 +757,76 @@ const ProjectManagerDashboard = () => {
       return "--";
     }
   };
-
-
+ 
   /* ===== Title gate (Passed => require title) ===== */
   const [pmUid, setPmUid] = useState("");
   const [modalTeam, setModalTeam] = useState(null); // { id, name }
   const [titleGateChecked, setTitleGateChecked] = useState(false);
-
-
+ 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setPmUid(u?.uid || "");
     });
     return () => unsub();
   }, []);
-
-
+ 
+  // Load PM profile to get name for team naming
+  useEffect(() => {
+    if (!pmUid) return;
+ 
+    const unsub = onSnapshot(
+      query(collection(db, "users"), where("uid", "==", pmUid)),
+      (snap) => {
+        const d = snap.docs[0]?.data();
+        if (!d) return;
+        const name = [d.firstName, d.middleName, d.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .replace(/\s+/g, " ")
+          .trim();
+        setPmProfile({ uid: pmUid, name: name || "Project Manager", lastName: d.lastName || "" });
+      }
+    );
+    return () => unsub && unsub();
+  }, [pmUid]);
+ 
+  // Get team name for adviser tasks (like in OralDefense.jsx)
+  const getTeamNameForAdviser = useMemo(() => {
+    if (!pmProfile || !pmProfile.name) return "Team";
+ 
+    // Get the PM's last name
+    const pmNameParts = pmProfile.name.split(' ');
+    const pmLastName = pmNameParts[pmNameParts.length - 1];
+ 
+    return `${pmLastName}, Et Al`;
+  }, [pmProfile]);
+ 
   useEffect(() => {
     if (!pmUid || titleGateChecked) return;
-
-
+ 
     (async () => {
       try {
         // 1) Find the PM's teams. Primary shape: manager.uid; fallback: managerUid.
         const teamsRef = collection(db, "teams");
         let teamsSnap = await getDocs(query(teamsRef, where("manager.uid", "==", pmUid)));
         let pmTeams = teamsSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
-
-
+ 
         if (pmTeams.length === 0) {
           const altSnap = await getDocs(query(teamsRef, where("managerUid", "==", pmUid)));
           pmTeams = altSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
         }
-
-
+ 
         if (pmTeams.length === 0) {
           setTitleGateChecked(true);
           return;
         }
-
-
+ 
         // 2) For each team, require title if:
         //    - titleDefenseSchedules has verdict "Passed"
         //    - teamSystemTitles does NOT exist
         for (const t of pmTeams) {
           const teamId = t.id;
-
-
+ 
           const passSnap = await getDocs(
             query(
               collection(db, "titleDefenseSchedules"),
@@ -794,20 +836,17 @@ const ProjectManagerDashboard = () => {
           );
           const hasPassed = passSnap.size > 0;
           if (!hasPassed) continue;
-
-
+ 
           const titleDoc = await getDoc(doc(db, "teamSystemTitles", teamId));
           const hasTitle = titleDoc.exists() && !!titleDoc.data()?.systemTitle;
-
-
+ 
           if (!hasTitle) {
             setModalTeam({ id: teamId, name: t.name || "Unnamed Team" });
             setTitleGateChecked(true);
             return; // show 1 modal only
           }
         }
-
-
+ 
         setTitleGateChecked(true);
       } catch (e) {
         console.error("Title gate check failed:", e);
@@ -815,13 +854,94 @@ const ProjectManagerDashboard = () => {
       }
     })();
   }, [pmUid, titleGateChecked]);
-
-
-  // Load PM-created tasks and compute dashboard data - UPDATED
+ 
+  // Function to fetch Adviser tasks for all teams managed by the PM
+  const fetchAdviserTasksForAllTeams = async (teamIds) => {
+    const allTasks = [];
+ 
+    // Define task collections (same as in TeamsSummary)
+    const taskCollections = ["oralDefenseTasks", "finalDefenseTasks", "finalRedefenseTasks"];
+ 
+    for (const teamId of teamIds) {
+      for (const collectionName of taskCollections) {
+        try {
+          // Query: team.id matches AND taskManager is "Adviser"
+          const q = query(
+            collection(db, collectionName),
+            where("team.id", "==", teamId),
+            where("taskManager", "==", "Adviser")
+          );
+ 
+          const snapshot = await getDocs(q);
+          snapshot.forEach((snap) => {
+            const data = { id: snap.id, ...snap.data() };
+            allTasks.push(data);
+          });
+        } catch (error) {
+          console.error(`Error fetching tasks from ${collectionName} for team ${teamId}:`, error);
+        }
+      }
+    }
+ 
+    return allTasks;
+  };
+ 
+  // Function to fetch schedule events for PM's teams (similar to ProjectManagerEvents)
+  const fetchScheduleEvents = async (teamIds) => {
+    const events = [];
+ 
+    if (teamIds.length === 0) return events;
+ 
+    // Define schedule collections
+    const scheduleCollections = [
+      { name: "titleDefenseSchedules", type: "Title Defense" },
+      { name: "manuscriptSubmissions", type: "Manuscript Submission" },
+      { name: "oralDefenseSchedules", type: "Oral Defense" },
+      { name: "finalDefenseSchedules", type: "Final Defense" },
+      { name: "finalRedefenseSchedules", type: "Final Re-Defense" },
+    ];
+ 
+    // Helper to chunk fetch by teamId
+    const fetchByTeam = async (collName, eventType) => {
+      const arr = [];
+      for (let i = 0; i < teamIds.length; i += 10) {
+        const chunk = teamIds.slice(i, i + 10);
+        try {
+          const q = query(collection(db, collName), where("teamId", "in", chunk));
+          const snapshot = await getDocs(q);
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            arr.push({
+              id: doc.id,
+              ...data,
+              eventType: eventType,
+              type: eventType,
+              date: data.date || "",
+              timeStart: data.timeStart || "",
+              teamName: data.teamName || (data.team && data.team.name) || "Team",
+              verdict: data.verdict || "Pending",
+            });
+          });
+        } catch (error) {
+          console.error(`Error fetching ${collName}:`, error);
+        }
+      }
+      return arr;
+    };
+ 
+    // Fetch all schedule events
+    for (const schedule of scheduleCollections) {
+      const scheduleEvents = await fetchByTeam(schedule.name, schedule.type);
+      events.push(...scheduleEvents);
+    }
+ 
+    return events;
+  };
+ 
+  // Load PM-created tasks for weekly summary and recent tasks - UPDATED
   useEffect(() => {
     if (!pmUid) return;
-
-
+ 
     // Set up real-time listeners for all task collections
     const taskDefs = [
       { key: "title", coll: "titleDefenseTasks" },
@@ -829,8 +949,7 @@ const ProjectManagerDashboard = () => {
       { key: "final", coll: "finalDefenseTasks" },
       { key: "redef", coll: "finalRedefenseTasks" },
     ];
-
-
+ 
     const unsubscribeListeners = taskDefs.map((def) =>
       onSnapshot(
         query(collection(db, def.coll), where("createdBy.uid", "==", pmUid)),
@@ -840,14 +959,13 @@ const ProjectManagerDashboard = () => {
         }
       )
     );
-
-
+ 
     const loadAllTasks = async () => {
       try {
         const snaps = await Promise.all(
           taskDefs.map((d) => getDocs(query(collection(db, d.coll), where("createdBy.uid", "==", pmUid))))
         );
-       
+ 
         const all = [];
         snaps.forEach((s) => {
           s.forEach((dx) => {
@@ -855,11 +973,10 @@ const ProjectManagerDashboard = () => {
             all.push({ id: dx.id, ...data });
           });
         });
-
-
+ 
         // Upcoming: nearest future dueAtMs (only active tasks, not completed)
         const now = Date.now();
-        const upcomingRaw = all
+        const upcomingTasks = all
           .filter((t) =>
             typeof t.dueAtMs === "number" &&
             t.dueAtMs >= now &&
@@ -868,38 +985,109 @@ const ProjectManagerDashboard = () => {
           .sort((a, b) => (a.dueAtMs || 0) - (b.dueAtMs || 0))
           .slice(0, 5)
           .map((t) => {
-            // Get assignee name - similar to OralDefense logic
-            let assigneeName = "Team";
+            // FIXED: Get assignee name - Match OralDefense.jsx behavior
+            let assigneeName = "";
             if (t.assignees && t.assignees.length > 0) {
               if (t.assignees[0].uid === 'team') {
+                // For team tasks (Project Manager tasks assigned to team), show "Team"
                 assigneeName = "Team";
+              } else if (t.taskManager === "Adviser") {
+                // For adviser tasks, show team name like "Castaneda, Et Al"
+                assigneeName = getTeamNameForAdviser;
               } else {
+                // For individual tasks, show the assignee's name
                 assigneeName = t.assignees[0].name || "—";
               }
+            } else {
+              // If no assignees specified, check if it's an adviser task
+              if (t.taskManager === "Adviser") {
+                assigneeName = getTeamNameForAdviser;
+              } else {
+                assigneeName = "Team";
+              }
             }
-
-
+ 
             return {
+              type: "task",
               name: assigneeName,
               chapter: t.task || t.type || "Task",
               date: formatDateMonthDayYear(t.dueDate || ""),
               time: to12h(t.dueTime || ""),
               color: statusColor(t.status || "To Do"),
+              sortKey: t.dueAtMs,
             };
           });
-       
-        setUpcoming(upcomingRaw);
-
-
+ 
+        // Load schedule events for upcoming display
+        try {
+          // Find teams managed by this PM
+          const teamsRef = collection(db, "teams");
+          let teamsSnap = await getDocs(query(teamsRef, where("manager.uid", "==", pmUid)));
+          let pmTeams = teamsSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+ 
+          if (pmTeams.length === 0) {
+            const altSnap = await getDocs(query(teamsRef, where("managerUid", "==", pmUid)));
+            pmTeams = altSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+          }
+ 
+          const teamIds = pmTeams.map(t => t.id);
+          const scheduleEvents = await fetchScheduleEvents(teamIds);
+ 
+          // Convert schedule events to upcoming format
+          const upcomingScheduleEvents = scheduleEvents
+            .filter(event => {
+              if (!event.date) return false;
+ 
+              // Parse event date and time
+              const eventDateStr = event.date;
+              const eventTimeStr = event.timeStart || "00:00";
+ 
+              try {
+                const eventDateTime = new Date(`${eventDateStr}T${eventTimeStr}`);
+                if (isNaN(eventDateTime.getTime())) return false;
+ 
+                // Only include future events
+                return eventDateTime.getTime() >= now;
+              } catch {
+                return false;
+              }
+            })
+            .map(event => {
+              const eventDateStr = event.date;
+              const eventTimeStr = event.timeStart || "00:00";
+ 
+              return {
+                type: "event",
+                name: event.teamName,
+                chapter: event.eventType || event.type,
+                date: formatDateMonthDayYear(eventDateStr),
+                time: to12h(eventTimeStr),
+                color: MAROON, // Use maroon color for events
+                sortKey: new Date(`${eventDateStr}T${eventTimeStr}`).getTime(),
+              };
+            })
+            .sort((a, b) => a.sortKey - b.sortKey)
+            .slice(0, 5);
+ 
+          // Combine tasks and events, sort by date
+          const combinedUpcoming = [...upcomingTasks, ...upcomingScheduleEvents]
+            .sort((a, b) => a.sortKey - b.sortKey)
+            .slice(0, 5);
+ 
+          setUpcoming(combinedUpcoming);
+        } catch (e) {
+          console.error("Failed to load schedule events:", e);
+          setUpcoming(upcomingTasks);
+        }
+ 
         // Weekly summary: counts by status (simple total)
         const counts = { todo: 0, inprogress: 0, toreview: 0, completed: 0, missed: 0 };
         const nowMs = Date.now();
-       
+ 
         all.forEach((t) => {
           const s = String(t.status || "To Do").toLowerCase();
           const isOverdue = typeof t.dueAtMs === "number" && t.dueAtMs < nowMs && (t.status || "") !== "Completed";
-
-
+ 
           if (isOverdue) {
             counts.missed++;
           } else if (s.includes("review")) {
@@ -912,7 +1100,7 @@ const ProjectManagerDashboard = () => {
             counts.todo++;
           }
         });
-       
+ 
         setWeekly([
           { key: "todo", label: "To Do", value: counts.todo, color: COLORS.todo },
           { key: "inprogress", label: "In Progress", value: counts.inprogress, color: COLORS.inprogress },
@@ -920,41 +1108,38 @@ const ProjectManagerDashboard = () => {
           { key: "completed", label: "Completed", value: counts.completed, color: COLORS.completed },
           { key: "missed", label: "Missed", value: counts.missed, color: COLORS.missed },
         ]);
-
-
-        // Donut: percentage from counts
-        const total = counts.todo + counts.inprogress + counts.toreview + counts.completed + counts.missed;
-        const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
-        setDonut([
-          { key: "todo", label: "To Do", pct: pct(counts.todo), color: COLORS.todo },
-          { key: "inprogress", label: "In Progress", pct: pct(counts.inprogress), color: COLORS.inprogress },
-          { key: "toreview", label: "To Review", pct: pct(counts.toreview), color: COLORS.toreview },
-          { key: "completed", label: "Completed", pct: pct(counts.completed), color: COLORS.completed },
-          { key: "missed", label: "Missed", pct: pct(counts.missed), color: COLORS.missed },
-        ]);
-
-
-        // Recent tasks - Only show 4 most recently created tasks
+ 
+        // Recent tasks - Only show 4 most recently created tasks - UPDATED to match OralDefense.jsx
         const recent = all
           .map((t) => {
-            // Get assignee name
-            let assigneeName = "Team";
+            // FIXED: Get assignee name - Match OralDefense.jsx behavior
+            let assigneeName = "";
             if (t.assignees && t.assignees.length > 0) {
               if (t.assignees[0].uid === 'team') {
+                // For team tasks (Project Manager tasks assigned to team), show "Team"
                 assigneeName = "Team";
+              } else if (t.taskManager === "Adviser") {
+                // For adviser tasks, show team name like "Castaneda, Et Al"
+                assigneeName = getTeamNameForAdviser;
               } else {
+                // For individual tasks, show the assignee's name
                 assigneeName = t.assignees[0].name || "—";
               }
+            } else {
+              // If no assignees specified, check if it's an adviser task
+              if (t.taskManager === "Adviser") {
+                assigneeName = getTeamNameForAdviser;
+              } else {
+                assigneeName = "Team";
+              }
             }
-
-
+ 
             // FIXED: Elements column - match OralDefense.jsx behavior
             let elementValue = "--";
             if (t.elements && t.elements !== "--" && t.elements !== "null") {
               elementValue = t.elements;
             }
-
-
+ 
             return {
               createdKey: t.createdAt?.toMillis?.() || 0,
               assigned: assigneeName,
@@ -972,25 +1157,116 @@ const ProjectManagerDashboard = () => {
           .sort((a, b) => b.createdKey - a.createdKey)
           .slice(0, 4)
           .map((x, i) => ({ no: i + 1, ...x }));
-       
+ 
         setRecentTasks(recent);
       } catch (e) {
         console.error("Dashboard data load failed:", e);
       }
     };
-
-
+ 
     // Initial load
     loadAllTasks();
-
-
+ 
     // Cleanup listeners
     return () => {
       unsubscribeListeners.forEach(unsub => unsub && unsub());
     };
+  }, [pmUid, getTeamNameForAdviser]);
+ 
+  // Load Adviser tasks for all teams managed by PM (to match TeamsSummary progress)
+  useEffect(() => {
+    if (!pmUid) return;
+ 
+    const loadAdviserTasksForTeamProgress = async () => {
+      try {
+        // 1) Find the PM's teams
+        const teamsRef = collection(db, "teams");
+        let teamsSnap = await getDocs(query(teamsRef, where("manager.uid", "==", pmUid)));
+        let pmTeams = teamsSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+ 
+        if (pmTeams.length === 0) {
+          const altSnap = await getDocs(query(teamsRef, where("managerUid", "==", pmUid)));
+          pmTeams = altSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+        }
+ 
+        if (pmTeams.length === 0) {
+          setAggregatedTeamProgress({
+            todo: 0,
+            inprogress: 0,
+            review: 0,
+            done: 0,
+            missed: 0
+          });
+          return;
+        }
+ 
+        const teamIds = pmTeams.map(t => t.id);
+ 
+        // 2) Fetch Adviser tasks for all teams (same as TeamsSummary)
+        const allAdviserTasks = await fetchAdviserTasksForAllTeams(teamIds);
+ 
+        // 3) Calculate aggregated progress (same logic as TeamsSummary)
+        const progress = {
+          todo: allAdviserTasks.filter(task => task.status === "To Do").length,
+          inprogress: allAdviserTasks.filter(task => task.status === "In Progress").length,
+          review: allAdviserTasks.filter(task => task.status === "To Review").length,
+          done: allAdviserTasks.filter(task => task.status === "Completed").length,
+          missed: allAdviserTasks.filter(task => task.status === "Missed").length,
+        };
+ 
+        setAggregatedTeamProgress(progress);
+ 
+      } catch (error) {
+        console.error("Error loading adviser tasks for team progress:", error);
+        setAggregatedTeamProgress({
+          todo: 0,
+          inprogress: 0,
+          review: 0,
+          done: 0,
+          missed: 0
+        });
+      }
+    };
+ 
+    loadAdviserTasksForTeamProgress();
+ 
+    // Set up interval to refresh data periodically (every 30 seconds)
+    const intervalId = setInterval(loadAdviserTasksForTeamProgress, 30000);
+ 
+    return () => clearInterval(intervalId);
   }, [pmUid]);
-
-
+ 
+  // Calculate team progress donut segments based on aggregated adviser tasks
+  const teamProgressDonutSegments = useMemo(() => {
+    const total = aggregatedTeamProgress.todo + 
+                  aggregatedTeamProgress.inprogress + 
+                  aggregatedTeamProgress.review + 
+                  aggregatedTeamProgress.done + 
+                  aggregatedTeamProgress.missed;
+ 
+    const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
+ 
+    return [
+      { key: "todo", label: "To Do", pct: pct(aggregatedTeamProgress.todo), color: COLORS.todo },
+      { key: "inprogress", label: "In Progress", pct: pct(aggregatedTeamProgress.inprogress), color: COLORS.inprogress },
+      { key: "toreview", label: "To Review", pct: pct(aggregatedTeamProgress.review), color: COLORS.toreview },
+      { key: "completed", label: "Completed", pct: pct(aggregatedTeamProgress.done), color: COLORS.completed },
+      { key: "missed", label: "Missed", pct: pct(aggregatedTeamProgress.missed), color: COLORS.missed },
+    ];
+  }, [aggregatedTeamProgress]);
+ 
+  // Calculate team progress center text (completion percentage)
+  const teamProgressCenterText = useMemo(() => {
+    const total = aggregatedTeamProgress.todo + 
+                  aggregatedTeamProgress.inprogress + 
+                  aggregatedTeamProgress.review + 
+                  aggregatedTeamProgress.done + 
+                  aggregatedTeamProgress.missed;
+ 
+    const completion = total > 0 ? Math.round((aggregatedTeamProgress.done / total) * 100) : 0;
+    return `${completion}%`;
+  }, [aggregatedTeamProgress]);
+ 
   return (
     <div className="space-y-6 md:space-y-8 w-full">
       {/* UPCOMING */}
@@ -1000,8 +1276,7 @@ const ProjectManagerDashboard = () => {
         </h3>
         <UpcomingTasksCarousel tasks={upcoming} />
       </section>
-
-
+ 
       {/* BOTTOM ROW: Weekly Summary + Team Progress */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full">
         {/* Weekly Summary */}
@@ -1024,9 +1299,8 @@ const ProjectManagerDashboard = () => {
             </div>
           </div>
         </Card>
-
-
-        {/* Team Progress */}
+ 
+        {/* Team Progress - UPDATED to use Adviser tasks */}
         <Card className="w-full">
           <div className="px-4 md:px-6 pt-4 md:pt-5">
             <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
@@ -1038,32 +1312,29 @@ const ProjectManagerDashboard = () => {
               <div className="xl:col-span-8 flex justify-center w-full">
                 <div className="w-full max-w-[280px] md:max-w-[320px] lg:max-w-[360px]">
                   <Donut
-                    segments={donut}
-                    centerText={`${(donut.find((d) => d.key === "completed")?.pct || 0)}%`}
+                    segments={teamProgressDonutSegments}
+                    centerText={teamProgressCenterText}
                   />
                 </div>
               </div>
               <div className="xl:col-span-4 flex items-center justify-center w-full">
                 <div className="w-full flex justify-center">
-                  <Legend items={donut} />
+                  <Legend items={teamProgressDonutSegments} />
                 </div>
               </div>
             </div>
           </div>
         </Card>
       </section>
-
-
+ 
       {/* RECENT TASKS CREATED */}
       <section className="space-y-3 w-full">
         <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
           RECENT TASKS CREATED
         </h3>
-
-
+ 
         <div className="bg-white border border-neutral-200 rounded-[20px] shadow overflow-hidden w-full">
           <div className="overflow-x-auto w-full">
-            {/* FIXED: Remove min-w-[800px] constraint */}
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-neutral-600">
@@ -1113,8 +1384,7 @@ const ProjectManagerDashboard = () => {
                     <td className="py-3 pr-4 md:pr-6 hidden xl:table-cell">{r.phase}</td>
                   </tr>
                 ))}
-
-
+ 
                 {recentTasks.length === 0 && (
                   <tr>
                     <td colSpan={10} className="py-10 text-center text-neutral-500">
@@ -1127,8 +1397,7 @@ const ProjectManagerDashboard = () => {
           </div>
         </div>
       </section>
-
-
+ 
       {/* CALENDAR */}
       <section className="space-y-3 w-full">
         <h3 className="text-xl font-extrabold tracking-wide" style={{ color: MAROON }}>
@@ -1136,8 +1405,7 @@ const ProjectManagerDashboard = () => {
         </h3>
         <CalendarCard pmUid={pmUid} />
       </section>
-
-
+ 
       {/* === Title requirement modal (opens when Passed & no title yet) === */}
       {modalTeam && (
         <ProjectManagerTitleModal
@@ -1151,7 +1419,5 @@ const ProjectManagerDashboard = () => {
     </div>
   );
 };
-
-
+ 
 export default ProjectManagerDashboard;
-

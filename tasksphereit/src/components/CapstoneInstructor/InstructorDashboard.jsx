@@ -640,28 +640,71 @@ export default function InstructorDashboard() {
 
         // ---------- TEAMS' PROGRESS (0–100%) ----------
         // Progress rule: each passed type (Title / Manuscript / Oral / Final) = +25
-        const hasPassed = (rows, teamKey) =>
-          rows.some(
-            (r) =>
-              (r.teamKey || r.team) === teamKey &&
-              typeof r.status === "string" &&
-              r.status.toLowerCase() === "passed"
-          );
+        // const hasPassed = (rows, teamKey) =>
+        //   rows.some(
+        //     (r) =>
+        //       (r.teamKey || r.team) === teamKey &&
+        //       typeof r.status === "string" &&
+        //       r.status.toLowerCase() === "passed"
+        //   );
 
-        const progressList = [];
-        teamsSnap.forEach((docX) => {
-          const data = docX.data() || {};
-          const teamName = (data.name || "").toString().trim();
-          const teamKey = docX.id || teamName;
+        // const progressList = [];
+        // teamsSnap.forEach((docX) => {
+        //   const data = docX.data() || {};
+        //   const teamName = (data.name || "").toString().trim();
+        //   const teamKey = docX.id || teamName;
 
-          const pts =
-            (hasPassed(titleRows, teamKey) ? 1 : 0) +
-            (hasPassed(manusRows, teamKey) ? 1 : 0) +
-            (hasPassed(oralRows, teamKey) ? 1 : 0) +
-            (hasPassed(finalRows, teamKey) ? 1 : 0);
+        //   const pts =
+        //     (hasPassed(titleRows, teamKey) ? 1 : 0) +
+        //     (hasPassed(manusRows, teamKey) ? 1 : 0) +
+        //     (hasPassed(oralRows, teamKey) ? 1 : 0) +
+        //     (hasPassed(finalRows, teamKey) ? 1 : 0);
 
-          progressList.push({ team: teamName, percent: pts * 25 });
-        });
+        //   progressList.push({ team: teamName, percent: pts * 25 });
+        // });
+// ---------- TEAMS' PROGRESS (0–100%) ----------
+
+// Load ALL TASKS (same collections as adviser)
+const taskCollections = [
+  "titleDefenseTasks",
+  "oralDefenseTasks",
+  "finalDefenseTasks",
+  "finalRedefenseTasks",
+];
+
+let allTaskRows = [];
+for (const coll of taskCollections) {
+  const snap = await getDocs(collection(db, coll));
+  snap.forEach((dx) => {
+    const d = dx.data() || {};
+    if (d.taskManager !== "Adviser") return;
+    const teamId = d.teamId || (d.team?.id) || null;
+    allTaskRows.push({
+      teamId,
+      teamName: d.teamName || d.team?.name || "",
+      status: d.status || "To Do",
+    });
+  });
+}
+
+// Compute progress for each team
+const progressList = teamsSnap.docs.map((docX) => {
+  const data = docX.data();
+  const teamId = docX.id;
+  const teamName = data.name || "Team";
+
+  const tasksForTeam = allTaskRows.filter((t) => t.teamId === teamId);
+  const total = tasksForTeam.length;
+  const completed = tasksForTeam.filter(
+    (t) => t.status.toLowerCase() === "completed"
+  ).length;
+
+  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  return { team: teamName, percent };
+}).sort((a, b) => a.team.localeCompare(b.team));
+
+if (alive) setTeamsProgress(progressList);
 
         // Sort by team name for stable UI
         progressList.sort((a, b) => a.team.localeCompare(b.team));

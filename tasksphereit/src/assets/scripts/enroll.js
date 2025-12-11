@@ -21,7 +21,7 @@ import {
   where,
 } from "firebase/firestore";
 
-const DEFAULT_PASSWORD = "UserUser321";
+const DEFAULT_PASSWORD = "CCS_dct.2025!";
 const DEFAULT_IMAGE_URL = "None";
 const TOS_VERSION = "2025-05-09";
 

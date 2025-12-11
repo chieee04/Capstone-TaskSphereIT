@@ -28,9 +28,9 @@ const InstructorHeader = ({ onOpenProfile, onMenuClick }) => {
 
         {/* Right: actions - Ensure icons are always visible */}
         <div className="flex items-center gap-1 sm:gap-2 md:gap-3 flex-shrink-0">
-          <div className="flex-shrink-0">
-            <NotiBell role="Instructor" to="/instructor/notifications" />
-          </div>
+          {/* <div className="flex-shrink-0">
+            <NotiBell role="Project Manager" to="/instructor/notifications" />
+          </div> */}
           <button
             className="p-1.5 sm:p-2 rounded-full hover:bg-neutral-100 cursor-pointer transition-colors flex-shrink-0"
             onClick={onOpenProfile}

@@ -1,4 +1,3 @@
-//instructor teams [eto yung meron title pero hindi ko mafetch].txt
 // src/components/CapstoneInstructor/InstructorTeams.jsx
 import React, { useEffect, useState } from "react";
 import {
@@ -14,44 +13,37 @@ import {
 } from "lucide-react";
 import TeamIcon from "../../assets/imgs/InstructorTeamIcon.png";
 import AdviserIcon from "../../assets/imgs/InstructoIconAdviser.png";
-
+ 
 import { useInstructorTeams } from "./InstructorFunctions/InstructorTeamsFunction";
 import Select from "react-select";
 import Swal from "sweetalert2";
-
-// Import Firebase directly
-import { db } from "../../config/firebase";
-import { collection, getDocs } from "firebase/firestore";
-
+ 
 const MAROON = "#6A0F14";
-
+ 
 const InstructorTeams = () => {
   const [view, setView] = useState("teams"); // "teams" | "advisers"
   const [openCreate, setOpenCreate] = useState(false);
   const [openAssign, setOpenAssign] = useState(false);
-
+ 
   // Edit dialog state
   const [etTeam, setEtTeam] = useState(null);
   const [etManagerId, setEtManagerId] = useState("");
   const [etTeamName, setEtTeamName] = useState("");
   const [etMemberPick, setEtMemberPick] = useState("");
   const [etMemberIds, setEtMemberIds] = useState([]);
-
+ 
   const idOf = (u) => u?.uid || u?.id;
   const [activeMenu, setActiveMenu] = useState(null);
   const [dropUp, setDropUp] = useState(false);
-
+ 
   const [transferUser, setTransferUser] = useState(null);
   const [transferFromTeam, setTransferFromTeam] = useState(null);
   const [transferToTeamId, setTransferToTeamId] = useState("");
-
+ 
   // State for transferring team to another adviser
   const [transferTeam, setTransferTeam] = useState(null);
   const [transferToAdviserId, setTransferToAdviserId] = useState("");
-
-  // State for team system titles
-  const [teamSystemTitles, setTeamSystemTitles] = useState({});
-
+ 
   const {
     allUsers,
     members,
@@ -59,7 +51,8 @@ const InstructorTeams = () => {
     teams,
     availableManagers,
     availableMembers,
-
+    teamSystemTitles, // Added this
+ 
     // create team
     ctManagerId,
     setCtManagerId,
@@ -71,23 +64,22 @@ const InstructorTeams = () => {
     addMember,
     removeMember,
     saveCreateTeam,
-
+ 
     // assign adviser
     asTeamId,
     setAsTeamId,
     asAdviserUid,
     setAsAdviserUid,
     saveAssign,
-
+ 
     // misc
     menuOpenId,
     setMenuOpenId,
     dissolveTeam,
     editTeam,
     transferTeamMember,
-    transferTeamAdviser,
   } = useInstructorTeams();
-
+ 
   const uniqByUid = (arr) => {
     const m = new Map();
     for (const u of arr || []) {
@@ -97,32 +89,7 @@ const InstructorTeams = () => {
     }
     return Array.from(m.values());
   };
-
-  // Load team system titles from manuscript submissions
-  useEffect(() => {
-    const loadSystemTitles = async () => {
-      try {
-        // Load manuscript submissions to get system titles
-        const submissionsSnap = await getDocs(collection(db, "manuscriptSubmissions"));
-        const titlesMap = {};
-        
-        submissionsSnap.forEach((doc) => {
-          const data = doc.data();
-          if (data.teamId && data.title && data.title.trim() !== "") {
-            titlesMap[data.teamId] = data.title;
-          }
-        });
-        
-        setTeamSystemTitles(titlesMap);
-      } catch (error) {
-        console.error("Failed to load system titles:", error);
-        setTeamSystemTitles({});
-      }
-    };
-
-    loadSystemTitles();
-  }, []);
-
+ 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
@@ -137,12 +104,12 @@ const InstructorTeams = () => {
       window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [openCreate, openAssign, menuOpenId, etTeam, setMenuOpenId, transferTeam]);
-
+ 
   // TeamCard with system title display
-  const TeamCard = ({ team, showTransferOption = false, currentAdviser = null }) => {
+  const TeamCard = ({ team, systemTitle, showTransferOption = false, currentAdviser = null }) => {
     const hasEtAl = team.name && team.name.includes("Et Al");
-    const systemTitle = teamSystemTitles[team.id] || team.systemTitle || team.title || "";
-    
+    const teamTitle = systemTitle || "No title set";
+ 
     return (
       <div className="relative w-[160px] h-[220px]">
         {/* Main Card Button */}
@@ -165,19 +132,19 @@ const InstructorTeams = () => {
               style={{ background: MAROON }}
             />
           )}
-          
+ 
           {/* Central content area */}
           <div className={`absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 ${hasEtAl ? 'pb-9' : 'pb-5'}`}>
             {/* Team icon - smaller size and NO animation */}
             <div>
               <img src={TeamIcon} alt="" className="w-14 h-14 mb-3 object-contain" />
             </div>
-            
+ 
             {/* Team name text - smaller font size */}
             <span className="text-[15px] font-bold text-center leading-tight text-black">
               {team.name || "—"}
             </span>
-
+ 
             {/* System title - smaller font size, limited to 2 lines */}
             <span className="text-[11px] text-neutral-600 text-center mt-1.5 leading-tight min-h-[2.5rem] flex items-center justify-center" style={{ 
               display: '-webkit-box',
@@ -185,11 +152,11 @@ const InstructorTeams = () => {
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden'
             }}>
-              {systemTitle || "No title set"}
+              {teamTitle}
             </span>
           </div>
         </button>
-
+ 
         {/* Original Kebab Menu Button - positioned inside the main button */}
         <button
           className="absolute top-2 right-2 p-1 hover:bg-neutral-100 z-30"
@@ -201,7 +168,7 @@ const InstructorTeams = () => {
         >
           <MoreVertical className="w-4 h-4 text-neutral-500" />
         </button>
-
+ 
         {/* Dropdown Menu */}
         {menuOpenId === team.id && (
           <div
@@ -226,14 +193,14 @@ const InstructorTeams = () => {
                 <Users2 className="w-4 h-4" /> Transfer Team
               </button>
             )}
-            
+ 
             <button
               className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
               onClick={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 setMenuOpenId(null);
-
+ 
                 const result = await Swal.fire({
                   title: `Dissolve Team?`,
                   html: `Dissolve team <b>"${team.name}"</b>?`,
@@ -244,11 +211,11 @@ const InstructorTeams = () => {
                   confirmButtonText: "Yes, dissolve",
                   cancelButtonText: "Cancel",
                 });
-
+ 
                 if (!result.isConfirmed) return;
-
+ 
                 await dissolveTeam(team.id);
-
+ 
                 Swal.fire({
                   icon: "success",
                   title: "Team Dissolved",
@@ -265,28 +232,28 @@ const InstructorTeams = () => {
       </div>
     );
   };
-
+ 
   const AdviserCard = ({ name, uid }) => {
     const [showAdviserModal, setShowAdviserModal] = useState(false);
     const [modalMenuOpenId, setModalMenuOpenId] = useState(null);
-
+ 
     // Filter teams for this adviser
     const adviserTeams = teams.filter(
       (team) => team.adviser && team.adviser.uid === uid
     );
-
+ 
     const handleCardClick = () => {
       setShowAdviserModal(true);
     };
-
+ 
     // Extract just the last name for display
     const displayName = name.split(",")[0];
-
+ 
     // TeamCard for use inside the adviser modal (with separate menu state)
     const ModalTeamCard = ({ team, showTransferOption = false, currentAdviser = null }) => {
       const hasEtAl = team.name && team.name.includes("Et Al");
-      const systemTitle = teamSystemTitles[team.id] || team.systemTitle || team.title || "";
-      
+      const teamTitle = teamSystemTitles[team.id] || "No title set";
+ 
       return (
         <div className="relative w-[160px] h-[220px]">
           {/* Main Card Button */}
@@ -309,19 +276,19 @@ const InstructorTeams = () => {
                 style={{ background: MAROON }}
               />
             )}
-            
+ 
             {/* Central content area */}
             <div className={`absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 ${hasEtAl ? 'pb-9' : 'pb-5'}`}>
               {/* Team icon - smaller size and NO animation */}
               <div>
                 <img src={TeamIcon} alt="" className="w-14 h-14 mb-3 object-contain" />
               </div>
-              
+ 
               {/* Team name text - smaller font size */}
               <span className="text-[15px] font-bold text-center leading-tight text-black">
                 {team.name || "—"}
               </span>
-
+ 
               {/* System title - smaller font size, limited to 2 lines */}
               <span className="text-[11px] text-neutral-600 text-center mt-1.5 leading-tight min-h-[2.5rem] flex items-center justify-center" style={{ 
                 display: '-webkit-box',
@@ -329,11 +296,11 @@ const InstructorTeams = () => {
                 WebkitBoxOrient: 'vertical',
                 overflow: 'hidden'
               }}>
-                {systemTitle || "No title set"}
+                {teamTitle}
               </span>
             </div>
           </button>
-
+ 
           {/* Original Kebab Menu Button - positioned inside the main button */}
           <button
             className="absolute top-2 right-2 p-1 hover:bg-neutral-100 z-30"
@@ -345,7 +312,7 @@ const InstructorTeams = () => {
           >
             <MoreVertical className="w-4 h-4 text-neutral-500" />
           </button>
-
+ 
           {/* Dropdown Menu */}
           {modalMenuOpenId === team.id && (
             <div
@@ -370,14 +337,14 @@ const InstructorTeams = () => {
                   <Users2 className="w-4 h-4" /> Transfer Team
                 </button>
               )}
-              
+ 
               <button
                 className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                 onClick={async (e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   setModalMenuOpenId(null);
-
+ 
                   const result = await Swal.fire({
                     title: `Dissolve Team?`,
                     html: `Dissolve team <b>"${team.name}"</b>?`,
@@ -388,11 +355,11 @@ const InstructorTeams = () => {
                     confirmButtonText: "Yes, dissolve",
                     cancelButtonText: "Cancel",
                   });
-
+ 
                   if (!result.isConfirmed) return;
-
+ 
                   await dissolveTeam(team.id);
-
+ 
                   Swal.fire({
                     icon: "success",
                     title: "Team Dissolved",
@@ -409,7 +376,7 @@ const InstructorTeams = () => {
         </div>
       );
     };
-
+ 
     return (
       <>
         {/* Tapable Card */}
@@ -425,26 +392,26 @@ const InstructorTeams = () => {
               backgroundColor: MAROON
             }}
           />
-          
+ 
           {/* Central content area */}
           <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 pb-5">
             {/* Adviser icon - smaller size and NO animation */}
             <div>
               <img src={AdviserIcon} alt="" className="w-14 h-14 mb-3 object-contain" />
             </div>
-            
+ 
             {/* Adviser name text - smaller font size */}
             <span className="text-[15px] font-bold text-center leading-tight text-black">
               {displayName || "—"}
             </span>
-
+ 
             {/* Team count - smaller font size */}
             <span className="text-[11px] text-neutral-600 text-center mt-1.5">
               {adviserTeams.length} team{adviserTeams.length !== 1 ? "s" : ""}
             </span>
           </div>
         </button>
-
+ 
         {/* Adviser Modal */}
         {showAdviserModal && (
           <div
@@ -476,7 +443,7 @@ const InstructorTeams = () => {
                   <X className="w-5 h-5 text-neutral-600" />
                 </button>
               </div>
-
+ 
               {/* Content - List View */}
               <div className="flex-1 overflow-y-auto">
                 <div className="p-6">
@@ -498,6 +465,7 @@ const InstructorTeams = () => {
                         <ModalTeamCard 
                           key={team.id} 
                           team={team} 
+                          systemTitle={teamSystemTitles[team.id]}
                           showTransferOption={true}
                           currentAdviser={{ name, uid }}
                         />
@@ -512,27 +480,27 @@ const InstructorTeams = () => {
       </>
     );
   };
-
+ 
   const handleTransferMember = async () => {
     if (!transferUser || !transferFromTeam || !transferToTeamId) return;
-
+ 
     try {
       const success = await transferTeamMember(
         transferUser,
         transferFromTeam,
         transferToTeamId
       );
-
+ 
       if (success) {
         setTransferUser(null);
         setTransferFromTeam(null);
         setTransferToTeamId("");
-
+ 
         // Refresh the current team data in the edit dialog
         if (etTeam && etTeam.id === transferFromTeam) {
           setEtMemberIds((prev) => prev.filter((id) => id !== transferUser));
         }
-
+ 
         console.log("Member transferred successfully!");
       }
     } catch (error) {
@@ -540,11 +508,11 @@ const InstructorTeams = () => {
       alert("Failed to transfer member. Please try again.");
     }
   };
-
+ 
   // Handle transferring team to another adviser
   const handleTransferTeam = async () => {
     if (!transferTeam || !transferToAdviserId) return;
-
+ 
     const result = await Swal.fire({
       title: `Transfer Team?`,
       html: `Transfer team <b>"${transferTeam.teamName}"</b> to selected adviser?`,
@@ -555,30 +523,49 @@ const InstructorTeams = () => {
       confirmButtonText: "Yes, transfer",
       cancelButtonText: "Cancel",
     });
-
+ 
     if (!result.isConfirmed) return;
-
-    const success = await transferTeamAdviser(transferTeam.teamId, transferToAdviserId);
-    
-    if (success) {
-      Swal.fire({
-        icon: "success",
-        title: "Team Transferred",
-        text: `Team "${transferTeam.teamName}" has been transferred successfully.`,
-        timer: 2000,
-        showConfirmButton: false,
-      });
-      
-      setTransferTeam(null);
-      setTransferToAdviserId("");
-    }
+ 
+    // Note: You'll need to implement transferTeamAdviser function in your hook
+    // const success = await transferTeamAdviser(transferTeam.teamId, transferToAdviserId);
+ 
+    // For now, let's just show a message that this needs to be implemented
+    Swal.fire({
+      icon: "warning",
+      title: "Function Not Implemented",
+      text: "The transferTeamAdviser function needs to be implemented in your hook.",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+ 
+    // TODO: Uncomment this when transferTeamAdviser is implemented
+    // if (success) {
+    //   Swal.fire({
+    //     icon: "success",
+    //     title: "Team Transferred",
+    //     text: `Team "${transferTeam.teamName}" has been transferred successfully.`,
+    //     timer: 2000,
+    //     showConfirmButton: false,
+    //   });
+ 
+    //   setTransferTeam(null);
+    //   setTransferToAdviserId("");
+    // }
   };
-
-  const teamCards = teams.map((t) => <TeamCard key={t.id} team={t} />);
+ 
+  // Pass systemTitle to each TeamCard
+  const teamCards = teams.map((t) => (
+    <TeamCard 
+      key={t.id} 
+      team={t} 
+      systemTitle={teamSystemTitles[t.id]}
+    />
+  ));
+ 
   const adviserItems = advisers.map((a) => (
     <AdviserCard key={a.uid || a.id} name={a.fullName} uid={a.uid || a.id} />
   ));
-
+ 
   return (
     <div className="min-h-full flex flex-col">
       {/* ===== Header ===== */}
@@ -591,7 +578,7 @@ const InstructorTeams = () => {
         </div>
         <div className="mt-3 h-[2px] w-full" style={{ backgroundColor: MAROON }} />
       </div>
-
+ 
       {/* ===== Toggle + Actions ===== */}
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <div className="cursor-pointer rounded-full border border-neutral-300 p-1 flex">
@@ -618,7 +605,7 @@ const InstructorTeams = () => {
             Adviser
           </button>
         </div>
-
+ 
         <button
           onClick={() => setOpenCreate(true)}
           className="cursor-pointer inline-flex items-center gap-2 rounded-full border border-neutral-300 px-3.5 py-1.5 text-sm text-neutral-800 hover:bg-neutral-100"
@@ -632,12 +619,12 @@ const InstructorTeams = () => {
           <PlusCircle className="w-4 h-4" /> Assign Adviser
         </button>
       </div>
-
+ 
       {/* Cards grid */}
       <div className="mt-6 flex flex-wrap gap-6">
         {view === "teams" ? teamCards : adviserItems}
       </div>
-
+ 
       {/* Create Team Dialog */}
       {openCreate && (
         <div
@@ -668,7 +655,7 @@ const InstructorTeams = () => {
                 </div>
                 <div className="mt-3 h-[2px]" style={{ backgroundColor: MAROON }} />
               </div>
-
+ 
               <div className="px-5 py-5 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -689,7 +676,7 @@ const InstructorTeams = () => {
                       onChange={(selectedOption) => {
                         const id = selectedOption?.value || "";
                         setCtManagerId(id);
-
+ 
                         if (id) {
                           const selectedManager = availableMembers.find(
                             (s) => idOf(s) === id
@@ -707,7 +694,7 @@ const InstructorTeams = () => {
                         } else {
                           setCtTeamName("");
                         }
-
+ 
                         if (ctMemberIds.includes(id)) removeMember(id);
                       }}
                       placeholder="Select Project Manager"
@@ -737,7 +724,7 @@ const InstructorTeams = () => {
                       }}
                     />
                   </div>
-
+ 
                   <div>
                     <label className="block text-sm font-medium text-neutral-700">
                       Team Name
@@ -752,7 +739,7 @@ const InstructorTeams = () => {
                     />
                   </div>
                 </div>
-
+ 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
                     Add Member
@@ -817,7 +804,7 @@ const InstructorTeams = () => {
                     </button>
                   </div>
                 </div>
-
+ 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700">
                     Members List
@@ -857,7 +844,7 @@ const InstructorTeams = () => {
                   </div>
                 </div>
               </div>
-
+ 
               <div className="px-5 pb-5 flex justify-end gap-2">
                 <button
                   onClick={async () => {
@@ -875,7 +862,7 @@ const InstructorTeams = () => {
           </div>
         </div>
       )}
-
+ 
       {/* Assign Adviser Dialog */}
       {openAssign && (
         <div
@@ -906,7 +893,7 @@ const InstructorTeams = () => {
                 </div>
                 <div className="mt-3 h-[2px]" style={{ backgroundColor: MAROON }} />
               </div>
-
+ 
               <div className="px-5 py-5 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -933,7 +920,7 @@ const InstructorTeams = () => {
                         </p>
                       )}
                   </div>
-
+ 
                   <div>
                     <label className="block text-sm font-medium text-neutral-700">
                       Adviser
@@ -959,7 +946,7 @@ const InstructorTeams = () => {
                   </div>
                 </div>
               </div>
-
+ 
               <div className="px-5 pb-5 flex justify-end gap-2">
                 <button
                   onClick={async () => {
@@ -984,7 +971,7 @@ const InstructorTeams = () => {
           </div>
         </div>
       )}
-
+ 
       {/* Edit Team Dialog */}
       {etTeam && (
         <div
@@ -1009,7 +996,7 @@ const InstructorTeams = () => {
                 <X className="w-5 h-5 text-neutral-600" />
               </button>
             </div>
-
+ 
             {/* Content - Scrollable */}
             <div className="flex-1 overflow-y-auto">
               {/* Members Title + Add Button */}
@@ -1065,7 +1052,7 @@ const InstructorTeams = () => {
                         }}
                       />
                     </div>
-
+ 
                     <button
                       type="button"
                       onClick={() => {
@@ -1084,7 +1071,7 @@ const InstructorTeams = () => {
                   </div>
                 </div>
               </div>
-
+ 
               {/* Members Table */}
               <div className="px-4 sm:px-6 mt-3 pb-4">
                 {/* Mobile Card View */}
@@ -1094,14 +1081,14 @@ const InstructorTeams = () => {
                       No members yet.
                     </div>
                   )}
-
+ 
                   {(etManagerId && !etMemberIds.includes(etManagerId)
                     ? [etManagerId, ...etMemberIds]
                     : etMemberIds
                   ).map((uid, index) => {
                     const u = allUsers.find((m) => (m.uid || m.id) === uid);
                     const isPM = uid === etManagerId;
-
+ 
                     return (
                       <div
                         key={uid}
@@ -1125,7 +1112,7 @@ const InstructorTeams = () => {
                             >
                               <MoreVertical className="w-4 h-4 text-neutral-600 hover:text-black cursor-pointer" />
                             </button>
-
+ 
                             {activeMenu === uid && (
                               <div className="absolute right-0 top-full mt-1 w-40 bg-white border rounded-md shadow-lg text-left z-50">
                                 <button
@@ -1144,7 +1131,7 @@ const InstructorTeams = () => {
                                 >
                                   Transfer Member
                                 </button>
-
+ 
                                 <button
                                   disabled={isPM}
                                   className={`w-full text-left px-3 py-2 text-xs ${
@@ -1165,7 +1152,7 @@ const InstructorTeams = () => {
                             )}
                           </div>
                         </div>
-
+ 
                         <div className="grid grid-cols-2 gap-2 text-xs text-neutral-600 mb-3">
                           <div>
                             <span className="font-medium">ID:</span>{" "}
@@ -1183,18 +1170,15 @@ const InstructorTeams = () => {
                           }
                           onChange={(e) => {
                             const newRole = e.target.value;
-
+ 
                             if (newRole === "Project Manager") {
-                              // ✅ Ensure PM is always part of member list
-                              // ALWAYS keep old manager in the list
-setEtMemberIds(prev => {
-  if (prev.includes(etManagerId)) return prev;
-  return [...prev, etManagerId];
-});
-
-
+                              setEtMemberIds(prev => {
+                                if (prev.includes(etManagerId)) return prev;
+                                return [...prev, etManagerId];
+                              });
+ 
                               setEtManagerId(uid);
-
+ 
                               const pmUser = allUsers.find(
                                 (m) => (m.uid || m.id) === uid
                               );
@@ -1202,13 +1186,11 @@ setEtMemberIds(prev => {
                                 setEtTeamName(`${pmUser.lastName}, Et Al`);
                               }
                             } else {
-                              // ✅ When demoting PM -> Member
                               if (uid === etManagerId) {
-                                // ✅ keep user in member list (no disappearing)
                                 setEtMemberIds((prev) =>
                                   prev.includes(uid) ? prev : [...prev, uid]
                                 );
-
+ 
                                 setEtManagerId("");
                               }
                             }
@@ -1223,7 +1205,7 @@ setEtMemberIds(prev => {
                     );
                   })}
                 </div>
-
+ 
                 {/* Desktop Table View */}
                 <div className="hidden sm:block overflow-x-auto">
                   <table className="w-full text-sm border rounded-lg overflow-hidden">
@@ -1238,7 +1220,7 @@ setEtMemberIds(prev => {
                         <th className="px-4 py-2 w-16 text-center">Action</th>
                       </tr>
                     </thead>
-
+ 
                     <tbody>
                       {etMemberIds.length === 0 && (
                         <tr>
@@ -1250,14 +1232,14 @@ setEtMemberIds(prev => {
                           </td>
                         </tr>
                       )}
-
+ 
                       {(etManagerId && !etMemberIds.includes(etManagerId)
                         ? [etManagerId, ...etMemberIds]
                         : etMemberIds
                       ).map((uid, index) => {
                         const u = allUsers.find((m) => (m.uid || m.id) === uid);
                         const isPM = uid === etManagerId;
-
+ 
                         return (
                           <tr
                             key={uid}
@@ -1270,25 +1252,22 @@ setEtMemberIds(prev => {
                             <td className="px-4 py-3">{u?.lastName}</td>
                             <td className="px-4 py-3">{u?.firstName}</td>
                             <td className="px-4 py-3">{u?.middleName}</td>
-
+ 
                             <td className="px-4 py-2">
                               <select
                                 className="border rounded-md px-2 py-1 text-xs w-full max-w-32"
                                 value={isPM ? "Project Manager" : "Member"}
                                 onChange={(e) => {
                                   const newRole = e.target.value;
-
+ 
                                   if (newRole === "Project Manager") {
-                                    // Ensure the promoted user remains in the member list (so the row remains visible)
-                                    // ALWAYS keep old manager in the list
-setEtMemberIds(prev => {
-  if (prev.includes(etManagerId)) return prev;
-  return [...prev, etManagerId];
-});
-
-
+                                    setEtMemberIds(prev => {
+                                      if (prev.includes(etManagerId)) return prev;
+                                      return [...prev, etManagerId];
+                                    });
+ 
                                     setEtManagerId(uid);
-
+ 
                                     const pmUser = allUsers.find(
                                       (m) => (m.uid || m.id) === uid
                                     );
@@ -1298,7 +1277,6 @@ setEtMemberIds(prev => {
                                       );
                                     }
                                   } else {
-                                    // Demoting: if this uid is currently the PM, remove PM role but keep them in members
                                     if (isPM) {
                                       setEtMemberIds((prev) =>
                                         prev.includes(uid)
@@ -1316,7 +1294,7 @@ setEtMemberIds(prev => {
                                 </option>
                               </select>
                             </td>
-
+ 
                             <td className="px-4 py-2 text-center relative">
                               <button
                                 onClick={() =>
@@ -1326,7 +1304,7 @@ setEtMemberIds(prev => {
                               >
                                 <MoreVertical className="w-5 h-5 text-neutral-600 hover:text-black cursor-pointer" />
                               </button>
-
+ 
                               {activeMenu === uid && (
                                 <div
                                   className={`absolute right-0 w-40 bg-white border rounded-md shadow-lg text-left z-50 ${
@@ -1351,7 +1329,7 @@ setEtMemberIds(prev => {
                                   >
                                     Transfer Member
                                   </button>
-
+ 
                                   <button
                                     disabled={isPM}
                                     className={`w-full text-left px-3 py-2 text-sm ${
@@ -1379,7 +1357,7 @@ setEtMemberIds(prev => {
                 </div>
               </div>
             </div>
-
+ 
             {/* Footer */}
             <div className="px-4 sm:px-6 py-4 flex justify-end gap-2 border-t bg-neutral-50">
               <button
@@ -1401,7 +1379,7 @@ setEtMemberIds(prev => {
           </div>
         </div>
       )}
-
+ 
       {/* Transfer Member Modal */}
       {transferUser && (
         <div
@@ -1438,7 +1416,7 @@ setEtMemberIds(prev => {
               </div>
               <div className="mt-3 h-[2px]" style={{ backgroundColor: MAROON }} />
             </div>
-
+ 
             {/* Content */}
             <div className="px-5 py-5 space-y-4">
               <div>
@@ -1461,7 +1439,7 @@ setEtMemberIds(prev => {
                 </select>
               </div>
             </div>
-
+ 
             {/* Footer */}
             <div className="px-5 pb-5 flex justify-end gap-2">
               <button
@@ -1476,7 +1454,7 @@ setEtMemberIds(prev => {
           </div>
         </div>
       )}
-
+ 
       {/* Transfer Team Modal */}
       {transferTeam && (
         <div
@@ -1511,14 +1489,14 @@ setEtMemberIds(prev => {
               </div>
               <div className="mt-3 h-[2px]" style={{ backgroundColor: MAROON }} />
             </div>
-
+ 
             {/* Content */}
             <div className="px-5 py-5 space-y-4">
               <div>
                 <p className="text-sm text-neutral-600 mb-4">
                   Transfer team <strong>"{transferTeam.teamName}"</strong> to another adviser.
                 </p>
-                
+ 
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
                   Select New Adviser
                 </label>
@@ -1538,7 +1516,7 @@ setEtMemberIds(prev => {
                 </select>
               </div>
             </div>
-
+ 
             {/* Footer */}
             <div className="px-5 pb-5 flex justify-end gap-2">
               <button

@@ -17,12 +17,12 @@ import {
   ChevronDown,
   Filter,
 } from "lucide-react";
-
-
+ 
+ 
 import { getAdviserEvents } from "../../services/events";
 import { auth } from "../../config/firebase";
-
-
+ 
+ 
 /* ===== Firebase ===== */
 import { db } from "../../config/firebase";
 import {
@@ -38,15 +38,15 @@ import {
   deleteDoc,
   Timestamp
 } from "firebase/firestore";
-
-
+ 
+ 
 /* ===== Supabase ===== */
 import { supabase } from "../../config/supabase";
-
-
+ 
+ 
 const MAROON = "#6A0F14";
-
-
+ 
+ 
 /** Must match your Firestore collection name */
 const MANUSCRIPT_COLLECTION = "manuscriptSubmissions";
 const TEAMS_COLLECTION = "teams";
@@ -55,8 +55,8 @@ const ORAL_DEFENSE_COLLECTION = "oralDefenseSchedules";
 const FINAL_DEFENSE_COLLECTION = "finalDefenseSchedules";
 const REFINAL_DEFENSE_COLLECTION = "refinalDefenseSchedules";
 const TEAM_SYSTEM_TITLES_COLLECTION = "teamSystemTitles";
-
-
+ 
+ 
 const to12h = (t) => {
   if (!t) return "";
   const [Hraw, Mraw] = String(t).split(":");
@@ -66,8 +66,8 @@ const to12h = (t) => {
   const hh = ((H + 11) % 12) + 1;
   return `${hh}:${String(M || 0).padStart(2, "0")} ${ampm}`;
 };
-
-
+ 
+ 
 const CardTable = ({ children }) => (
   <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
     <div className="overflow-x-auto">
@@ -75,8 +75,8 @@ const CardTable = ({ children }) => (
     </div>
   </div>
 );
-
-
+ 
+ 
 const Pill = ({ children, editable, onClick }) => (
   <span
     onClick={onClick}
@@ -89,8 +89,8 @@ const Pill = ({ children, editable, onClick }) => (
     {children}
   </span>
 );
-
-
+ 
+ 
 /* ============ Status Colors ============ */
 const STATUS_COLORS = {
   "Pending": "#FFFFFF", // White
@@ -98,44 +98,60 @@ const STATUS_COLORS = {
   "Re-Check": "#578FCA", // Blue
   "Failed": "#3B0304", // Dark Maroon
 };
-
-
+ 
+ 
 /* ============ Improved Status Dropdown ============ */
-function StatusDropdown({ value, row, onSave, canEdit }) {
+function StatusDropdown({ value, row, onSave, canEdit, isLocked }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
-
-
+ 
+ 
   const statusOptions = [
     { value: "Pending", label: "Pending", color: STATUS_COLORS.Pending },
     { value: "Passed", label: "Passed", color: STATUS_COLORS.Passed },
     { value: "Re-Check", label: "Re-Check", color: STATUS_COLORS["Re-Check"] },
     { value: "Failed", label: "Failed", color: STATUS_COLORS.Failed },
   ];
-
-
+ 
+ 
   const currentStatus = statusOptions.find(opt => opt.value === value) || statusOptions[0];
-
-
+ 
+ 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
-
-
+ 
+ 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-
+ 
+ 
   const handleStatusChange = (newValue) => {
     onSave(row.id, "verdict", newValue);
     setIsOpen(false);
   };
-
-
+ 
+ 
+  // If locked (status is "Passed"), show readonly display without lock icon
+  if (isLocked) {
+    return (
+      <span
+        className="inline-flex items-center px-3 py-1 rounded text-[12px] font-medium border border-neutral-300"
+        style={{
+          backgroundColor: currentStatus.color,
+          color: currentStatus.value === "Pending" ? "#374151" : "white"
+        }}
+      >
+        {currentStatus.label}
+      </span>
+    );
+  }
+ 
+ 
   if (!canEdit) {
     return (
       <span
@@ -149,8 +165,8 @@ function StatusDropdown({ value, row, onSave, canEdit }) {
       </span>
     );
   }
-
-
+ 
+ 
   return (
     <div className="relative inline-flex items-center" ref={dropdownRef}>
       <select
@@ -173,75 +189,75 @@ function StatusDropdown({ value, row, onSave, canEdit }) {
     </div>
   );
 }
-
-
+ 
+ 
 /* ============ Improved Percentage Input with Decimal Support ============ */
-function PercentageInput({ value, row, field, onSave, canEdit }) {
+function PercentageInput({ value, row, field, onSave, canEdit, isLocked }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(
     typeof value === 'number' ? value.toFixed(2) : "0.00"
   );
   const inputRef = useRef(null);
-
-
+ 
+ 
   useEffect(() => {
     setEditValue(
       typeof value === 'number' ? value.toFixed(2) : "0.00"
     );
   }, [value]);
-
-
+ 
+ 
   const handleSave = () => {
     // Parse the value as float and ensure it's between 0-100
     let finalValue = parseFloat(editValue) || 0;
-   
+ 
     // Validate range
     if (finalValue < 0) finalValue = 0;
     if (finalValue > 100) finalValue = 100;
-   
+ 
     // Round to 2 decimal places
     finalValue = Math.round(finalValue * 100) / 100;
-   
+ 
     onSave(row.id, field, finalValue);
     setIsEditing(false);
   };
-
-
+ 
+ 
   const handleChange = (newValue) => {
     // Allow numbers, decimal point, and backspace
     const decimalRegex = /^\d*\.?\d{0,2}$/;
-   
+ 
     // Remove any non-numeric characters except decimal point
     let cleanedValue = newValue.replace(/[^\d.]/g, '');
-   
+ 
     // Ensure only one decimal point
     const decimalParts = cleanedValue.split('.');
     if (decimalParts.length > 2) {
       cleanedValue = decimalParts[0] + '.' + decimalParts.slice(1).join('');
     }
-   
+ 
     // Limit to 4 digits before decimal and 2 after
     if (decimalParts[0] && decimalParts[0].length > 4) {
       cleanedValue = decimalParts[0].substring(0, 4) + (decimalParts[1] ? '.' + decimalParts[1] : '');
     }
-   
+ 
     // Limit to 2 decimal places
     if (decimalParts[1] && decimalParts[1].length > 2) {
       cleanedValue = decimalParts[0] + '.' + decimalParts[1].substring(0, 2);
     }
-   
+ 
     // Don't allow decimal point at the beginning
     if (cleanedValue === '.') {
       cleanedValue = '0.';
     }
-   
+ 
     // Validate against regex
     if (decimalRegex.test(cleanedValue) || cleanedValue === '') {
       setEditValue(cleanedValue);
     }
   };
-
-
+ 
+ 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
       handleSave();
@@ -250,20 +266,28 @@ function PercentageInput({ value, row, field, onSave, canEdit }) {
       setEditValue(typeof value === 'number' ? value.toFixed(2) : "0.00");
     }
   };
-
-
+ 
+ 
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
     }
   }, [isEditing]);
-
-
+ 
+ 
   // Format display value with 2 decimal places
   const displayValue = typeof value === 'number' ? value.toFixed(2) : "0.00";
-
-
+ 
+ 
+  // If locked (status is "Passed"), show readonly display without lock icon
+  if (isLocked) {
+    return (
+      <span className="font-medium text-gray-700 text-sm">{displayValue}%</span>
+    );
+  }
+ 
+ 
   if (!canEdit) {
     return (
       <div className="flex items-center gap-2">
@@ -271,8 +295,8 @@ function PercentageInput({ value, row, field, onSave, canEdit }) {
       </div>
     );
   }
-
-
+ 
+ 
   if (isEditing) {
     return (
       <div className="flex items-center gap-2">
@@ -311,8 +335,8 @@ function PercentageInput({ value, row, field, onSave, canEdit }) {
       </div>
     );
   }
-
-
+ 
+ 
   return (
     <div className="flex items-center gap-2">
       <span className="font-medium text-neutral-800 text-sm">{displayValue}%</span>
@@ -327,33 +351,33 @@ function PercentageInput({ value, row, field, onSave, canEdit }) {
     </div>
   );
 }
-
-
+ 
+ 
 /* ============ Upload helpers ============ */
 const safeName = (name = "") =>
   name
     .replace(/[^a-zA-Z0-9._-]/g, "_")
     .replace(/_+/g, "_")
     .slice(0, 120);
-
-
+ 
+ 
 async function uploadToSupabase(file, row) {
   const fileKey = `${row.teamId || "no-team"}/${row.id}/${
     Date.now() + "-" + Math.random().toString(36).slice(2)
   }-${safeName(file.name)}`;
-
-
+ 
+ 
   const { error } = await supabase.storage
     .from("user-manuscripts")
     .upload(fileKey, file, { upsert: false });
   if (error) throw new Error(error.message);
-
-
+ 
+ 
   const {
     data: { publicUrl },
   } = supabase.storage.from("user-manuscripts").getPublicUrl(fileKey);
-
-
+ 
+ 
   return {
     name: file.name,
     fileName: fileKey,
@@ -361,8 +385,8 @@ async function uploadToSupabase(file, row) {
     uploadedAt: new Date().toISOString(),
   };
 }
-
-
+ 
+ 
 async function upsertFileUrl(docId, nextList) {
   const ref = doc(db, MANUSCRIPT_COLLECTION, docId);
   try {
@@ -371,8 +395,8 @@ async function upsertFileUrl(docId, nextList) {
     await setDoc(ref, { fileUrl: nextList }, { merge: true });
   }
 }
-
-
+ 
+ 
 /* ============ Upload Modal ============ */
 function UploadModal({ open, row, onClose, onSaved }) {
   const [pendingFiles, setPendingFiles] = useState([]);
@@ -380,19 +404,19 @@ function UploadModal({ open, row, onClose, onSaved }) {
   const [toDelete, setToDelete] = useState(new Set());
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef(null);
-
-
+ 
+ 
   // Initialize when opened
   useEffect(() => {
     if (!open || !row?.id) return;
-
-
+ 
+ 
     // snapshot existing files locally for editing
     setExisting(Array.isArray(row.fileUrl) ? [...row.fileUrl] : []);
     setPendingFiles([]);
     setToDelete(new Set());
-
-
+ 
+ 
     // ensure fileUrl exists remotely too
     (async () => {
       if (!Array.isArray(row.fileUrl)) {
@@ -410,26 +434,26 @@ function UploadModal({ open, row, onClose, onSaved }) {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, row?.id]);
-
-
+ 
+ 
   if (!open || !row) return null;
-
-
+ 
+ 
   const pickFiles = () => inputRef.current?.click();
-
-
+ 
+ 
   const onFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setPendingFiles((prev) => [...prev, ...files]);
     e.target.value = "";
   };
-
-
+ 
+ 
   const removePending = (idx) =>
     setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
-
-
+ 
+ 
   const removeExisting = (fileName) => {
     setExisting((prev) => prev.filter((f) => f.fileName !== fileName));
     setToDelete((prev) => {
@@ -438,8 +462,8 @@ function UploadModal({ open, row, onClose, onSaved }) {
       return next;
     });
   };
-
-
+ 
+ 
   const save = async () => {
     if (uploading || !row?.id) return;
     setUploading(true);
@@ -452,20 +476,20 @@ function UploadModal({ open, row, onClose, onSaved }) {
           .remove(names);
         if (error) console.warn("Supabase remove error:", error.message);
       }
-
-
+ 
+ 
       // 2) upload new files
       const uploaded =
         pendingFiles.length > 0
           ? await Promise.all(pendingFiles.map((f) => uploadToSupabase(f, row)))
           : [];
-
-
+ 
+ 
       // 3) compose final list & write to Firestore
       const nextList = [...existing, ...uploaded];
       await upsertFileUrl(row.id, nextList);
-
-
+ 
+ 
       onSaved?.(nextList);
       onClose();
     } catch (e) {
@@ -475,11 +499,11 @@ function UploadModal({ open, row, onClose, onSaved }) {
       setUploading(false);
     }
   };
-
-
+ 
+ 
   const hasChanges = pendingFiles.length > 0 || toDelete.size > 0;
-
-
+ 
+ 
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
@@ -503,8 +527,8 @@ function UploadModal({ open, row, onClose, onSaved }) {
               <X className="w-5 h-5" />
             </button>
           </div>
-
-
+ 
+ 
           {/* Body (scrollable) */}
           <div className="flex-1 px-5 pb-5 overflow-y-auto space-y-5">
             {/* Existing files */}
@@ -568,8 +592,8 @@ function UploadModal({ open, row, onClose, onSaved }) {
                 )}
               </div>
             </div>
-
-
+ 
+ 
             {/* Pending attachments */}
             <div className="rounded-xl border border-neutral-200">
               <div className="px-4 py-2 border-b border-neutral-200 text-sm font-semibold flex items-center justify-between">
@@ -590,8 +614,8 @@ function UploadModal({ open, row, onClose, onSaved }) {
                   onChange={onFileChange}
                 />
               </div>
-
-
+ 
+ 
               <div className="p-4">
                 {pendingFiles.length === 0 ? (
                   <div className="text-sm text-neutral-600">
@@ -627,8 +651,8 @@ function UploadModal({ open, row, onClose, onSaved }) {
               </div>
             </div>
           </div>
-
-
+ 
+ 
           {/* Footer */}
           <div className="flex justify-end gap-2 px-5 pb-4 pt-2">
             <button
@@ -654,16 +678,16 @@ function UploadModal({ open, row, onClose, onSaved }) {
     </div>
   );
 }
-
-
+ 
+ 
 // Helper function to get last name from full name
 const getLastName = (fullName) => {
   if (!fullName) return "";
   const parts = fullName.trim().split(" ");
   return parts[parts.length - 1] || "";
 };
-
-
+ 
+ 
 // Helper function to format team name
 const formatTeamName = (teamData) => {
   if (teamData.manager && teamData.manager.fullName) {
@@ -672,8 +696,8 @@ const formatTeamName = (teamData) => {
   }
   return teamData.name || "Unknown Team";
 };
-
-
+ 
+ 
 /* ============================ Updated Category Card ============================ */
 function CategoryCard({ title, icon: Icon, onClick }) {
   return (
@@ -688,21 +712,21 @@ function CategoryCard({ title, icon: Icon, onClick }) {
         className="absolute bottom-0 left-0 right-0 h-6 rounded-b-2xl transition-all duration-300 group-hover:h-8"
         style={{ background: MAROON }}
       />
-     
+ 
       {/* Central content area */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-4 pt-2 pb-10">
         {/* Task icon - centered in main white area with animation */}
         <div className="transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
           <Icon className="w-16 h-16 mb-4 text-black" />
         </div>
-       
+ 
         {/* Title text - positioned below icon */}
         <span className="text-base font-bold text-center leading-tight text-black transition-all duration-300 group-hover:scale-105">
           {title}
         </span>
       </div>
-
-
+ 
+ 
       {/* Subtle glow effect on hover */}
       <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
            style={{
@@ -712,8 +736,8 @@ function CategoryCard({ title, icon: Icon, onClick }) {
     </button>
   );
 }
-
-
+ 
+ 
 // Helper function to fetch system titles for teams
 const fetchSystemTitlesForTeams = async (teamIds) => {
   const titlesMap = {};
@@ -734,18 +758,18 @@ const fetchSystemTitlesForTeams = async (teamIds) => {
         titlesMap[teamId] = "";
       }
     });
-
-
+ 
+ 
     await Promise.all(titlePromises);
   } catch (error) {
     console.error("Error fetching system titles:", error);
   }
-
-
+ 
+ 
   return titlesMap;
 };
-
-
+ 
+ 
 // Helper function to check if adviser is panelist in a defense and get the exact panelist name
 const isAdviserPanelist = (defenseData, adviserName) => {
   if (!adviserName || !defenseData.panelists) return { isPanelist: false, panelistName: null };
@@ -764,42 +788,42 @@ const isAdviserPanelist = (defenseData, adviserName) => {
     panelistName: matchingPanelist || null
   };
 };
-
-
+ 
+ 
 /* ============================ Filter Dropdown ============================ */
 function DefenseFilterDropdown({ value, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
-
-
+ 
+ 
   const options = [
     { value: "adviser", label: "Adviser" },
     { value: "panelists", label: "Panelists" }
   ];
-
-
+ 
+ 
   const currentOption = options.find(opt => opt.value === value) || options[0];
-
-
+ 
+ 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
-
-
+ 
+ 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-
+ 
+ 
   const handleOptionSelect = (optionValue) => {
     onChange(optionValue);
     setIsOpen(false);
   };
-
-
+ 
+ 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
       <button
@@ -812,8 +836,8 @@ function DefenseFilterDropdown({ value, onChange }) {
         {currentOption.label}
         <ChevronDown className="w-4 h-4" />
       </button>
-
-
+ 
+ 
       {isOpen && (
         <div className="absolute right-0 z-10 mt-2 w-40 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
           <div className="py-1">
@@ -836,8 +860,8 @@ function DefenseFilterDropdown({ value, onChange }) {
     </div>
   );
 }
-
-
+ 
+ 
 /* ============================ Main ============================ */
 export default function AdviserEvents() {
   const [rows, setRows] = useState({
@@ -863,26 +887,29 @@ export default function AdviserEvents() {
   const [defenseFilter, setDefenseFilter] = useState("adviser");
   const [adviserName, setAdviserName] = useState("");
   const [adviserTeams, setAdviserTeams] = useState([]);
-
-
+ 
+ 
   // Upload modal state
   const [uploadRow, setUploadRow] = useState(null);
-
-
+ 
+ 
   // Inline editing state
   const [editingCells, setEditingCells] = useState(new Set()); // Set of 'docId-field' strings
-
-
+ 
+  // State to control visibility of instructional message
+  const [showInstructions, setShowInstructions] = useState(true);
+ 
+ 
   const uid =
     auth?.currentUser?.uid ??
     (typeof window !== "undefined" ? localStorage.getItem("uid") : null);
-
-
+ 
+ 
   // Get adviser's name and teams
   useEffect(() => {
     const fetchAdviserData = async () => {
       if (!uid) return;
-     
+ 
       try {
         // Get adviser's name
         const userDoc = await getDoc(doc(db, "users", uid));
@@ -890,8 +917,8 @@ export default function AdviserEvents() {
           const userData = userDoc.data();
           setAdviserName(userData.fullName || "");
         }
-
-
+ 
+ 
         // Get adviser's teams
         const teamsQuery = query(
           collection(db, TEAMS_COLLECTION),
@@ -907,37 +934,37 @@ export default function AdviserEvents() {
         console.error("Error fetching adviser data:", error);
       }
     };
-
-
+ 
+ 
     fetchAdviserData();
   }, [uid]);
-
-
+ 
+ 
   // Enhanced function to fetch ALL defense schedules including those where adviser is panelist
   const fetchAllDefenseSchedules = async () => {
     try {
       console.log("Fetching ALL defense schedules from separate collections...");
-
-
+ 
+ 
       // Fetch system titles for all teams
       const systemTitlesMap = await fetchSystemTitlesForTeams(adviserTeams.map(team => team.id));
-
-
+ 
+ 
       // Fetch from each collection separately - get ALL documents, not just adviser's teams
       const [titleDefenseSnapshot, oralDefenseSnapshot, finalDefenseSnapshot] = await Promise.all([
         getDocs(collection(db, TITLE_DEFENSE_COLLECTION)),
         getDocs(collection(db, ORAL_DEFENSE_COLLECTION)),
         getDocs(collection(db, FINAL_DEFENSE_COLLECTION))
       ]);
-
-
+ 
+ 
       console.log("Raw defense data counts:", {
         titleDefense: titleDefenseSnapshot.docs.length,
         oralDefense: oralDefenseSnapshot.docs.length,
         finalDefense: finalDefenseSnapshot.docs.length
       });
-
-
+ 
+ 
       // Process defense data for ALL teams (not just adviser's teams)
       const processAllDefenseData = (snapshot, defenseType) => {
         return snapshot.docs
@@ -948,13 +975,13 @@ export default function AdviserEvents() {
           })
           .map((doc) => {
             const data = doc.data();
-           
+ 
             // Try to get team data for team name and title
             let currentTeamName = "Unknown Team";
             let currentTeamTitle = "";
             let isAdviserTeam = false;
-
-
+ 
+ 
             if (data.teamId) {
               const adviserTeam = adviserTeams.find(team => team.id === data.teamId);
               if (adviserTeam) {
@@ -968,8 +995,8 @@ export default function AdviserEvents() {
                 currentTeamTitle = data.title || "";
               }
             }
-
-
+ 
+ 
             // Enhanced panelists extraction
             let panelists = [];
             if (Array.isArray(data.panelists)) {
@@ -983,20 +1010,20 @@ export default function AdviserEvents() {
             } else if (data.panelistsNames) {
               panelists = [data.panelistsNames];
             }
-
-
+ 
+ 
             // Enhanced date extraction
             const date = data.date || data.scheduleDate || data.deadline || data.scheduledDate || "";
-
-
+ 
+ 
             // Enhanced time extraction
             const timeStart = data.timeStart || data.time || data.scheduleTime || data.deadlineTime || data.startTime || "";
-
-
+ 
+ 
             // Enhanced verdict extraction
             const verdict = data.verdict || data.status || data.result || data.outcome || "Pending";
-
-
+ 
+ 
             return {
               id: doc.id,
               ...data,
@@ -1012,29 +1039,29 @@ export default function AdviserEvents() {
             };
           });
       };
-
-
+ 
+ 
       // Process all defense data
       const allTitleDefense = processAllDefenseData(titleDefenseSnapshot, 'title');
       const allOralDefense = processAllDefenseData(oralDefenseSnapshot, 'oral');
       const allFinalDefense = processAllDefenseData(finalDefenseSnapshot, 'final');
-
-
+ 
+ 
       console.log("All processed defense schedules:", {
         titleDefense: allTitleDefense.length,
         oralDefense: allOralDefense.length,
         finalDefense: allFinalDefense.length
       });
-
-
+ 
+ 
       // Store all defenses for filtering
       setAllDefenses({
         titleDefense: allTitleDefense,
         oralDefense: allOralDefense,
         finalDefense: allFinalDefense
       });
-
-
+ 
+ 
     } catch (error) {
       console.error("Error fetching defense schedules:", error);
       setAllDefenses({
@@ -1044,46 +1071,46 @@ export default function AdviserEvents() {
       });
     }
   };
-
-
+ 
+ 
   // Get adviser's teams and their manuscript submissions
   const fetchAdviserManuscripts = async () => {
     try {
       setLoading(true);
       console.log("Fetching manuscripts for adviser UID:", uid);
-
-
+ 
+ 
       if (adviserTeams.length === 0) {
         console.log("No teams found for this adviser");
         setRows(prev => ({ ...prev, manuscript: [] }));
         return;
       }
-
-
+ 
+ 
       const adviserTeamIds = adviserTeams.map(team => team.id);
-
-
+ 
+ 
       // Fetch system titles for all teams
       const systemTitlesMap = await fetchSystemTitlesForTeams(adviserTeamIds);
-
-
+ 
+ 
       // Get manuscript submissions for these teams
       const manuscriptsQuery = query(
         collection(db, MANUSCRIPT_COLLECTION),
         where("teamId", "in", adviserTeamIds)
       );
-
-
+ 
+ 
       const manuscriptsSnapshot = await getDocs(manuscriptsQuery);
       const manuscriptsData = manuscriptsSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-
-
+ 
+ 
       console.log("Raw manuscript data:", manuscriptsData);
-
-
+ 
+ 
       // Process manuscript data with team information
       const processedManuscripts = await Promise.all(
         manuscriptsData.map(async (m) => {
@@ -1101,12 +1128,12 @@ export default function AdviserEvents() {
           } catch (error) {
             console.error("Error fetching team data:", error);
           }
-
-
+ 
+ 
           // Extract date and time fields - check ALL possible field names
           const date = m.date || m.dueDate || m.submissionDate || m.deadline || "";
-
-
+ 
+ 
           let duetime = "";
           if (m.duetime) duetime = m.duetime;
           else if (m.dueTime) duetime = m.dueTime;
@@ -1114,8 +1141,8 @@ export default function AdviserEvents() {
           else if (m.submissionTime) duetime = m.submissionTime;
           else if (m.deadlineTime) duetime = m.deadlineTime;
           else if (m.timeStart) duetime = m.timeStart;
-
-
+ 
+ 
           console.log(`Processing manuscript ${m.id}:`, {
             date,
             duetime,
@@ -1123,8 +1150,8 @@ export default function AdviserEvents() {
             title: currentTeamTitle,
             allFields: Object.keys(m)
           });
-
-
+ 
+ 
           return {
             ...m,
             fileUrl: Array.isArray(m.fileUrl) ? m.fileUrl : [],
@@ -1139,12 +1166,12 @@ export default function AdviserEvents() {
           };
         })
       );
-
-
+ 
+ 
       console.log("Processed manuscripts:", processedManuscripts);
       setRows(prev => ({ ...prev, manuscript: processedManuscripts }));
-
-
+ 
+ 
     } catch (error) {
       console.error("Error fetching adviser manuscripts:", error);
       setRows(prev => ({ ...prev, manuscript: [] }));
@@ -1152,53 +1179,53 @@ export default function AdviserEvents() {
       setLoading(false);
     }
   };
-
-
+ 
+ 
   // Real-time listener for team and defense schedule changes
   useEffect(() => {
     if (!uid) return;
-
-
+ 
+ 
     // Listen for changes in teams collection
     const teamsQuery = query(
       collection(db, TEAMS_COLLECTION),
       where("adviser.uid", "==", uid)
     );
-
-
+ 
+ 
     const unsubscribeTeams = onSnapshot(teamsQuery, (snapshot) => {
       const updatedTeams = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
       setAdviserTeams(updatedTeams);
-
-
+ 
+ 
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'removed') {
           // Team was dissolved - remove its manuscripts and defense schedules
           const dissolvedTeamId = change.doc.id;
           console.log("Team dissolved, removing data for team:", dissolvedTeamId);
-
-
+ 
+ 
           // Remove manuscripts
           setRows(prev => ({
             ...prev,
             manuscript: prev.manuscript.filter(m => m.teamId !== dissolvedTeamId)
           }));
-
-
+ 
+ 
         } else if (change.type === 'modified') {
           // Team was updated (manager changed, etc.) - update team names
           const updatedTeam = { id: change.doc.id, ...change.doc.data() };
           console.log("Team updated:", updatedTeam);
-
-
+ 
+ 
           // Update team name in manuscripts
           const newTeamName = formatTeamName(updatedTeam);
           const newTeamTitle = updatedTeam.projectTitle || updatedTeam.title || "";
-
-
+ 
+ 
           setRows(prev => ({
             ...prev,
             manuscript: prev.manuscript.map(m =>
@@ -1210,8 +1237,8 @@ export default function AdviserEvents() {
         }
       });
     });
-
-
+ 
+ 
     // Listen for manuscript changes
     const manuscriptsUnsubscribe = onSnapshot(
       collection(db, MANUSCRIPT_COLLECTION),
@@ -1228,8 +1255,8 @@ export default function AdviserEvents() {
         });
       }
     );
-
-
+ 
+ 
     // Listen for ALL defense schedule changes from all collections
     const titleDefenseUnsubscribe = onSnapshot(
       collection(db, TITLE_DEFENSE_COLLECTION),
@@ -1238,8 +1265,8 @@ export default function AdviserEvents() {
         fetchAllDefenseSchedules();
       }
     );
-
-
+ 
+ 
     const oralDefenseUnsubscribe = onSnapshot(
       collection(db, ORAL_DEFENSE_COLLECTION),
       () => {
@@ -1247,8 +1274,8 @@ export default function AdviserEvents() {
         fetchAllDefenseSchedules();
       }
     );
-
-
+ 
+ 
     const finalDefenseUnsubscribe = onSnapshot(
       collection(db, FINAL_DEFENSE_COLLECTION),
       () => {
@@ -1256,8 +1283,8 @@ export default function AdviserEvents() {
         fetchAllDefenseSchedules();
       }
     );
-
-
+ 
+ 
     return () => {
       unsubscribeTeams();
       manuscriptsUnsubscribe();
@@ -1266,8 +1293,8 @@ export default function AdviserEvents() {
       finalDefenseUnsubscribe();
     };
   }, [uid]);
-
-
+ 
+ 
   // Initial data fetch when adviser teams are loaded
   useEffect(() => {
     if (uid && adviserTeams.length > 0) {
@@ -1275,8 +1302,8 @@ export default function AdviserEvents() {
       fetchAllDefenseSchedules();
     }
   }, [uid, adviserTeams]);
-
-
+ 
+ 
   // Refresh data when switching to defenses view
   useEffect(() => {
     if (view === "defenses" && uid) {
@@ -1284,8 +1311,8 @@ export default function AdviserEvents() {
       fetchAllDefenseSchedules();
     }
   }, [view, uid]);
-
-
+ 
+ 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
     if (view === "menu") next.delete("view");
@@ -1295,14 +1322,14 @@ export default function AdviserEvents() {
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, defTab]);
-
-
+ 
+ 
   // FIXED: Updated canEditRow function
   const canEditRow = (row) => {
     const hasDate = !!row.date && row.date.trim() !== "";
     const hasDuetime = !!row.duetime && row.duetime.trim() !== "";
-
-
+ 
+ 
     console.log("canEditRow check for:", row.teamName, {
       date: row.date,
       duetime: row.duetime,
@@ -1310,18 +1337,18 @@ export default function AdviserEvents() {
       hasDuetime,
       canEdit: hasDate && hasDuetime,
     });
-
-
+ 
+ 
     return hasDate && hasDuetime;
   };
-
-
+ 
+ 
   const handleSaveScore = async (docId, field, value) => {
     try {
       const ref = doc(db, MANUSCRIPT_COLLECTION, docId);
       await updateDoc(ref, { [field]: value });
-
-
+ 
+ 
       // Update local state
       setRows((prev) => ({
         ...prev,
@@ -1329,8 +1356,8 @@ export default function AdviserEvents() {
           m.id === docId ? { ...m, [field]: value } : m
         ),
       }));
-
-
+ 
+ 
       // Remove from editing set
       setEditingCells((prev) => {
         const next = new Set(prev);
@@ -1342,16 +1369,16 @@ export default function AdviserEvents() {
       alert("Failed to update score. Please try again.");
     }
   };
-
-
+ 
+ 
   const handleEditCell = (docId, field) => {
     const row = rows.manuscript.find((m) => m.id === docId);
     if (row && canEditRow(row)) {
       setEditingCells((prev) => new Set(prev).add(`${docId}-${field}`));
     }
   };
-
-
+ 
+ 
   // Filter defense data based on selected filter
   const getFilteredDefenseData = (defenseData) => {
     if (defenseFilter === "adviser") {
@@ -1368,8 +1395,8 @@ export default function AdviserEvents() {
     }
     return defenseData;
   };
-
-
+ 
+ 
   // Get the currently displayed defense data based on active tab and filter
   const getCurrentDefenseData = () => {
     switch (defTab) {
@@ -1393,11 +1420,11 @@ export default function AdviserEvents() {
         return [];
     }
   };
-
-
+ 
+ 
   const currentDefenseData = getCurrentDefenseData();
-
-
+ 
+ 
   /* ===== Updated Header to match ProjectManagerTasks ===== */
   const Header = (
     <div className="space-y-2">
@@ -1409,8 +1436,8 @@ export default function AdviserEvents() {
       <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
     </div>
   );
-
-
+ 
+ 
   if (view === "menu") {
     return (
       <div className="space-y-4">
@@ -1430,24 +1457,34 @@ export default function AdviserEvents() {
       </div>
     );
   }
-
-
+ 
+ 
   return (
     <div className="space-y-4">
       {Header}
-
-
+ 
+ 
       {view === "manuscript" && (
         <section>
-          {/* Instructions */}
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <strong>Note:</strong> You can only edit scores and status when a
-              due date and due time are set by the instructor. The edit icons are always visible for editable fields.
-            </p>
-          </div>
-
-
+          {/* Instructions with close button */}
+          {showInstructions && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg relative">
+              <button
+                onClick={() => setShowInstructions(false)}
+                className="absolute right-2 top-2 p-1 rounded-md hover:bg-blue-100 text-blue-600"
+                aria-label="Close instructions"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <p className="text-sm text-blue-800 pr-6">
+                <strong>Note:</strong> You can only edit scores and status when a
+                due date and due time are set by the instructor. The edit icons are always visible for editable fields.
+                <strong> When status is marked as "Passed", all fields become locked and read-only (except file uploads).</strong>
+              </p>
+            </div>
+          )}
+ 
+ 
           {rows.manuscript.length === 0 && !loading ? (
             <div className="text-center py-8 text-neutral-500">
               No manuscript submissions found for your teams.
@@ -1470,8 +1507,9 @@ export default function AdviserEvents() {
               <tbody>
                 {(loading ? [] : rows.manuscript).map((r, idx) => {
                   const canEdit = canEditRow(r);
-
-
+                  const isLocked = r.verdict === "Passed"; // Lock all editing when status is "Passed"
+ 
+ 
                   console.log("Rendering row:", {
                     id: r.id,
                     teamName: r.teamName,
@@ -1479,9 +1517,11 @@ export default function AdviserEvents() {
                     date: r.date,
                     duetime: r.duetime,
                     canEdit,
+                    isLocked,
+                    verdict: r.verdict
                   });
-
-
+ 
+ 
                   return (
                     <tr
                       key={`ms-${r.id}`}
@@ -1502,8 +1542,8 @@ export default function AdviserEvents() {
                           <span className="text-red-500 text-xs">Not set</span>
                         )}
                       </td>
-
-
+ 
+ 
                       {/* Plagiarism Score - Improved UI with Decimal Support */}
                       <td className="py-2 pr-3">
                         <PercentageInput
@@ -1511,11 +1551,12 @@ export default function AdviserEvents() {
                           row={r}
                           field="plag"
                           onSave={handleSaveScore}
-                          canEdit={canEdit}
+                          canEdit={canEdit && !isLocked} // Disable editing if locked
+                          isLocked={isLocked} // Pass locked state
                         />
                       </td>
-
-
+ 
+ 
                       {/* AI Score - Improved UI with Decimal Support */}
                       <td className="py-2 pr-3">
                         <PercentageInput
@@ -1523,22 +1564,24 @@ export default function AdviserEvents() {
                           row={r}
                           field="ai"
                           onSave={handleSaveScore}
-                          canEdit={canEdit}
+                          canEdit={canEdit && !isLocked} // Disable editing if locked
+                          isLocked={isLocked} // Pass locked state
                         />
                       </td>
-
-
+ 
+ 
                       {/* Status - Improved Dropdown */}
                       <td className="py-2 pr-3">
                         <StatusDropdown
                           value={r.verdict}
                           row={r}
                           onSave={handleSaveScore}
-                          canEdit={canEdit}
+                          canEdit={canEdit && !isLocked} // Disable editing if locked
+                          isLocked={isLocked} // Pass locked state
                         />
                       </td>
-
-
+ 
+ 
                       {/* Upload button + modal */}
                       <td className="py-2 pr-3">
                         <button
@@ -1556,8 +1599,8 @@ export default function AdviserEvents() {
               </tbody>
             </CardTable>
           )}
-
-
+ 
+ 
           {/* Upload Modal */}
           <UploadModal
             open={!!uploadRow}
@@ -1575,8 +1618,8 @@ export default function AdviserEvents() {
           />
         </section>
       )}
-
-
+ 
+ 
       {view === "defenses" && (
         <>
           <div className="flex justify-between items-center mb-3">
@@ -1598,7 +1641,7 @@ export default function AdviserEvents() {
                 </button>
               ))}
             </div>
-           
+ 
             {/* Filter Dropdown - Hide for Title Defense */}
             {defTab !== "title" && (
               <DefenseFilterDropdown
@@ -1607,8 +1650,8 @@ export default function AdviserEvents() {
               />
             )}
           </div>
-
-
+ 
+ 
           {/* Defense Tables */}
           {defTab === "title" && (
             <section>
@@ -1667,8 +1710,8 @@ export default function AdviserEvents() {
               </CardTable>
             </section>
           )}
-
-
+ 
+ 
           {defTab === "oral" && (
             <section>
               <CardTable>
@@ -1731,8 +1774,8 @@ export default function AdviserEvents() {
               </CardTable>
             </section>
           )}
-
-
+ 
+ 
           {defTab === "final" && (
             <section>
               <CardTable>
@@ -1801,5 +1844,3 @@ export default function AdviserEvents() {
     </div>
   );
 }
-
-

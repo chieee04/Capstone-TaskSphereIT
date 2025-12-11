@@ -111,7 +111,7 @@ const AddUserModal = ({
                 <input
                   type="text"
                   readOnly
-                  value="UserUser321"
+                  value="CCS_dct.2025!"
                   className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm bg-neutral-100 text-neutral-500"
                 />
               </div>

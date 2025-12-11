@@ -11,8 +11,8 @@ import {
   Loader2,
   MoreVertical,
 } from "lucide-react";
-
-
+import { useLocation } from "react-router-dom"; // Added import
+ 
 /* ===== Firebase ===== */
 import { auth, db } from "../../config/firebase";
 import {
@@ -31,15 +31,15 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-
-
+ 
+ 
 /* ===== Supabase (for uploads & public URLs) ===== */
 import { supabase } from "../../config/supabase";
-
-
+ 
+ 
 const MAROON = "#6A0F14";
-
-
+ 
+ 
 /* ========================== Helpers ========================== */
 const COLUMNS = [
   { id: "todo", title: "To Do", color: "#F5B700" },
@@ -47,43 +47,43 @@ const COLUMNS = [
   { id: "review", title: "To Review", color: "#6FA8DC" },
   { id: "missed", title: "Missed", color: "#6A0F14" },
 ];
-
-
+ 
+ 
 const STATUS_TO_COLUMN = {
   "To Do": "todo",
   "In Progress": "inprogress",
   "To Review": "review",
 };
-
-
+ 
+ 
 const cardShell =
   "bg-white border border-neutral-200 rounded-lg shadow-sm hover:shadow transition-shadow";
-
-
+ 
+ 
 const safeName = (u) =>
   [u?.firstName, u?.middleName ? `${u.middleName[0]}.` : null, u?.lastName]
     .filter(Boolean)
     .join(" ") || "Unknown";
-
-
+ 
+ 
 const BUCKET = "user-tasks-files";
-
-
+ 
+ 
 const safeFileName = (name = "") =>
   name.replace(/[^\w.\- ]+/g, "_").replace(/\s+/g, "_");
-
-
+ 
+ 
 const buildTaskFolder = (card) => `${card._collection}/${card.id}`;
-
-
+ 
+ 
 const toDate = (v) => {
   if (!v) return null;
   if (typeof v.toDate === "function") return v.toDate();
   const d = new Date(v);
   return Number.isNaN(+d) ? null : d;
 };
-
-
+ 
+ 
 const formatDate = (date) => {
   if (!date) return "—";
   if (typeof date.toDate === "function") {
@@ -103,8 +103,8 @@ const formatDate = (date) => {
     day: 'numeric'
   });
 };
-
-
+ 
+ 
 const formatTime = (timeString) => {
   if (!timeString) return "—";
   try {
@@ -117,8 +117,8 @@ const formatTime = (timeString) => {
     return timeString;
   }
 };
-
-
+ 
+ 
 const formatDateTime = (timestamp) => {
   if (!timestamp) return "";
   try {
@@ -135,15 +135,15 @@ const formatDateTime = (timestamp) => {
     return "";
   }
 };
-
-
+ 
+ 
 const uniqBy = (arr, keyFn) => {
   const m = new Map();
   arr.forEach((x) => m.set(keyFn(x), x));
   return Array.from(m.values());
 };
-
-
+ 
+ 
 const getInitials = (name) => {
   if (!name) return "U";
   const parts = name.split(' ');
@@ -154,8 +154,8 @@ const getInitials = (name) => {
   const lastName = parts[parts.length - 1];
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 };
-
-
+ 
+ 
 /* ======================= Confirmation Dialog ======================= */
 function ConfirmationDialog({
   open,
@@ -167,8 +167,8 @@ function ConfirmationDialog({
   cancelText = "No",
 }) {
   if (!open) return null;
-
-
+ 
+ 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 overscroll-contain">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
@@ -205,8 +205,8 @@ function ConfirmationDialog({
     </div>
   );
 }
-
-
+ 
+ 
 /* ======================= Reusable UI ========================= */
 function Column({ title, color, children }) {
   return (
@@ -225,8 +225,8 @@ function Column({ title, color, children }) {
     </div>
   );
 }
-
-
+ 
+ 
 function KanbanCard({ data, onOpen }) {
   return (
     <div className={cardShell}>
@@ -244,8 +244,8 @@ function KanbanCard({ data, onOpen }) {
             <StickyNote className="w-4 h-4 text-neutral-600" />
           </button>
         </div>
-
-
+ 
+ 
         <div className="mt-2 text-sm">
           <div className="text-neutral-800">
             {data.task || data.chapter || "Task"}
@@ -254,8 +254,8 @@ function KanbanCard({ data, onOpen }) {
             {data.revision || "No Revision"}
           </div>
         </div>
-
-
+ 
+ 
         <div className="mt-3 text-xs flex items-center gap-2">
           <span
             className={`w-2 h-2 rounded-full ${
@@ -270,8 +270,8 @@ function KanbanCard({ data, onOpen }) {
     </div>
   );
 }
-
-
+ 
+ 
 /* ====================== Detail + Chat ======================== */
 function Field({ label, value }) {
   return (
@@ -281,8 +281,8 @@ function Field({ label, value }) {
     </div>
   );
 }
-
-
+ 
+ 
 function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEditingId, replyingTo, setReplyingTo, depth = 0 }) {
   const isMine = message.sender?.uid === meUid;
   const [editText, setEditText] = useState(message.text);
@@ -292,25 +292,25 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
   const [showReplyInput, setShowReplyInput] = useState(false);
   const isEditing = editingId === message.id && isMine;
   const isReplying = replyingTo === message.id;
-
-
+ 
+ 
   // Disable edit if message has already been edited
   const canEdit = isMine && !message.__optimistic && !message.editedAt;
-
-
+ 
+ 
   const handleEditConfirm = () => {
     onEdit(message.id, editText);
     setEditingId(null);
     setShowEditConfirm(false);
   };
-
-
+ 
+ 
   const handleDeleteConfirm = () => {
     onDelete(message.id);
     setShowDeleteConfirm(false);
   };
-
-
+ 
+ 
   const handleReply = () => {
     if (replyText.trim()) {
       onReply(message.id, replyText);
@@ -319,19 +319,19 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
       setReplyingTo(null);
     }
   };
-
-
+ 
+ 
   const handleCancelReply = () => {
     setReplyText("");
     setShowReplyInput(false);
     setReplyingTo(null);
   };
-
-
+ 
+ 
   // Calculate indentation based on depth
   const indentClass = depth > 0 ? `ml-12` : "";
-
-
+ 
+ 
   return (
     <>
       {/* Confirmation Dialogs */}
@@ -344,8 +344,8 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
         confirmText="Yes, Edit"
         cancelText="No, Cancel"
       />
-
-
+ 
+ 
       <ConfirmationDialog
         open={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
@@ -355,8 +355,8 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
         confirmText="Yes, Delete"
         cancelText="No, Cancel"
       />
-
-
+ 
+ 
       <div className={`flex gap-3 mb-6 last:mb-0 ${indentClass}`}>
         {/* Profile Icon */}
         <div className="flex-shrink-0">
@@ -367,8 +367,8 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
             {getInitials(message.sender?.name)}
           </div>
         </div>
-
-
+ 
+ 
         {/* Comment Content */}
         <div className="flex-1 min-w-0">
           {/* Header with name and timestamp inline */}
@@ -387,8 +387,8 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
               </>
             )}
           </div>
-
-
+ 
+ 
           {/* Comment Body */}
           <div className="mb-2">
             {isEditing ? (
@@ -426,7 +426,7 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
                     <span className="italic text-gray-500">[no text]</span>
                   )}
                 </div>
-               
+ 
                 {/* Display attached files in the comment - REMOVED BORDER BOX */}
                 {message.sender?.fileUrl?.length > 0 && (
                   <div className="mt-3 space-y-2">
@@ -453,8 +453,8 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
               </>
             )}
           </div>
-
-
+ 
+ 
           {/* Action Buttons */}
           {!isEditing && (
             <div className="flex items-center gap-4 mt-2">
@@ -490,8 +490,8 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
               )}
             </div>
           )}
-
-
+ 
+ 
           {/* Reply Input */}
           {(showReplyInput || isReplying) && (
             <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -537,8 +537,8 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
               </div>
             </div>
           )}
-
-
+ 
+ 
           {/* ONE-LEVEL-only Replies */}
           {message.replies && message.replies.length > 0 && (
             <div className="mt-4 space-y-4">
@@ -564,8 +564,8 @@ function Comment({ message, meUid, onEdit, onDelete, onReply, editingId, setEdit
     </>
   );
 }
-
-
+ 
+ 
 function DetailView({ me, card, onBack }) {
   const meUid = me?.uid;
   const [messages, setMessages] = useState([]);
@@ -578,15 +578,15 @@ function DetailView({ me, card, onBack }) {
   const [attRows, setAttRows] = useState([]);
   const [hydrating, setHydrating] = useState(false);
   const listRef = useRef(null);
-
-
+ 
+ 
   // Helper: flatten messages so replies are only 1-level deep and no duplicates
   const flattenMessages = (rows) => {
     // Build map of id -> message (shallow clone) with replies array
     const map = new Map();
     rows.forEach((m) => map.set(m.id, { ...m, replies: [] }));
-
-
+ 
+ 
     // Attach direct replies to their parent (only direct)
     rows.forEach((m) => {
       if (m.parentId && map.has(m.parentId)) {
@@ -594,8 +594,8 @@ function DetailView({ me, card, onBack }) {
         parent.replies.push(map.get(m.id));
       }
     });
-
-
+ 
+ 
     // Function to recursively collect all descendants of a message
     const collectDescendants = (msg, visited = new Set()) => {
       let acc = [];
@@ -613,8 +613,8 @@ function DetailView({ me, card, onBack }) {
       }
       return acc;
     };
-
-
+ 
+ 
     // Build top-level array (messages without parentId)
     const topLevel = [];
     rows.forEach((m) => {
@@ -636,20 +636,20 @@ function DetailView({ me, card, onBack }) {
         topLevel.push(base);
       }
     });
-
-
+ 
+ 
     // Sort top-level messages by createdAt ascending (keep original ordering)
     topLevel.sort((a, b) => {
       const aTime = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
       const bTime = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
       return aTime - bTime;
     });
-
-
+ 
+ 
     return topLevel;
   };
-
-
+ 
+ 
   useEffect(() => {
     if (!card?.id) return;
     const filters = [
@@ -662,8 +662,8 @@ function DetailView({ me, card, onBack }) {
       ...filters,
       orderBy("createdAt", "asc")
     );
-
-
+ 
+ 
     const stop = onSnapshot(qy, (snap) => {
       const rows = snap.docs.map((d) => ({
         id: d.id,
@@ -671,31 +671,31 @@ function DetailView({ me, card, onBack }) {
         createdAt: d.data().createdAt,
         editedAt: d.data().editedAt
       }));
-
-
+ 
+ 
       // flatten and de-duplicate replies so UI shows one-level replies only
       const organized = flattenMessages(rows);
       setMessages(organized);
-
-
+ 
+ 
       // scroll to bottom
       requestAnimationFrame(() => {
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
       });
     });
-
-
+ 
+ 
     return () => typeof stop === "function" && stop();
   }, [card]);
-
-
+ 
+ 
   const hydrateAttachments = async () => {
     setHydrating(true);
     try {
       const merged = [];
       const folder = buildTaskFolder(card);
-
-
+ 
+ 
       const taskSnap = await getDoc(doc(db, card._collection, card.id));
       if (taskSnap.exists()) {
         const data = taskSnap.data() || {};
@@ -719,8 +719,8 @@ function DetailView({ me, card, onBack }) {
           });
         }
       }
-
-
+ 
+ 
       const filters = [
         where("taskCollection", "==", card._collection),
         where("taskId", "==", card.id),
@@ -743,8 +743,8 @@ function DetailView({ me, card, onBack }) {
           });
         });
       });
-
-
+ 
+ 
       const unique = uniqBy(
         merged,
         (x) => `${x.source}:${x.name}:${x.url || ""}`
@@ -757,14 +757,14 @@ function DetailView({ me, card, onBack }) {
       setHydrating(false);
     }
   };
-
-
+ 
+ 
   useEffect(() => {
     if (tab === "attachment") hydrateAttachments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
-
-
+ 
+ 
   const openPicker = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -775,32 +775,32 @@ function DetailView({ me, card, onBack }) {
     };
     input.click();
   };
-
-
+ 
+ 
   const removePending = (idx) => {
     setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
   };
-
-
+ 
+ 
   const send = async (parentId = null) => {
     const text = (draft || "").trim();
     if (!text && pendingFiles.length === 0) return;
-
-
+ 
+ 
     setSending(true);
     const uploads = [];
-
-
+ 
+ 
     try {
       const folder = buildTaskFolder(card);
-
-
+ 
+ 
       for (const f of pendingFiles) {
         // Use original file name without timestamp prefix
         const originalName = f.name;
         const filename = safeFileName(originalName);
         const storagePath = `${folder}/${filename}`;
-       
+ 
         const { error: upErr } = await supabase.storage
           .from(BUCKET)
           .upload(storagePath, f, {
@@ -808,8 +808,8 @@ function DetailView({ me, card, onBack }) {
             upsert: false,
           });
         if (upErr) throw upErr;
-
-
+ 
+ 
         const { data: pub } = supabase.storage
           .from(BUCKET)
           .getPublicUrl(storagePath);
@@ -821,8 +821,8 @@ function DetailView({ me, card, onBack }) {
           uploadedAt: new Date().toISOString(),
         });
       }
-
-
+ 
+ 
       const optimistic = {
         id: `tmp-${Date.now()}`,
         text,
@@ -842,13 +842,13 @@ function DetailView({ me, card, onBack }) {
         __optimistic: true,
         type: "message",
       };
-     
+ 
       // Optimistic update: if top-level, push to messages; if reply, attach to parent (local)
       setMessages(prev => {
         if (!parentId) {
           return [...prev, optimistic];
         }
-       
+ 
         const addReply = (messages) => {
           return messages.map(msg => {
             if (msg.id === parentId) {
@@ -865,14 +865,14 @@ function DetailView({ me, card, onBack }) {
             return msg;
           });
         };
-       
+ 
         return addReply(prev);
       });
-     
+ 
       setDraft("");
       setPendingFiles([]);
-
-
+ 
+ 
       await addDoc(collection(db, "chats"), {
         text,
         parentId: parentId || null,
@@ -890,8 +890,8 @@ function DetailView({ me, card, onBack }) {
         createdAt: serverTimestamp(),
         type: "message",
       });
-
-
+ 
+ 
       if (tab === "attachment") hydrateAttachments();
     } catch (e) {
       console.error("[chat] send failed:", e);
@@ -900,12 +900,12 @@ function DetailView({ me, card, onBack }) {
       setSending(false);
     }
   };
-
-
+ 
+ 
   const sendReply = async (parentId, replyText) => {
     if (!replyText.trim()) return;
-
-
+ 
+ 
     setSending(true);
     try {
       const optimistic = {
@@ -927,8 +927,8 @@ function DetailView({ me, card, onBack }) {
         __optimistic: true,
         type: "message",
       };
-
-
+ 
+ 
       // Optimistic update: attach reply to parent (local)
       setMessages(prev => {
         const addReply = (messages) => {
@@ -945,8 +945,8 @@ function DetailView({ me, card, onBack }) {
         };
         return addReply(prev);
       });
-
-
+ 
+ 
       await addDoc(collection(db, "chats"), {
         text: replyText,
         parentId: parentId,
@@ -964,8 +964,8 @@ function DetailView({ me, card, onBack }) {
         createdAt: serverTimestamp(),
         type: "message",
       });
-
-
+ 
+ 
     } catch (e) {
       console.error("[chat] reply failed:", e);
       alert("Failed to send reply. Check console for details.");
@@ -973,8 +973,8 @@ function DetailView({ me, card, onBack }) {
       setSending(false);
     }
   };
-
-
+ 
+ 
   const editMessage = async (id, newText) => {
     const text = (newText || "").trim();
     if (!text) return;
@@ -983,8 +983,8 @@ function DetailView({ me, card, onBack }) {
       editedAt: serverTimestamp(),
     });
   };
-
-
+ 
+ 
   /**
    * FIX: Deletes the specified message and promotes its direct replies
    * to become top-level messages by setting their parentId to null in Firestore.
@@ -999,8 +999,8 @@ function DetailView({ me, card, onBack }) {
       );
       // Use getDocs to fetch the replies so we can update them
       const repliesSnap = await getDocs(repliesQuery);
-
-
+ 
+ 
       if (!repliesSnap.empty) {
         const promotePromises = repliesSnap.docs.map((docSnapshot) => {
           // Update the reply's parentId to null to promote it
@@ -1011,16 +1011,16 @@ function DetailView({ me, card, onBack }) {
         // Wait for all replies to be promoted
         await Promise.all(promotePromises);
       }
-
-
+ 
+ 
       // 2. Delete the original message in Firestore
       await deleteDoc(doc(db, "chats", id));
-
-
+ 
+ 
       // The onSnapshot listener will automatically handle the local state update
       // with the deleted comment removed and the replies promoted.
-
-
+ 
+ 
     } catch (err) {
       console.error("Failed to delete comment:", err);
       // Removed alert to avoid showing an error message that might happen
@@ -1028,7 +1028,7 @@ function DetailView({ me, card, onBack }) {
       // but keeping the core fix. The user's original error was due to the
       // complex local state manipulation failing.
       alert("Failed to delete comment.");
-     
+ 
       // No need to restore state manually since onSnapshot will overwrite it soon,
       // but if we were to restore, we'd need to re-fetch/re-subscribe.
       // For now, let's trust onSnapshot.
@@ -1036,8 +1036,8 @@ function DetailView({ me, card, onBack }) {
       setSending(false);
     }
   };
-
-
+ 
+ 
   const renderComments = (messages, depth = 0) => {
     return messages.map((message) => (
       <Comment
@@ -1055,8 +1055,8 @@ function DetailView({ me, card, onBack }) {
       />
     ));
   };
-
-
+ 
+ 
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1067,8 +1067,8 @@ function DetailView({ me, card, onBack }) {
         </div>
         <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
-
-
+ 
+ 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Task Details Panel */}
         <div className="bg-white border border-neutral-200 rounded-xl shadow p-6">
@@ -1080,22 +1080,22 @@ function DetailView({ me, card, onBack }) {
               className="text-sm font-semibold px-4 py-2 rounded-full text-white"
               style={{
                 backgroundColor:
-                  card._colId === "missed"
+                  card.status === "Completed"
+                    ? "#AA60C8"  // Purple color for Completed status
+                    : card._colId === "missed"
                     ? "#6A0F14"
                     : card.status === "To Review"
                     ? "#6FA8DC"
                     : card.status === "In Progress"
                     ? "#7C9C3B"
-                    : "#F5B700",
+                    : "#F5B700", // Yellow for "To Do" or default
               }}
             >
-              {card._colId === "missed"
-                ? "Missed"
-                : card.status || "To Do"}
+              {card.status || "To Do"}
             </span>
           </div>
-
-
+ 
+ 
           {/* Task Fields */}
           <div className="space-y-4">
             <Field label="Tasks" value={card.task} />
@@ -1110,8 +1110,8 @@ function DetailView({ me, card, onBack }) {
             <Field label="Project Phase" value={card.phase} />
           </div>
         </div>
-
-
+ 
+ 
         {/* Comments & Attachments Panel */}
         <div className="bg-white border border-neutral-200 rounded-xl shadow overflow-hidden flex flex-col h-[700px]">
           {/* Tabs */}
@@ -1145,8 +1145,8 @@ function DetailView({ me, card, onBack }) {
               </button>
             </div>
           </div>
-
-
+ 
+ 
           {/* Content Area */}
           <div className="flex-1 overflow-hidden flex flex-col">
             {tab === "comments" && (
@@ -1168,7 +1168,7 @@ function DetailView({ me, card, onBack }) {
                         {me?.name || "You"}
                       </span>
                     </div>
-                   
+ 
                     {/* Textarea */}
                     <div className="space-y-3">
                       <textarea
@@ -1184,8 +1184,8 @@ function DetailView({ me, card, onBack }) {
                           }
                         }}
                       />
-
-
+ 
+ 
                       {/* Pending Files - REMOVED BORDER BOX */}
                       {pendingFiles.length > 0 && (
                         <div className="space-y-2">
@@ -1208,8 +1208,8 @@ function DetailView({ me, card, onBack }) {
                           ))}
                         </div>
                       )}
-
-
+ 
+ 
                       {/* Action Buttons - Attach icon before Send */}
                       <div className="flex items-center justify-end gap-2">
                         <button
@@ -1240,8 +1240,8 @@ function DetailView({ me, card, onBack }) {
                     </div>
                   </div>
                 </div>
-
-
+ 
+ 
                 {/* Comments List - BELOW THE INPUT */}
                 <div
                   ref={listRef}
@@ -1258,8 +1258,8 @@ function DetailView({ me, card, onBack }) {
                 </div>
               </>
             )}
-
-
+ 
+ 
             {tab === "attachment" && (
               <div className="flex-1 overflow-y-auto p-6">
                 <div className="bg-gray-50 rounded-lg border border-neutral-200 overflow-hidden">
@@ -1340,22 +1340,34 @@ function DetailView({ me, card, onBack }) {
     </div>
   );
 }
-
-
+ 
+ 
 /* ============================ Main ============================ */
 export default function TaskBoard() {
+  const location = useLocation(); // Added useLocation hook
   const [me, setMe] = useState(null);
   const [teams, setTeams] = useState([]);
   const [cards, setCards] = useState([]);
   const [selected, setSelected] = useState(null);
-
-
+ 
+ 
+  // Check for selected task from navigation state (from TeamsSummary)
+  useEffect(() => {
+    if (location.state && location.state.selectedTask) {
+      console.log("Received task from navigation state:", location.state.selectedTask);
+      setSelected(location.state.selectedTask);
+      // Clear the location state to prevent reopening on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+ 
+ 
   useEffect(() => {
     const stop = onAuthStateChanged(auth, async (u) => {
       const uid = u?.uid || localStorage.getItem("uid") || "";
       if (!uid) return setMe(null);
-
-
+ 
+ 
       let profile = null;
       try {
         const qUser = query(
@@ -1366,8 +1378,8 @@ export default function TaskBoard() {
         const snap = await getDocs(qUser);
         if (!snap.empty) profile = snap.docs[0].data();
       } catch (_) {}
-
-
+ 
+ 
       setMe({
         uid,
         name: safeName(profile),
@@ -1377,19 +1389,19 @@ export default function TaskBoard() {
     });
     return () => stop();
   }, []);
-
-
+ 
+ 
   useEffect(() => {
     if (!me?.uid) return;
-
-
+ 
+ 
     const merges = new Map();
     const apply = (snap) => {
       snap.docs.forEach((d) => merges.set(d.id, { id: d.id, ...d.data() }));
       setTeams(Array.from(merges.values()));
     };
-
-
+ 
+ 
     const stopA = onSnapshot(
       query(collection(db, "teams"), where("adviser.uid", "==", me.uid)),
       apply
@@ -1398,68 +1410,68 @@ export default function TaskBoard() {
       query(collection(db, "teams"), where("manager.uid", "==", me.uid)),
       apply
     );
-
-
+ 
+ 
     return () => {
       if (typeof stopA === "function") stopA();
       if (typeof stopB === "function") stopB();
     };
   }, [me?.uid]);
-
-
+ 
+ 
   const unsubsRef = useRef([]);
   useEffect(() => {
     unsubsRef.current.forEach((u) => typeof u === "function" && u());
     unsubsRef.current = [];
-
-
+ 
+ 
     if (teams.length === 0) {
       setCards([]);
       return;
     }
-
-
+ 
+ 
     const teamIds = teams.map((t) => t.id);
     const chunks = (arr, n = 10) =>
       Array.from({ length: Math.ceil(arr.length / n) }, (_, i) =>
         arr.slice(i * n, i * n + n)
       );
-
-
+ 
+ 
     const store = {
       titleDefenseTasks: { A: new Map(), B: new Map() },
       oralDefenseTasks: { A: new Map(), B: new Map() },
       finalDefenseTasks: { A: new Map(), B: new Map() },
       finalRedefenseTasks: { A: new Map(), B: new Map() },
     };
-
-
+ 
+ 
     const normalize = (collectionName, d) => {
       const x = d.data();
-     
-      // Filter out completed tasks
+ 
+      // Filter out completed tasks - they won't show on the board
       if (x.status === "Completed") {
         return null;
       }
-
-
+ 
+ 
       // Only show adviser tasks
       if (x.taskManager !== "Adviser") {
         return null;
       }
-
-
+ 
+ 
       const t = x.team || {};
       const teamId = t.id || x.teamId || "no-team";
       const teamName =
         t.name || teams.find((tt) => tt.id === teamId)?.name || "No Team";
-
-
+ 
+ 
       const created =
         typeof x.createdAt?.toDate === "function" ? x.createdAt.toDate() : null;
       const createdDisplay = formatDate(x.createdAt);
-
-
+ 
+ 
       const dueDate = x.dueDate || null;
       const time = x.dueTime || null;
       const timeDisplay = formatTime(time);
@@ -1467,19 +1479,19 @@ export default function TaskBoard() {
       const dueAtMs =
         x.dueAtMs ??
         (dueDate && time ? new Date(`${dueDate}T${time}:00`).getTime() : null);
-
-
+ 
+ 
       let colId = STATUS_TO_COLUMN[x.status || "To Do"] || "todo";
       const now = Date.now();
       const isOverdue =
         !!dueAtMs && dueAtMs < now && (x.status || "To Do") !== "Completed";
       if (isOverdue) colId = "missed";
-
-
+ 
+ 
       // For adviser tasks, show team name
       const assignedTo = teamName;
-
-
+ 
+ 
       // Extract ALL fields directly from the source data
       const cardData = {
         id: d.id,
@@ -1502,8 +1514,8 @@ export default function TaskBoard() {
         dueAtMs: dueAtMs || null,
         taskManager: x.taskManager || "Capstone Adviser",
       };
-
-
+ 
+ 
       // Extract subtask and elements with comprehensive field checking
       const subtask =
         x.subtask ||
@@ -1511,14 +1523,14 @@ export default function TaskBoard() {
         x.subTask ||
         x.subTasks ||
         null;
-     
+ 
       const elements =
         x.elements ||
         x.element ||
         x.scope ||
         null;
-
-
+ 
+ 
       // Handle different data types for subtask and elements
       if (subtask) {
         if (Array.isArray(subtask)) {
@@ -1529,8 +1541,8 @@ export default function TaskBoard() {
           cardData.subtask = JSON.stringify(subtask);
         }
       }
-
-
+ 
+ 
       if (elements) {
         if (Array.isArray(elements)) {
           cardData.elements = elements.join(", ");
@@ -1540,12 +1552,12 @@ export default function TaskBoard() {
           cardData.elements = JSON.stringify(elements);
         }
       }
-
-
+ 
+ 
       return cardData;
     };
-
-
+ 
+ 
     const publish = () => {
       const unionMap = new Map();
       for (const coll of [
@@ -1562,12 +1574,12 @@ export default function TaskBoard() {
           });
         }
       }
-     
+ 
       // Only show adviser tasks (already filtered in normalize function)
       setCards(Array.from(unionMap.values()));
     };
-
-
+ 
+ 
     const attach = (collectionName) => {
       chunks(teamIds, 10).forEach((ids) => {
         const q = query(collection(db, collectionName), where("team.id", "in", ids));
@@ -1585,35 +1597,35 @@ export default function TaskBoard() {
         unsubsRef.current.push(unsub);
       });
     };
-
-
+ 
+ 
     attach("titleDefenseTasks");
     attach("oralDefenseTasks");
     attach("finalDefenseTasks");
     attach("finalRedefenseTasks");
-
-
+ 
+ 
     return () => {
       unsubsRef.current.forEach((u) => typeof u === "function" && u());
       unsubsRef.current = [];
     };
   }, [teams]);
-
-
+ 
+ 
   const grouped = useMemo(() => {
     const map = Object.fromEntries(COLUMNS.map((c) => [c.id, []]));
     for (const c of cards) map[c._colId]?.push(c);
     return map;
   }, [cards]);
-
-
+ 
+ 
   if (selected) {
     return (
       <DetailView me={me} card={selected} onBack={() => setSelected(null)} />
     );
   }
-
-
+ 
+ 
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1624,8 +1636,8 @@ export default function TaskBoard() {
         </div>
         <div className="h-1 w-full rounded-full" style={{ backgroundColor: MAROON }} />
       </div>
-
-
+ 
+ 
       {/* Responsive Kanban Board - Only Adviser Tasks */}
       <div className="min-h-[520px]">
         <div className="h-full grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -1651,5 +1663,3 @@ export default function TaskBoard() {
     </div>
   );
 }
-
-

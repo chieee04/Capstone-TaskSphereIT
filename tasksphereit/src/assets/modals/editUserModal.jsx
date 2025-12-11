@@ -27,7 +27,7 @@ const EditUserModal = ({
   const [resetPassword, setResetPassword] = useState(false);
 
   const handleResetPassword = () => {
-    setPassword("UserUser321");
+    setPassword("CCS_dct.2025!");
     setResetPassword(true);
   };
 
@@ -81,7 +81,7 @@ setTimeout(() => {
     }
   };
 
-  const shouldShowResetButton = !mustChangePassword && password !== "UserUser321";
+  const shouldShowResetButton = !mustChangePassword && password !== "CCS_dct.2025!";
 
   return (
     <div
